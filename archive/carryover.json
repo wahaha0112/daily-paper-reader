@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-06T02:37:55.508893+00:00",
+  "generated_at": "2026-06-06T03:25:36.855872+00:00",
   "updated_date": "20260528-20260606",
   "carryover_days": 9,
   "tag_states": {
@@ -386,6 +386,51 @@
           "matched_requirement_id": "req-2",
           "selection_source": "carryover_cache",
           "paper_id": "2606.02536v1",
+          "carry_days": 1
+        }
+      ]
+    },
+    "code-vuln": {
+      "updated_date": "20260528-20260606",
+      "carryover_days": 9,
+      "items": [
+        {
+          "id": "2606.04739v1",
+          "source": "arxiv",
+          "title": "Revisiting Vul-RAG: Reproducibility and Replicability of RAG-based Vulnerability Detection with Open-Weight Models",
+          "abstract": "Large language models (LLMs) have shown strong potential for automated software vulnerability detection, particularly in retrieval-augmented generation (RAG) settings. However, for approaches relying on proprietary models and APIs, reproducibility and replicability remain largely unexplored, raising the question of whether reported results generalize or depend primarily on specific model choices. In this work, we present a reproducibility study of Vul-RAG, a RAG-based framework for source code vulnerability detection that enhances LLMs with high-level vulnerability knowledge. We first replicate the results in a fully local and open-weights setting using the reported open-weight baseline models. We then extend the evaluation to a diverse set of recent open-weight LLMs, including code-specialized, general-purpose, and reasoning models of varying parameter sizes. The results confirm that the findings of Vul-RAG are reproducible under local deployment, but with minor deviations. Across all evaluated models, we observe a performance plateau at approximately 0.30 pairwise accuracy (code pairs for which both the vulnerable and the patched function are correctly classified). Notably, this plateau persists even for more recent and advanced models, indicating that improvements in model capacity alone do not substantially enhance performance. Finally, we discuss practical implications and trade-offs between detection effectiveness, model capabilities, and model scale. Implementation and evaluation artifacts are publicly available at https://github.com/hs-esslingen-it-security/revisiting-Vul-RAG.",
+          "authors": [
+            "Sabrina Kaniewski",
+            "Fabian Schmidt",
+            "Tobias Heer"
+          ],
+          "primary_category": "cs.SE",
+          "categories": [
+            "cs.SE",
+            "cs.AI"
+          ],
+          "published": "2026-06-03T11:20:37+00:00",
+          "link": "https://arxiv.org/pdf/2606.04739v1",
+          "tags": [
+            "keyword:code-vuln",
+            "query:code-vuln"
+          ],
+          "llm_score": 8.0,
+          "llm_evidence_en": "RAG-based vulnerability detection reproducibility study",
+          "llm_evidence_cn": "基于RAG的漏洞检测可重复性研究",
+          "llm_evidence": "基于RAG的漏洞检测可重复性研究",
+          "canonical_evidence": "基于RAG的漏洞检测可重复性研究",
+          "llm_tldr_en": "This work replicates Vul-RAG with open-weight models, confirming RAG improves vulnerability detection but reproducibility depends on model choice.",
+          "llm_tldr_cn": "基于检索增强生成的漏洞检测方法依赖专有模型，可重复性未知。本文对Vul-RAG进行可重复性研究，在完全本地和开放权重设置下复现结果，并扩展实验。发现开放模型可取得类似效果，但模型选择显著影响性能，为RAG在漏洞检测中的实用性提供重要参考。",
+          "llm_tldr": "基于检索增强生成的漏洞检测方法依赖专有模型，可重复性未知。本文对Vul-RAG进行可重复性研究，在完全本地和开放权重设置下复现结果，并扩展实验。发现开放模型可取得类似效果，但模型选择显著影响性能，为RAG在漏洞检测中的实用性提供重要参考。",
+          "llm_tags": [
+            "query:code-vuln"
+          ],
+          "matched_query_tag": "query:code-vuln",
+          "matched_query_text": "recent research on code vulnerability detection using machine learning",
+          "matched_requirement_id": "req-2",
+          "selection_source": "carryover_cache",
+          "paper_id": "2606.04739v1",
           "carry_days": 1
         }
       ]

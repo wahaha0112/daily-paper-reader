@@ -7,90 +7,74 @@
 
 ## 每次日报
 - 最新运行日期：2026-05-28 ~ 2026-06-06
-- 运行时间：2026-06-06 02:52:45 UTC
+- 运行时间：2026-06-06 03:34:04 UTC
 - 运行状态：成功
-- 本次总论文数：23
-- 精读区：12
+- 本次总论文数：17
+- 精读区：6
 - 速读区：11
 
 ### 今日简报（AI）
-1) 本期23篇论文聚焦强化学习与LLM Agent技能适配，精读篇目揭示“自主感知”与“技能粒度”两大突破。  
-2) 最推荐精读《Learning to Perceive the World Through Control》探索自主交互赋能的表征学习，以及《Skill Availability and Presentation Granularity…》系统量化LLM Agent技能粒度与可用性的影响。  
-3) 建议普通读者优先关注速读中的《SkillsInjector》与《ExpGraph》，前者动态构建技能上下文，后者用图结构内存实现经验复用，两者均能低成本提升Agent性能。
+本期日报聚焦软件安全前沿，精读6篇、速读11篇，重点解析LLM漏洞检测与智能体修复的突破。
+
+最值得关注的两个方向：一是从电路级剖析LLM脆弱性成因（《Dissecting the Black Box》），二是通过经验自我进化提升修复效果（《EvoRepair》），两篇均获9.0高分。
+
+建议普通读者优先阅读速读中的《PeAR》框架（8.0分）——它为二进制程序提供无需源码的模糊测试方案，对实战安全测试有直接帮助。
 - 详情：[/20260528-20260606/README](/20260528-20260606/README)
 
 ### 精读区论文标签
-1. [Learning to Perceive the World Through Control: Empowerment-Based Representation Learning](/20260528-20260606/2605.30656v1-learning-to-perceive-the-world-through-control-empowerment-based-representation-learning)  
-   标签：评分：9.0/10、query:skill
-   evidence：基于empowerment的无监督技能学习表征
-2. [Skill Availability and Presentation Granularity in Large-Language-Model Agents: A Controlled SkillsBench Study](/20260528-20260606/2605.31408v1-skill-availability-and-presentation-granularity-in-large-language-model-agents-a-controlled-skillsbench-study)  
-   标签：评分：9.0/10、query:skill
-   evidence：研究技能可用性和呈现粒度如何影响任务成功，直接关于技能表示
-3. [Skill Reuse as Compression in Agentic RL](/20260528-20260606/2605.31509v1-skill-reuse-as-compression-in-agentic-rl)  
-   标签：评分：9.0/10、query:skill
-   evidence：基于压缩的技能重用强化学习
-4. [Agent Skills Should Go Beyond Text: The Case for Visual Skills](/20260528-20260606/2606.01414v1-agent-skills-should-go-beyond-text-the-case-for-visual-skills)  
-   标签：评分：9.0/10、query:skill
-   evidence：超越文本的多模态技能表示
-5. [ReSkill: Reconciling Skill Creation with Policy Optimization in Agentic RL](/20260528-20260606/2606.01619v1-reskill-reconciling-skill-creation-with-policy-optimization-in-agentic-rl)  
-   标签：评分：9.0/10、query:skill
-   evidence：智能体强化学习中技能创建与策略优化相融合
-6. [SIRI: Self-Internalizing Reinforcement Learning with Intrinsic Skills for LLM Agent Training](/20260528-20260606/2606.02355v1-siri-self-internalizing-reinforcement-learning-with-intrinsic-skills-for-llm-agent-training)  
-   标签：评分：9.0/10、query:skill
-   evidence：提出内在技能自我内化强化学习方法，通过RL发现技能
-7. [SkillPyramid: A Hierarchical Skill Consolidation Framework for Self-Evolving Agents](/20260528-20260606/2606.03692v1-skillpyramid-a-hierarchical-skill-consolidation-framework-for-self-evolving-agents)  
-   标签：评分：9.0/10、query:skill
-   evidence：层次化技能整合与迁移
-8. [AIP: A Graph Representation for Learning and Governing Agent Skills](/20260528-20260606/2606.04781v1-aip-a-graph-representation-for-learning-and-governing-agent-skills)  
-   标签：评分：9.0/10、query:skill
-   evidence：智能体技能的图表示与治理
-9. [Learning While Acting: A Skill-Enhanced Test-Time Co-Evolution Framework for Online Lifelong Learning Agents](/20260528-20260606/2606.04815v1-learning-while-acting-a-skill-enhanced-test-time-co-evolution-framework-for-online-lifelong-learning-agents)  
-   标签：评分：9.0/10、query:skill
-   evidence：提出技能增强的测试时协同演化强化学习框架用于终身学习智能体
-10. [VASO: Formally Verifiable Self-Evolving Skills for Physical AI Agents](/20260528-20260606/2606.05395v1-vaso-formally-verifiable-self-evolving-skills-for-physical-ai-agents)  
-   标签：评分：9.0/10、query:skill
-   evidence：可重用机器人技能的形式化验证和自演化，直接关于技能表示和获取
-11. [Framing, Judging, Steering: An Assessable Competency Model for Teach-ing Students to Reason With Generative AI](/20260528-20260606/2606.05983v1-framing-judging-steering-an-assessable-competency-model-for-teach-ing-students-to-reason-with-generative-ai)  
-   标签：评分：9.0/10、query:skill
-   evidence：CoRe-3模型定义了三种可评估的AI推理技能
-12. [SkillComposer: Learning to Evolve Agent Skills for Specification and Generalization](/20260528-20260606/2606.06079v1-skillcomposer-learning-to-evolve-agent-skills-for-specification-and-generalization)  
-   标签：评分：9.0/10、query:skill
-   evidence：提出SkillComposer通过创建、改进、合并操作演化技能，解决规范性和泛化性
+1. [Dissecting the Black Box: Circuit-Level Analysis of LLM Vulnerability Detection](/20260528-20260606/2605.29901v1-dissecting-the-black-box-circuit-level-analysis-of-llm-vulnerability-detection)  
+   标签：评分：9.0/10、query:code-vuln
+   evidence：通过机械可解释性分析大语言模型检测代码漏洞的内部机制
+2. [EvoRepair: Enhancing Vulnerability Repair Agents Through Experience-Based Self-Evolution](/20260528-20260606/2605.30105v1-evorepair-enhancing-vulnerability-repair-agents-through-experience-based-self-evolution)  
+   标签：评分：9.0/10、query:code-vuln
+   evidence：利用经验自我进化进行自动化漏洞修复
+3. [Decoupled Smart Contract Audits: Lightweight LLM Framework via Distillation and Aggregation](/20260528-20260606/2606.03128v1-decoupled-smart-contract-audits-lightweight-llm-framework-via-distillation-and-aggregation)  
+   标签：评分：9.0/10、query:code-vuln
+   evidence：轻量级LLM框架用于智能合约漏洞检测
+4. [CyberGym-E2E: Scalable Real-World Benchmark for AI Agents' End-to-End Cybersecurity Capabilities](/20260528-20260606/2606.04460v1-cybergym-e2e-scalable-real-world-benchmark-for-ai-agents-end-to-end-cybersecurity-capabilities)  
+   标签：评分：9.0/10、query:code-vuln
+   evidence：网络安全基准测试，涵盖漏洞发现
+5. [Willing but Unable: Separating Refusal from Capability in Code LLMs via Abliteration](/20260528-20260606/2606.05396v1-willing-but-unable-separating-refusal-from-capability-in-code-llms-via-abliteration)  
+   标签：评分：9.0/10、query:code-vuln
+   evidence：利用Abliteration使代码LLM生成带标签的漏洞代码用于检测
+6. [AttackPathGNN: Cross-function vulnerability detection in smart contracts using state interference graphs and conjunction pooling](/20260528-20260606/2606.05986v1-attackpathgnn-cross-function-vulnerability-detection-in-smart-contracts-using-state-interference-graphs-and-conjunction-pooling)  
+   标签：评分：9.0/10、query:code-vuln
+   evidence：图神经网络用于智能合约跨函数漏洞检测
 
 ### 速读区论文标签
-1. [SkillsInjector: Dynamic Skill Context Construction for LLM Agents](/20260528-20260606/2605.29794v1-skillsinjector-dynamic-skill-context-construction-for-llm-agents)  
-   标签：评分：8.0/10、query:skill
-   evidence：动态技能上下文构建与技能迁移
-2. [ExpGraph: Model-Agnostic Experience Learning with Graph-Structured Memory for LLM Agents](/20260528-20260606/2605.30712v1-expgraph-model-agnostic-experience-learning-with-graph-structured-memory-for-llm-agents)  
-   标签：评分：8.0/10、query:skill
-   evidence：将历史轨迹总结为可重用技能和失败教训，直接涉及技能迁移
-3. [Skill is Not One-Size-Fits-All: Model-Aware Skill Alignment for LLM Agents](/20260528-20260606/2605.30723v1-skill-is-not-one-size-fits-all-model-aware-skill-alignment-for-llm-agents)  
-   标签：评分：8.0/10、query:skill
-   evidence：研究技能在不同模型间的有效性差异并提出对齐方法
-4. [Enhancing Human-Likeness in Reinforcement Learning Agents via Hierarchical Macro Action Quantization](/20260528-20260606/2605.30928v1-enhancing-human-likeness-in-reinforcement-learning-agents-via-hierarchical-macro-action-quantization)  
-   标签：评分：8.0/10、query:skill
-   evidence：分层宏动作量化实现类人强化学习，宏动作可视为技能
-5. [When Safe Skills Collide: Measuring Compositional Risk in Agent Skill Ecosystems](/20260528-20260606/2606.00448v1-when-safe-skills-collide-measuring-compositional-risk-in-agent-skill-ecosystems)  
-   标签：评分：7.0/10、query:skill
-   evidence：SkillReact测量个体安全技能组合后的风险
-6. [Skill or Skip? Learning Selective Skill Invocation in Agentic Tasks via Dual-Granularity Preference Learning](/20260528-20260606/2606.00510v1-skill-or-skip-learning-selective-skill-invocation-in-agentic-tasks-via-dual-granularity-preference-learning)  
-   标签：评分：7.0/10、query:skill
-   evidence：关注智能体任务中基于双粒度偏好学习的选择性技能调用
-7. [SkillPager: Query-Adaptive Intra-Skill Navigation via Semantic Node Retrieval](/20260528-20260606/2606.00822v1-skillpager-query-adaptive-intra-skill-navigation-via-semantic-node-retrieval)  
-   标签：评分：7.0/10、query:skill
-   evidence：面向LLM技能库的查询自适应技能内导航
-8. [EvoTrainer: Co-Evolving LLM Policies and Training Harnesses for Autonomous Agentic Reinforcement Learning](/20260528-20260606/2606.03108v1-evotrainer-co-evolving-llm-policies-and-training-harnesses-for-autonomous-agentic-reinforcement-learning)  
-   标签：评分：7.0/10、query:skill
-   evidence：在代理强化学习训练中积累可重用技能，直接关联技能获取
-9. [Decoupled Behavioral Cloning for Scalable Inductive Generalization in RL from Specifications](/20260528-20260606/2606.00838v1-decoupled-behavioral-cloning-for-scalable-inductive-generalization-in-rl-from-specifications)  
-   标签：评分：6.0/10、query:skill
-   evidence：解耦行为克隆用于强化学习中的归纳泛化
-10. [Task diversity produces systematic transfer but inhibits continual reinforcement learning](/20260528-20260606/2606.00880v1-task-diversity-produces-systematic-transfer-but-inhibits-continual-reinforcement-learning)  
-   标签：评分：6.0/10、query:skill
-   evidence：任务多样性在持续强化学习中的迁移
-11. [Continual Learning Bench: Evaluating Frontier AI Systems in Real-World Stateful Environments](/20260528-20260606/2606.05661v1-continual-learning-bench-evaluating-frontier-ai-systems-in-real-world-stateful-environments)  
-   标签：评分：6.0/10、query:skill
-   evidence：持续学习基准，涉及技能获取与迁移
+1. [R+R: Reassessing Java Security API Misuse in Current LLMs: A Replication on JCA and JSSE APIs with External Security Knowledge](/20260528-20260606/2605.31135v1-rr-reassessing-java-security-api-misuse-in-current-llms-a-replication-on-jca-and-jsse-apis-with-external-security-knowledge)  
+   标签：评分：8.0/10、query:code-vuln
+   evidence：LLM生成代码中的API误用漏洞
+2. [Separating Secrets from Placeholders: A Hybrid CNN-CodeBERT Framework for Three-Class Credential Leakage Detection](/20260528-20260606/2605.31520v1-separating-secrets-from-placeholders-a-hybrid-cnn-codebert-framework-for-three-class-credential-leakage-detection)  
+   标签：评分：8.0/10、query:code-vuln
+   evidence：用于源代码凭证泄露检测的深度学习框架
+3. [PeAR: A Static Binary Rewriting Framework for Binary-Only Fuzzing](/20260528-20260606/2606.02126v1-pear-a-static-binary-rewriting-framework-for-binary-only-fuzzing)  
+   标签：评分：8.0/10、query:code-vuln
+   evidence：二进制模糊测试以发现漏洞
+4. [FORGE: Multi-Agent Graduated Exploitation and Detection Engineering](/20260528-20260606/2606.03453v1-forge-multi-agent-graduated-exploitation-and-detection-engineering)  
+   标签：评分：8.0/10、query:code-vuln
+   evidence：多智能体检测规则工程系统
+5. [Minimal Prompt Perturbations Lead to Code Vulnerabilities: Prompt Fragility and Hidden-State Signals in Coding LLMs](/20260528-20260606/2605.29737v1-minimal-prompt-perturbations-lead-to-code-vulnerabilities-prompt-fragility-and-hidden-state-signals-in-coding-llms)  
+   标签：评分：7.0/10、query:code-vuln
+   evidence：研究提示扰动导致代码漏洞
+6. [Specification-Driven Development Benchmark: Security Knowledge Transition](/20260528-20260606/2606.00167v1-specification-driven-development-benchmark-security-knowledge-transition)  
+   标签：评分：7.0/10、query:code-vuln
+   evidence：安全知识可操作化应用于规范驱动的代码生成
+7. [Beyond Edge Coverage: Per-Task Data-Flow Extraction at Kernel Function Boundaries via LLVM](/20260528-20260606/2606.00455v1-beyond-edge-coverage-per-task-data-flow-extraction-at-kernel-function-boundaries-via-llvm)  
+   标签：评分：7.0/10、query:code-vuln
+   evidence：通过数据流提取技术增强内核模糊测试以发现漏洞
+8. [FLARE: Fine-Grained Diagnostic Feedback for LLM Code Refinement](/20260528-20260606/2606.03852v1-flare-fine-grained-diagnostic-feedback-for-llm-code-refinement)  
+   标签：评分：7.0/10、query:code-vuln
+   evidence：细粒度行级可疑度预测的代码诊断模型，可迁移至漏洞检测
+9. [Control Flow Graph Recovery for Dynamically Loaded Code via Symbolic Library Resolution](/20260528-20260606/2605.29620v1-control-flow-graph-recovery-for-dynamically-loaded-code-via-symbolic-library-resolution)  
+   标签：评分：6.0/10、query:code-vuln
+   evidence：恢复动态加载代码的控制流图，辅助漏洞分析
+10. [PyFEX: Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration](/20260528-20260606/2606.02196v1-pyfex-uncovering-evasive-python-based-threats-via-resilient-and-exhaustive-path-exploration)  
+   标签：评分：6.0/10、query:code-vuln
+   evidence：使用程序分析检测Python源代码中的威胁
+11. [The Security Budget of Code LLMs: An Information-Theoretic Capacity-Security Bound](/20260528-20260606/2606.03308v2-the-security-budget-of-code-llms-an-information-theoretic-capacity-security-bound)  
+   标签：评分：6.0/10、query:code-vuln
+   evidence：代码LLM的信息论容量与安全权衡，与漏洞代码生成相关
 
 
 <div class="dpr-home-promo-card">
