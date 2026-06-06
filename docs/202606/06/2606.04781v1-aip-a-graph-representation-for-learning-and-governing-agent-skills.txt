@@ -1,0 +1,441 @@
+Title: AIP: A Graph Representation for Learning and Governing Agent Skills
+
+URL Source: https://arxiv.org/pdf/2606.04781v1
+
+Published Time: Thu, 04 Jun 2026 01:00:09 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# AIP: A Graph Representation for Learning and Governing Agent Skills 
+
+# Zach Blumenfeld 
+
+Neo4j USA zach.blumenfeld@neo4j.com 
+
+# Jim Webber 
+
+Neo4j UK jim.webber@neo4j.com 
+
+## ABSTRACT 
+
+Agent Skills today consist largely of free-form prose requiring the agent to read, interpret, and re-derive how to act in every ses-sion. This imposes two compounding costs: reduced reliability on implementation-heavy tasks, and difficulty in skill creation and improvement—since editing prose is a fragile process that both humans and agents struggle with, particularly for domain-specific procedural knowledge underrepresented in model training. The Agent Instruction Protocol (AIP) addresses both by modeling a skill as a directed execution graph: discrete steps as nodes backed by deterministic scripts or natural-language descriptions, connected by explicit typed input/output edges, and governed by a schema-validated YAML specification. A compiler meta-skill translates ex-isting human-written skills into this form. The benefits are twofold. First, compiling human-written skills to AIP raised Claude Sonnet’s mean task reward from 0.60 to 0.71 and pass rate from 53% to 67% across 27 real agent tasks from SkillsBench—a statistically signifi-cant gain (Wilcoxon signed-rank 𝑝 = 0.011 ), winning 12 tasks to 2 with 13 ties—often in less wall-clock time. The graph delivers vetted, runnable units to the agent rather than asking it to re-derive code, commands, and tool calls from natural language. Second, on creation and improvement, because each skill is schema-validated, functionally testable, and addressable node-by-node, failures can be diagnosed and repaired precisely. Two authored-skill failures were traced to the script level. After adjusting the AIP spec and recompil-ing, both recovered with zero regressions (one task going from 0/5 to 5/5), turning skill improvement into a measurable tuning loop rather than a prose rewrite. That same graph structure supports corpus-level governance and skill introspection, and provides a natural action space for reinforcement learning over skills. 
+
+## 1 INTRODUCTION 
+
+Agent Skills [ 3], introduced by Anthropic in 2025 and subsequently released as an open standard, have quickly become a dominant representation for packaging reusable agent capabilities. A skill is a directory built around a SKILL.md file: YAML frontmatter declaring a name and description , followed by natural-language instruc-tions, optional scripts, and reference files that the agent loads on demand through progressive disclosure . The appeal of the format is that it lets a broad range of domain experts—not only model developers—transfer procedural knowledge to AI agents in a light-weight, human-readable form [ 4], and curated skills measurably raise task success across diverse domains [13]. Yet a SKILL.md is a relatively free-form markdown document, and the skill as a whole is consumed as natural-language context. As a result, the representation inherits several limitations that grow more acute as agents are deployed on harder, implementation-heavy tasks and as the field increasingly turns to agents to help maintain and improve them: (1) Skills neither capture nor enforce structure where warranted, leaving speed and reliability on the table. 
+
+Some context and judgment resist formalization, but a large share of a skill’s procedural knowledge can be expressed as runnable code and explicit graphs of workflow steps— increasingly the way reliable agents are built [ 8, 12 , 22 ]. Skills allow this logic to remain in free prose for the agent to derive at runtime, so on every new session an agent re-plans the code, commands, and tool calls the task needs; on implementation-heavy tasks this is slow and token-intensive, and lets the agent take different, sometimes erro-neous, paths—costing reliability through both the per-run burden and the run-to-run variance. Offloading determin-istic steps to vetted, runnable code [ 6 , 7] and explicitly structured workflows [ 22 ] rather than re-deriving them is known to improve reliability. A mechanism that reliably compiles this structurable knowledge into runnable code and execution graphs [ 11 ] therefore stands to lift skill per-formance. (2) Skill creation and tuning remains a slow, recurring process. A skill must be tuned like a prompt. A skill consist-ing of mostly free-form prose is read and re-interpreted by the agent on every run, so it inherits the well-documented brittleness of prompts: small, semantics-preserving changes in wording or formatting can swing task accuracy by tens of points [ 23 ]—so a skill that works is fiddly to get right and easily knocked off course. (3) Agent-assisted and self-improvement of skills remains a challenge. A skill is only worth shipping when it encodes procedural knowledge underrepresented in model train-ing [ 4 , 13 ]; otherwise the agent already knows it. Experts therefore author skills, but, due to the challenges noted above, increasingly enlist agents to help revise them, and the field is pushing toward agent self-improvement and reinforcement learning over skills [ 2, 18 , 30 , 34 ]. This is hard for two compounding reasons: the material is unfamil-iar by construction—the agent is revising domain-specific procedures it does not itself know—and free-form prose gives it no bounded surface to edit against. With nothing to constrain the edit, the agent’s additive bias runs unchecked: outputs skew toward length and verbosity [ 24 , 33 ], and agents over-engineer and accrete rather than refine [ 15 ]. Skills balloon and grow convoluted, intent drifts, and a fix 
+
+> arXiv:2606.04781v1 [cs.AI] 3 Jun 2026 Zach Blumenfeld and Jim Webber
+
+in one place silently breaks another, while intrinsic self-revision without external feedback often leaves quality un-changed or degraded [ 9, 31 ]. Without a more structured representation, skill improvement has neither a strong nat-ural feedback loop nor a bounded action space. (4) Cause, effect, and governance are hard to establish. 
+
+Free-form prose has no clear addressable units: when a skill produces a wrong result there is no node, step, or typed value to which the failure can be precisely attributed, and a corpus of prose skills cannot be systematically audited for missing validation or approval steps. This runs against the traceability and accountability that governing agentic systems at scale demands [20]. The Agent Instruction Protocol (AIP) 1 addresses these issues by modeling a skill as a directed execution graph. Discrete steps become nodes, each backed by a deterministic script or, where human-like judgment is required, a natural-language description. Nodes are connected by typed input/output edges, and the whole structure is governed by a schema-validated YAML specification. A compiler meta-skill allows agents to translate existing human-written skills into this form at authoring time, surfacing ambiguities, type errors, and field inconsistencies before they can cause runtime failures. Crucially, AIP does not displace human authorship: experts still write the skills, and the compiler translates their human-written source into a typed, script-backed surface—one that improves how reliably agents execute skills today, the result we demonstrate, and whose structure we argue is a better substrate for agent-assisted improvement and reinforcement learning tomorrow. We evaluate AIP against human-curated skills on SkillsBench [ 13 ], a benchmark of 94 agent tasks across 8 domains, using a stratified 27-task sample with Claude Sonnet as the solver. Compiling skills to AIP produced a statistically significant improvement in task reward (Wilcoxon signed-rank 𝑝 = 0.011 ), and we found that failures in AIP skills can be diagnosed and corrected at the node level—given coded scripts connected by a clear, typed execution-graph I/O structure— without regressions elsewhere. This suggests that the benefits of AIP may compound for agent self-improvement and reinforcement learning (RL), where the typed execution graph provides a bounded, validity-gated action space for learning over skills [25]. 
+
+Contributions. Our work makes the following contributions: 
+
+• A multi-mode benchmark harness. An extension to SkillsBench for comparing skill formats and skill authoring methods under a real solver, enabling controlled head-to-head evaluation. 
+
+• Empirical evidence of improved task reward. Com-piling human-written skills to AIP significantly improves task reward across 27 tasks (mean reward 0.599 → 0.705 ,
+
++0.106 ; Wilcoxon 𝑝 = 0.011 ), with the mechanism localized to executability and procedural consistency. 
+
+• A demonstrated mechanism for skill self-improvement. 
+
+During early experimentation, two compiler-authored fail-ure modes were diagnosed at the node and script level by an agent (Claude Code). In this case they were corrected         
+
+> 1Today AIP is realized as a specification —a schema-validated execution-graph format that an agent reads into context and follows. We retain the term protocol for the typed contract this format defines, and for a runtime that would enforce graph traversal and local and remote skill calls; we set that out as future work (Section 6.3).
+> Skill directory
+> pdf-processing/ SKILL.md # required: YAML frontmatter + instructions scripts/ # optional: executable code (e.g. extract.py) references/ # optional: docs the agent loads on demand assets/ # optional: templates, resources
+> SKILL.md
+> ---name: pdf-processing description: Extract text and tables from PDFs, fill forms, and merge files. Use when working with PDF documents. ---# PDF Processing ## Extracting text Run `scripts/extract.py <file> `; it writes one block per page... ## Filling forms See references/forms.md for the field-mapping convention...
+
+Figure 1: An Agent Skill is a directory built around a SKILL.md 
+
+file—YAML frontmatter (required name and description ) fol-lowed by free-form Markdown instructions—alongside op-tional scripts/ , references/ , and assets/ that the agent loads only as a task requires ( progressive disclosure ) [1]. 
+
+by editing the AIP specification, and recovered with zero regressions, but, the tooling demonstrates strong poten-tial for a diagnosis–edit–recompile–evaluate loop with a measurable reward signal—a working substrate for agent-assisted improvement and, prospectively, autonomous self-improvement and reinforcement learning over skills. 
+
+• A path to corpus-level governance and inspection. Be-cause each skill is a typed, schema-validated graph, a library of AIP skills is queryable and inspectable: missing validation or approval steps can be audited, shared sub-procedures discovered, and skills composed from reusable node tem-plates. Projected into a graph database, the same structure supports access control and visual introspection—a skill’s steps and their typed input/output rendered as a graph (Fig-ure 2)—moving governance from manual documentation review to a structured query over a typed graph. As agents grow more autonomous and begin running their own self-improvement loops, this inspectable surface is what keeps human oversight and understanding tractable. 
+
+## 2 BACKGROUND 
+
+Modern LLM agents carry out tasks by interleaving natural-language reasoning with calls to external tools—running code, querying sys-tems, editing files—and observing the results [ 21 , 32 ]. Because many tasks recur, these agents increasingly draw on reusable skills : pack-aged procedural knowledge—instructions, and sometimes code— that tells them how to carry out a class of tasks [ 27 ]. Anthropic’s Agent Skills standardize this as a SKILL.md file in a directory of optional resources the agent loads on demand (Figure 1) [1, 3]. A skill’s procedure lives largely in the free-form Markdown body of its SKILL.md (Figure 1), which the agent reads and interprets at runtime; although the format permits bundled scripts, in practice much of the procedure stays in prose. 
+
+Graphs and structured agent workflows. In industry, agent development frameworks have already started representing agent workflows with graphs whose nodes are discrete steps and whose AIP: A Graph Representation for Learning and Governing Agent Skills 
+
+edges carry the data passed between them. This includes frame-works such as LangGraph and Google’s Agent Development Kit (ADK) [ 8 , 12 ]. Earlier than that, DSPy, a Python framework for build-ing AI systems, used declarative pipelines that can be compiled rather than hand-written to automatically optimize how language models are prompted (or fine-tuned), replacing brittle, manually tuned prompt templates [ 11 ]; Anthropic, the AI safety and research company behind the Claude family of models and the agent skill spec, also recommends predefined, structured workflows where predictability and reliability matter [ 22 ]; dedicated benchmarks likewise find that supplying agents with explicit workflow struc-ture improves their planning [ 29 ]. Evidence that this matters comes from the same benchmark we use: on SkillsBench, the skills that help most pair focused guidance with executable code and refer-ence files, while sprawling, comprehensive prose can even hurt performance [ 13 ]—structure, not just content, shapes how well a skill works. AIP brings this graph view to the skill itself: a skill becomes an execution graph of typed steps, each backed by a script or a natural-language description. 
+
+Measuring skills. We build on SkillsBench [ 13 ], a container-ized benchmark that isolates the effect of a skill. Each task pairs a natural-language instruction with a sandboxed environment and a programmatic verifier, run through the BenchFlow SDK [ 5], and is scored under three conditions: no skill, a human-curated skill, and a skill the agent generates for itself. Measuring task success across these conditions lets a skill’s contribution be quantified directly— the substrate our experiments extend with AIP. 
+
+## 3 THE AGENT INSTRUCTION PROTOCOL (AIP) 
+
+Agent Instruction Protocol (AIP), an extension of the Agent Skills specification [ 1], defines a skill as a directed execution graph—today a specification, with the enforcing protocol left to future work (Section 6.3). Nodes represent discrete operational steps: each step is either backed by a deterministic script for computational work, or described in natural language for steps requiring judgment or interaction. Step nodes are connected by typed input/output edges that make data flow explicit and checkable, and the entire structure is governed by a schema-validated YAML specification. Figure 2 shows a real compiled skill rendered as such a graph. The major node and edge types are as follows.         
+
+> # Nodes Skill # the procedure: purpose, trigger_when, scope_and_approval Step # a unit of work: name, description; an optional backing #script; typed inputs/outputs; depends_on/parallel/one_of # Edges between steps inputs / outputs # a step 's typed output (name, type) feeds another #step 's input -- the typed data-flow edges depends_on # explicit ordering for DAG-shaped procedures # A step also binds package files script # a deterministic body under scripts/ references # prose-cited docs under references/
+
+Steps may also carry parallel and one_of control modifiers. The remaining top-level metadata—trigger and do-not-use condi-tions, anti-patterns, scenarios, modes, and integrations—attach as typed satellite nodes, keeping the entire specification queryable (Section 6.1). 
+
+Compilation. AIP includes a compiler meta-skill that trans-forms human-written source material—existing skills, prose in-structions, documentation, code, or informal descriptions—into the graph representation. The compilation step acts as a quality gate: schema validation catches type errors, missing fields, and structural inconsistencies at authoring time rather than at runtime. Ambi-guities in the source material must be resolved to produce a valid graph, which forces clarity that prose allows to remain implicit. The meta-skill also provides instruction around creating scripts from natural language where appropriate, which we have found can be a load-bearing step for improving reward: some of the largest gains in our evaluation (Section 4) come on prose-only skills where the solver would otherwise re-derive code at run time, such as 
+
+mars-clouds-clustering and dapt-intrusion-detection . Fig-ure 3 shows this transformation on a real skill, contrasting the human-curated and compiled on-disk packages. 
+
+Execution. At runtime, the agent loads the SKILL.md graph into its context window where it can reason through the execution graph steps. With more scripts and explicit input/output between steps, the agent can re-focus language-model reasoning on the prose nodes that genuinely require judgment and avoid re-deriving well-understood procedures on every run; the same principle of offloading deterministic computation to code is known to improve reliability in program-aided settings [6, 7]. 
+
+Addressability. Because each node is individually named, typed, and validatable, the graph is addressable at the component level. A failure in execution can be attributed to a specific node, the corresponding script can be inspected or corrected, and the re-pair can be validated in isolation. This property underlies both the skill-improvement loop evaluated in Section 4 and the governance, learning, and protocol roadmap outlined in Section 6. 
+
+## 4 EVALUATION 4.1 Experimental Setup 
+
+Benchmark. We build on SkillsBench [13], a containerized agent benchmark of 94 tasks across 8 domains, run through the Bench-Flow SDK [ 5]. Each task bundles a natural-language instruction, a sandboxed environment, and a programmatic verifier that scores the agent’s output. SkillsBench is designed to measure how an agent’s task success changes when it is given reusable skills, and ships three native conditions per task: 1) noskill , 2) one or more 
+
+human-curated skills authored offline by a domain expert, and 3) 
+
+self-generated one or more skills the agent writes for itself at trial time. We extend SkillsBench with a multi-mode harness that adds two AIP conditions: 1) aip-from-instruction where one or more AIP skills are authored by a Claude Code Agent from the task instruction alone, and 2) aip-from-curated where one or more AIP skills are authored by a Claude Code Agent using the human-curated skill(s) as input. Both modes use the AIP meta-skill to compile the skills and both use Opus 4.7 as the language model. 2 Following AIP’s author-once, consume-many design, each AIP skill is authored a 
+
+> 2The AIP protocol—its specification, schemas, and compiler meta-skill—is open source on GitHub at https://github.com/zach-blumenfeld/aip (the results in this paper use tag
+> v0.3a3 ). The AIP-SkillBench harness, run data, and analysis are available on GitHub at https://github.com/zach-blumenfeld/aip-skillbench. Zach Blumenfeld and Jim Webber
+
+Figure 2: A compiled AIP skill ( exoplanet-workflows ) as a directed execution graph, projected into Neo4j. The pink Skill 
+
+node carries the name and description; teal nodes are procedure steps ; arrows between steps are typed input/output edges (e.g. 
+
+lc-path, string ; detection, object ) that make data flow explicit and checkable. A Runs edge binds a step to a deterministic 
+
+script (orange); a References edge attaches a prose reference (yellow) for steps needing judgment. The same typed structure is what makes a skill node-addressable, and queryable (Section 6.1). 
+
+single time, committed, and mounted unchanged across all trials. The harness thus enables controlled head-to-head comparison of AIP skill formats and authoring methods under a single solver. 
+
+Solver. The agent harness is claude-agent-acp , driving the 
+
+claude-sonnet-4-6 model, with all executions isolated in a Docker sandbox and five independent trials per cell (one task under one condition). 
+
+Conditions. The primary comparison is between the human-curated and aip-from-curated modes. The harness modes ( noskill 
+
+and selfgen ) are out of scope of the main claim. SkillsBench [ 13 ]already found human-curated outperforms both these modes on average. aip-from-instruction was attempted in early trials, but re-sults were excluded from this report. In the v0.3a2 medium set, 
+
+aip-from-instruction performed substantially lower than the hu-man baseline (0/15 passing, vs. 11/15 for human-curated), with failures traced to incorrect methods in scripts committed into the authored skill—a distorting map projection, a parser that rejected valid inputs, a controller that produced no output. This reiterates SkillsBench’s finding that self-authored skills provide no benefit on average—models cannot reliably author the procedural knowledge they benefit from consuming [ 13 ]—and that effective skills rest on expert curation [ 4]. It also leans toward the AIP format, rather than the authoring model (Claude Opus 4.7) being the source of the uplift in aip-from-curated , though this does not fully isolate the two (see Limitations 4.5). 
+
+Task sample and strata. We evaluate on 27 tasks, listed in Table 1. We characterize each along three axes: 
+
+• Difficulty (easy , medium , or hard ): the task author’s rating, taken directly from SkillsBench task metadata. 
+
+• Implementation class (light or heavy ): a task is heavy 
+
+when its declared type includes implementation, simulation, optimization, or control, i.e. it requires substantial code to be written or run; it is light otherwise (analysis, calculation, extraction, search, or detection). 
+
+• Structure class (prose-only , mixed , or script-heavy ): a prop-erty of the human-curated skill: how much runnable code it already ships. A prose-only skill has no scripts (all nat-ural language); a mixed skill has scripts but more prose than code (measured in LoC); a script-heavy skill has at least as much script as prose. This axis indexes how much AIP: A Graph Representation for Learning and Governing Agent Skills 
+
+Before: human-authored prose ( SKILL.md )
+
+> # Exoplanet Detection Workflows ## Pipeline Design Principles ### Key Stages 1. Data Loading: format, columns, time system 2. Quality Control: filter via quality flags 3. Preprocessing: remove noise, preserve signal 4. Period Search: choose algorithm for signal 5. Validation: verify candidate is real 6. Refinement: improve period precision ### Critical Decisions Which period search algorithm? - TLS: best for transit-shaped dips (box-like) - Lomb-Scargle: any periodic signal, fast - BLS: alternative to TLS, in Astropy
+
+After: compiled AIP procedure ( SKILL.md , YAML)           
+
+> purpose: > Load, quality-filter, preprocess, search for a transit signal, validate vs SDE/SNR thresholds, refine period. steps: - name: load-and-inspect outputs: - {name: lc-path, type: string} - {name: column-map, type: object} - {name: flag-good-value, type: float} - name: choose-search-strategy # judgment node description: > Default to TLS; load references/method-selection.md to justify TLS vs Lomb-Scargle vs BLS. one_of: [tls, lomb-scargle, bls] outputs: [{name: method, type: string}] - name: run-detection-pipeline # script node script: scripts/detect_period.py inputs: [lc-path, column-map, flag-good-value] outputs: [{name: detection, type: object}] - name: validate-candidate # script node script: scripts/validate_candidate.py inputs: [detection] outputs: [{name: verdict, type: object}]
+
+On-disk skill package (before → after)      
+
+> # Before: human-curated (prose-only) exoplanet-workflows/ SKILL.md # prose guidance only # After: compiled AIP (exoplanet-workflows) exoplanet-workflows/ SKILL.md # AIP procedure (YAML above) scripts/ # deterministic step bodies detect_period.py period_range_guide.py validate_candidate.py references/ # prose for judgment steps method-selection.md troubleshooting.md source/ # provenance kept by compiler original-SKILL.md procedure.schema.json
+
+Figure 3: Compiling a prose skill to AIP, for exoplanet-workflows . The free-form procedure (top left) becomes a schema-validated YAML graph of typed steps (top right): each step declares typed inputs /outputs , binds to a deterministic script via script , or cites a prose reference from its description for judgment. On disk (bottom), the prose-only human skill— exoplanet-workflows ,one of five modules the task bundles, all shipping no code—expands into a package whose steps are backed by generated 
+
+scripts/ and references/ , with the original prose and JSON schema preserved under source/ ; Figure 2 is this same skill as a graph. 
+
+room an AIP conversion has to add executability: most for prose-only skills, least for script-heavy ones. The 24-task core is stratified across structure class × implemen-tation class so the evaluation spans the gradient of expected AIP benefit rather than a single operating point, with difficulty and domain as secondary spread; all 24 use AIP v0.3a3. To this we add a three-task medium reference set ( eval-3med , marked † in Table 1). We report the full 27-task sample as the headline result, with the caveat that those three were compiled against an earlier protocol version (v0.3a2) and randomly selected (from the pool of medium difficulty tasks) rather than stratified. They were an earlier trial of experimentation. Results restricted to the 24-task v0.3a3 set are consistent in direction and significance (Section 4.5). 
+
+Metrics. The primary metric is mean task reward, which is robust to the ceiling and floor effects introduced by all-or-nothing verifiers. Secondary metrics are pass rate, wall-clock execution time, and tool-call count. 
+
+## 4.2 Experimental Results 
+
+Table 2 reports the aggregate comparison between human-curated skills and their AIP-compiled counterparts. Compiling to AIP raises mean task reward from 0.599 to 0.705 ( +0.106 ), a statistically signif-icant gain under a Wilcoxon signed-rank test ( 𝑝 = 0.011 ), winning 12 tasks against 2 losses with 13 ties. Pass rate rises in parallel, from 53.3% to 67.4%. The 24-task v0.3a3 subset, which excludes the three hand-picked supplementary tasks, is consistent in direction and significance ( +0.101 , 𝑝 = 0.022 ), confirming the headline does not hinge on the supplementary set. Figure 4 shows the trial-level outcomes behind these aggregates: the gains are concentrated in a subset of differentiating tasks, where compiling to AIP converts failing or timed-out trials into passes, while the many tied tasks reflect mutual ceilings (both formats pass all five trials) or mutual floors (both fail). 
+
+## 4.3 Execution time 
+
+AIP skills also run faster on average—mean wall-clock time falls from 585 s to 510 s, and AIP is the faster format on 16 of 27 tasks—but this aggregate reduction is not statistically significant (Wilcoxon Zach Blumenfeld and Jim Webber 3d-scan-calc 
+
+> adaptive-cruise-control
+> bike-rebalance
+> civ6-adjacency-optimizer
+> court-form-filling
+> dapt-intrusion-detection
+> data-to-d3
+> dialogue-parser
+> energy-market-pricing
+> energy-unit-commitment
+> enterprise-information-search
+> exoplanet-detection-period
+> fix-build-google-auto
+> grid-dispatch-operator
+> jax-computing-basics
+> mars-clouds-clustering
+> offer-letter-generator
+> parallel-tfidf-search
+> powerlifting-coef-calc
+> protein-expression-analysis
+> sec-financial-report
+> spring-boot-jakarta-migration
+> suricata-custom-exfil
+> travel-planning
+> crystallographic-wyckoff-position-analysis
+> drone-planning-control
+> earthquake-plate-calculation
+
+AIP spec v0.3a3 stratified cohort (24 tasks) 
+
+AIP spec v0.3a2 supporting set (3 tasks) 
+
+1.00 85 1.00 82 
+
+0.20 970 0.40 1112 
+
+0.40 991 0.60 878 
+
+0.00 1551 0.00 1647 
+
+0.80 202 1.00 200 
+
+0.40 270 1.00 122 
+
+0.40 502 0.40 572 
+
+0.80 229 0.83 243 
+
+0.60 547 0.80 1058 
+
+0.00 943 0.00 927 
+
+0.00 212 0.00 225 
+
+0.60 665 1.00 729 
+
+0.20 1490 0.20 1060 
+
+1.00 234 1.00 265 
+
+0.80 160 1.00 69 
+
+0.60 3005 1.00 1700 
+
+1.00 92 1.00 82 
+
+1.00 436 0.80 408 
+
+1.00 204 1.00 82 
+
+1.00 242 1.00 247 
+
+0.60 265 1.00 170 
+
+1.00 460 1.00 411 
+
+0.20 229 0.00 243 
+
+0.00 252 0.00 333 
+
+0.89 191 1.00 83 
+
+0.67 1279 1.00 734 
+
+1.00 85 1.00 81 
+
+human-curated aip-from-curated 
+
+mean R wall (s) mean R wall (s) 
+
+pass (reward = 1) fail (reward < 1) timeout (wall-clock / idle) higher mean reward of the two formats 
+
+Figure 4: Per-trial outcomes for all 27 tasks under the two skill formats (five trials per task; within each cell the markers are sorted pass, fail, timeout), with the per-task mean reward and mean wall-clock (seconds) over those five trials shown to the right of each block. Each row is a task; the left block is the human-curated skill and the right block its AIP-compiled counterpart. A pass denotes a passing verifier (reward = 1); all timeouts are trials terminated at the harness wall-clock cap or idle limit and score as reward 0, so the means are taken over all five trials. The higher mean reward of the two formats is shown in bold. Tasks are grouped by the AIP spec version their packs were compiled against and sorted alphabetically within each group: the 24-task stratified cohort (v0.3a3) and the three-task supplementary reference set (v0.3a2). Differentiating tasks (e.g. 
+
+dapt-intrusion-detection , mars-clouds-clustering , exoplanet-detection-period ) show failing or timed-out human-curated trials converted to passes after compilation; tied tasks are mutual ceilings or floors that no packaging could move. AIP: A Graph Representation for Learning and Governing Agent Skills 
+
+Table 1: The 27 evaluation tasks, grouped by the structure class of their human-curated skill (the axis indexing AIP’s room to add executability). Diff. is the SkillsBench difficulty rating; Impl. is the implementation class ( heavy = the task type includes implementation, simulation, optimization, or control); Skills is the number of curated skill modules the task bundles. The 24-task core is stratified across structure × implementation class; † marks the three supplementary eval-3med tasks (v0.3a2 spec, hand-picked).                          
+
+> Task Domain Diff. Impl. Skills Description
+> Prose-only — human skill ships no scripts (12 tasks; most AIP room)
+> energy-unit-commitment Industrial/Physical Systems hard heavy 3Schedule generator unit commit for day-ahead demand.
+> mars-clouds-clustering Natural Science hard heavy 3Optimize unsupervised clustering of Mars cloud observa-tions.
+> adaptive-cruise-control Industrial/Physical Systems med. heavy 5Implement and simulate an adaptive-cruise-control law.
+> bike-rebalance Mathematics/Formal Reasoning med. heavy 4Plan the optimal overnight redistribution of shared bikes.
+> drone-planning-control
+
+† Industrial/Physical Systems med. heavy 6 Generate drone trajectories and feedback control in simula-tion.                            
+
+> parallel-tfidf-search Software Engineering med. heavy 3Implement a parallelized TF-IDF document search.
+> fix-build-google-auto Software Engineering easy light 3Repair build errors in a Java codebase so it compiles.
+> offer-letter-generator Office/White-Collar easy light 1Fill a .docx offer-letter template with a conditional block.
+> enterprise-information-search Office/White-Collar hard light 1Answer a retrieval query over enterprise documents.
+> spring-boot-jakarta-migration Software Engineering hard light 5Migrate a Spring Boot codebase to Jakarta EE namespaces.
+> earthquake-plate-calculation
+
+† Natural Science med. light 1 Find the in-plate quake farthest from the Pacific boundary.                                         
+
+> exoplanet-detection-period Natural Science med. light 5Detect an exoplanet and compute its orbital period.
+> Mixed — some scripts, but prose dominates (9 tasks)
+> energy-market-pricing Industrial/Physical Systems hard heavy 4Clear an energy market and compute locational prices.
+> grid-dispatch-operator Industrial/Physical Systems med. heavy 3Compute an economic unit dispatch for a grid.
+> jax-computing-basics Software Engineering med. heavy 1Implement numerical routines in JAX.
+> suricata-custom-exfil Cybersecurity med. heavy 3Author a Suricata rule for a custom exfiltration pattern.
+> court-form-filling Office/White-Collar easy light 1Extract case data and fill a court form.
+> powerlifting-coef-calc Office/White-Collar easy light 3Compute powerlifting scoring coefficients.
+> dapt-intrusion-detection Cybersecurity hard light 2Detect advanced-persistent-threat intrusion in PCAP traffic.
+> crystallographic-wyckoff-pos.
+
+† Natural Science med. light 2 Wyckoff position analysis from X-ray CIF files.                                    
+
+> protein-expression-analysis Natural Science med. light 1Analyze cancer cell-line protein-expression data.
+> Script-heavy — skill is already executable and terse (6 tasks; least AIP room)
+> dialogue-parser Software Engineering easy heavy 1Parse dialogue text into a structured format.
+> civ6-adjacency-optimizer Mathematics/Formal Reasoning hard heavy 4Optimize district adjacency placement on a Civ VI map.
+> data-to-d3 Software Engineering med. heavy 1Build a D3.js (v6) visualization of stock data.
+> 3d-scan-calc Industrial/Physical Systems hard light 1Calculate the mass of a 3D-printed part from its geometry.
+> sec-financial-report Finance/Economics hard light 2Search SEC filings and analyze a financial report.
+> travel-planning Mathematics/Formal Reasoning med. light 6Plan an itinerary under scheduling constraints.
+
+𝑝 ≈ 0.28 two-sided, and 𝑝 = 0.14 under the directional hypothesis that AIP is faster). We therefore treat wall-clock and tool-call counts as descriptive, not as significance claims. The speedups concentrate on a minority of tasks where prose forced the solver to re-derive code at run time (e.g. dapt-intrusion-detection 2/5 → 5/5 at 
+
+∼2.2 × faster, jax-computing-basics ∼2.3 × faster). Figure 5 breaks the per-task wall-clock change down by stratum. The clearest pattern is along structure_class : prose-only skills, where AIP has room to add executable structure, tend to speed up, whereas already-terse script-heavy skills do not—mirroring the reward analysis, in which no single structural axis reaches significance. Four tasks sit far outside the bulk of the distribution and are in-dividually instructive; together they show that a wall-clock change is meaningful only when read alongside the reward outcome. 
+
+mars-clouds-clustering (−1305 s, a genuine win). The hu-man skill is prose-only (309 lines of reference text, no scripts) for a task that requires an 847-combination grid search over a clustering pipeline, scored by an all-or-nothing verifier. The human-curated solver re-derives the full pipeline on every trial and passes only 2 of 5: two completed runs produce a wrong result on an exact-specification detail, and a third computes the correct answer but is killed after idling at the harness time limit. The AIP conversion ships the vetted procedure and passes 5 of 5 while running roughly 30% faster at equal load. The headline −1305 s slightly overstates the speedup, as two AIP trials ran under lighter concurrency. 
+
+drone-planning-control (−546 s, a genuine win). Also prose-only (463 lines, no scripts). The human solver re-derives the trajectory-and-control stack from prose and passes 2 of 5, with one run stalling at the idle limit and two earning only partial credit; the AIP version passes 5 of 5 with markedly lower and tighter wall-clock. 
+
+fix-build-google-auto (−430 s, not a real speedup). A build-repair task that both formats essentially fail (mean reward 0.20 
+
+each): both arms thrash through 90–140 tool calls and exhaust the execution budget on multiple trials. AIP’s lower mean wall-clock is an artifact of its unsuccessful trials terminating earlier, not a genuine efficiency gain—here the skill is not the bottleneck. 
+
+energy-market-pricing (+511 s, slower but more accurate). 
+
+The lone task where AIP is markedly slower. The conversion added a heavier computational path that lands more correct results (4 of 5 vs. 3 of 5) but at roughly twice the tool calls and wall-clock. AIP’s executability lever buys reliability at a compute cost that is not uniform across tasks. Zach Blumenfeld and Jim Webber 
+
+Table 2: Human-curated vs. AIP-compiled skills on Skills-Bench (Claude Sonnet solver, 5 trials/task). Reward is the primary metric; Δ is AIP − human. The Wilcoxon signed-rank test is computed on per-task mean reward ( scipy [26 ]default, tied pairs dropped). Wall-clock and tool-call deltas are descriptive: their aggregate differences are not statisti-cally significant. 
+
+Metric Human AIP Δ
+
+27-task headline sample 
+
+Mean task reward 0.599 0.705 +0.106 
+
+Pass rate 53.3% 67.4% +14 .1 pp Mean wall-clock (s) 585 510 −75 †
+
+Mean tool calls 27.7 25.6 −2.1†
+
+Win / tie / loss 12 / 13 / 2 Wilcoxon 𝑝 (reward) 0.011 
+
+24-task v0.3a3 subset (robustness) 
+
+Mean task reward 0.567 0.668 +0.101 
+
+Pass rate 50.8% 63.3% +12 .5 pp Win / tie / loss 10 / 12 / 2 Wilcoxon 𝑝 (reward) 0.022    
+
+> †Not statistically significant (per-task Wilcoxon 𝑝 ≈0.28 ); the mean reduction is driven by a few tasks. Pass rate is the fraction of trials with a passing verifier; mean reward is preferred because several verifiers are all-or-nothing, producing the high tie count.
+
+## 4.4 Skill improvement 
+
+The results above establish that AIP skills are more executable . They are also more improvable , and for the same reason: because an AIP skill is a graph of named, typed, schema-validated nodes—each backed by a script that can be run and tested in isolation—a failure can be localized to a specific node and repaired easily, rather than by rewriting prose and hoping. We observed this loop directly while iterating the protocol from v0.3a2 to v0.3a3. Two skills that the compiler had authored with latent defects were diagnosed at the script level by an agent (Claude Code), corrected by a change to the AIP meta-skill, recompiled, and re-evaluated. 
+
+offer-letter-generator : 0/5 → 5/5. The compiled skill con-tained a frozen conditional-key bug—a template lookup keyed on RELOCATION rather than RELOCATION_PACKAGE —so every trial failed in the same way. The defect was localized to a single node and fixed by a specification change (a functional-test correctness check, plus a key-suffix fallback and a default-keep rule) in this case; after recompilation the skill passed all five trials. 
+
+bike-rebalance : 0.40 → 0.60, timeouts 3 → 1. The compiler had authored an over-engineered routing script (roughly 1,146 lines) heavy enough to exhaust the agent’s time budget on three of five trials. A specification change favoring lean scripts produced a smaller routine that fit the budget, cutting timeouts and lifting reward. Both repairs were verified to cause zero regressions on the re-maining tasks: the node-level edit fixed the target skill without disturbing the rest of the corpus. We executed these fixes by editing the AIP meta-skill and recompiling, but the loop is not bound to the meta-skill. The diagnosis was already agent-driven, and because each skill is a bounded, typed, addressable artifact—not prose—the easy medium hard       
+
+> 600
+> 400
+> 200
+> 0
+> 200
+> 400
+> 600
+> wall  (aip  human), s  (below 0 = AIP faster)
+> mars-clouds-clustering
+> =-1305s
+> wall by difficulty (y clipped to ±600)
+> light heavy
+> 600
+> 400
+> 200
+> 0
+> 200
+> 400
+> 600
+> wall  (aip  human), s  (below 0 = AIP faster)
+> mars-clouds-clustering
+> =-1305s
+> wall by impl_class (y clipped to ±600)
+> prose-only mixed script-heavy
+> 600
+> 400
+> 200
+> 0
+> 200
+> 400
+> 600
+> wall  (aip  human), s  (below 0 = AIP faster)
+> mars-clouds-clustering
+> =-1305s
+> wall by structure_class (y clipped to ±600)
+
+Figure 5: Per-task wall-clock change from compiling to AIP ( aip minus human mean over five trials, in seconds) within each stratum; below the dashed line means AIP is faster. Boxes show the interquartile range and median; dots are individual tasks. The 𝑦 -axis is clipped to ±600 s, so mars-clouds-clustering (−1305 s) is off-scale and flagged with a marker in the hard , heavy , and prose-only panels. 
+
+edit itself is a constrained, checkable action an agent can take di-rectly on the skill, rather than the open-ended language editing that agents do poorly. A team adopting AIP can therefore hand more skill maintenance to its own agents. Diagnosis, specification edit, recompilation, and re-evaluation thus form a closed feedback step AIP: A Graph Representation for Learning and Governing Agent Skills 
+
+with a measurable reward signal—which we argue in Section 6.2 is the natural substrate for reinforcement learning over skills. 
+
+## 4.5 Limitations 
+
+The evaluation, while yielding a statistically significant result, car-ries several important caveats that qualify the strength of our claims. 
+
+Format–author confound. The evaluation measures a compile-then-run pipeline: an agent compiles a human-written skill to AIP and then executes it. A performance gain could therefore reflect the improved graph representation, or it could reflect improvements made to the underlying scripts by the compiler agent—these two mechanisms are not yet separated. The highest-value missing ex-periment is a control arm in which the same converted scripts are delivered as plain Markdown rather than as an AIP graph, isolating the contribution of structure from the contribution of script quality on a subset of tasks. 
+
+Statistical power. Trials are limited to 𝑛 = 5 per cell, and the Wilcoxon signed-rank test operates on per-task means over 12–14 non-tied pairs. The result is significant but preliminary; broader claims should await a wider trial budget and a larger task set. 
+
+Verifier characteristics. Several tasks use all-or-nothing veri-fiers, which inflates per-task variance and produces the high num-ber of ties (12–13). A finer-grained reward signal would provide more discriminative power and reduce ceiling and floor effects. 
+
+Subset caveats. Three of the 27 headline tasks (the eval-3med ref-erence set) were compiled against an earlier protocol version (v0.3a2 rather than v0.3a3) and were randomly sampled from medium dif-ficulty tasks rather than drawn from the stratified sampling pro-cedure. We therefore report both the full 27-task figure and the 24-task v0.3a3 subset, and the two are consistent in direction and significance: +0.106 mean reward at 𝑝 = 0.011 over 27 tasks, versus 
+
++0.101 at 𝑝 = 0.022 over the 24-task stratified set. The headline result thus does not depend on the supplementary tasks. 
+
+Budget-capped tasks. Two tasks (energy unit commitment and Civilization 6) hit the execution budget without producing informative results; they are excluded in spirit, though they land as ties in the aggregate counts. These should be re-budgeted or dropped in future iterations. 
+
+Single model. All experiments use Claude Sonnet as the solver. Two replications are needed. First, a weaker model (e.g., Claude Haiku) would test the hypothesis that graph structure provides proportionally greater benefit to less capable models. Second, mod-els from other vendors—OpenAI’s GPT and Google’s Gemini—and open-weight families such as Llama, Qwen, DeepSeek, and Mistral are needed to establish that the gains hold across LLMs rather than being specific to one model family. 
+
+## 5 RELATED WORK 
+
+Agent skills and their representations. ReAct [ 32 ] interleaves language-model reasoning with tool actions; Voyager [ 27 ] accumu-lates learned behaviors as code snippets indexed by prose; and Tool-former [ 21 ] teaches models to invoke external APIs mid-generation. Anthropic’s Agent Skills [ 1 , 3] standardize the packaging of such procedural knowledge, which a growing literature treats as insti-tutional or expert knowledge to be transferred to agents [ 4] and surveys along axes of architecture and acquisition [30]. Closest to our work, SSL [ 14 ] also argues for structuring skill artifacts, but targets skill discovery and assessment rather than execution. These package procedural knowledge differently—as prose (Agent Skills), as code retrieved by prose descriptions (Voyager), or as structure aimed at skill discovery (SSL)—but none gives the skill a typed, schema-validated graph of scripted and prose steps, nor measures its effect on task execution; that is what AIP contributes. 
+
+Structured execution and workflow graphs. PAL [ 7] and Program of Thoughts [ 6] offload deterministic computation to code while reserving language-model reasoning for the rest, and chain-of-thought prompting [ 28 ] externalizes reasoning as explicit in-termediate steps. At the system level, agent frameworks such as LangGraph and Google’s ADK [8, 12] represent agent behavior as graphs of steps, DSPy [ 11 ] compiles declarative pipelines instead of hand-tuning prompts, and predefined workflow structure is both recommended [ 22 ] and benchmarked [ 29 ] as a route to reliability. AIP brings this graph view to the skill specification itself: scripted nodes carry deterministic work and prose nodes carry judgment, connected by typed input/output edges. 
+
+Benchmarking agentic systems. AgentBench [16] and SWE-bench [ 10 ] evaluate agents on real-world tasks with programmatic verifiers. SkillsBench [ 13 ], run through the BenchFlow SDK [ 5], instead isolates the incremental effect of a reusable skill by scoring each task with no skill, a curated skill, and a self-generated skill. We extend SkillsBench with AIP conditions to compare skill formats 
+
+under a single solver. 
+
+Editing, self-improvement, and learning over skills. Editing a skill is unreliable for the reasons set out earlier: the content is unfa-miliar and free-form prose offers no bounded surface to edit against, so model edits skew additive and intrinsic self-revision without feedback rarely helps [ 9, 23 , 24 ]. A parallel line pursues agents that improve themselves [ 2, 18 , 34 ], building on reinforcement learning from a reward signal [ 17 , 25 ]. AIP’s typed, schema-validated graph turns a skill edit into a bounded, checkable action and supplies the reward-bearing feedback loop these methods need at the level of an individual skill. 
+
+Governing skill corpora. As agentic systems scale, auditability and accountability become first-order concerns [ 20 ]. Because an AIP skill is a typed graph, a corpus of skills can be projected into a graph database [ 19 ] and queried—for skills missing an approval step, shared sub-procedures, or reusable templates—moving governance from manual documentation review to structured query. 
+
+## 6 DISCUSSION AND FUTURE WORK 6.1 From per-skill graphs to corpus governance 
+
+The same typed graph that makes a skill’s deterministic steps runnable also makes the skill queryable. A library of AIP skills can be projected into a graph database [ 19 ], enabling audits such as identifying skills that lack an approval or validation step, discov-ering skills that share a common sub-procedure, and composing skills from reusable node templates. This moves skill governance from a manual documentation review to a structured query over a typed graph. An open question is whether providing an agent Zach Blumenfeld and Jim Webber 
+
+with query access to a skill corpus—rather than delivering a skill in-context as YAML—further improves task performance; we identify a controlled A/B experiment on this as a high-value next step. 
+
+## 6.2 Reinforcement learning over the skill graph 
+
+Left unconstrained, autonomous skill writing tends to accrete prose and code without pressure toward compression or toward the right boundary between scripted and natural-language nodes. The AIP execution graph provides a bounded, typed, validity-gated action space: edits are changes to nodes, scripts, or edges, each of which can be validated against the schema and evaluated against a re-ward signal. The manual revision cycle from v0.3a2 to v0.3a3—in which failures were diagnosed at the node level, corrections were made to the specification, and the updated skill was re-evaluated— is a manual policy step in this framework. Automating the edit– evaluate–edit loop is reinforcement learning over skills [ 17 , 25 ]; the node-level repair results of Section 4 serve as proof-of-concept that the feedback signal is both localizable and actionable. Formalizing this loop is the central agenda for future work. 
+
+## 6.3 From specification to protocol 
+
+Today, AIP is closer to a specification than a protocol: the agent loads the entire YAML graph into its context window and follows the traversal logic through its own reasoning, with nothing enforc-ing adherence to the graph topology. This keeps AIP compatible with current agent-skill formats and let us benchmark it imme-diately, but it leaves headroom. Because traversal is unenforced, reliable execution still rests on the agent’s own discipline—a ceiling that an enforced protocol could raise, especially for smaller models. Loading the full specification into context on every run also adds a token burden that raises cost and latency and can erode perfor-mance through context rot. Since AIP already defines a typed action surface, a full protocol for walking the graph is feasible—one that executes nodes through controlled local or remote calls rather than in-context reasoning, while remaining backward-compatible with the agent-skill specification. We consider this the most important consideration for future work. 
+
+## 7 CONCLUSION 
+
+Agent skills written largely as free-form prose leave procedure that could be captured with structure and code for the agent to re-derive in every session—costing reliability and consistency on implementation-heavy tasks—and they resist improvement, since editing prose is something both humans and agents do poorly, for the distinct reasons set out in Section 1. AIP compiles a human-written skill into a directed execution graph: scripted where compu-tation is deterministic, natural language where judgment is needed, connected by typed input/output edges and schema-validated through-out. Experts still author the skill; AIP makes its deterministic steps runnable and every step addressable. The result is a representation that is more executable and improv-able. Compiling human-written skills to AIP yields a statistically significant gain in task reward on SkillsBench, by handing the agent vetted, runnable units and a fixed procedure rather than asking it to re-plan from prose. And because each skill is a graph of named, typed, testable nodes, a failure localizes to a single node and is repaired by a checkable edit—a loop we ran by hand here, but one an adopter’s agent can run directly. The same structure makes a skill corpus queryable for governance and a bounded, typed action space for reinforcement learning over skills. AIP today is a specification an agent reads and follows; enforcing that traversal as a runtime protocol is a potential next step. But the core lesson already holds: a skill that is a graph is easier to execute, easier to diagnose when it fails, and easier to improve once diagnosed. The graph is not incidental to these properties—it is their common cause, and the foundation for skill libraries that can be reliably executed, governed, and learned. 
+
+## REFERENCES 
+
+[1] Agent Skills. 2025. Agent Skills Specification . Agent Skills. https://agentskills.io/ specification [2] Huan ang Gao, Jiayi Geng, Wenyue Hua, Mengkang Hu, Xinzhe Juan, Hongzhang Liu, Shilong Liu, Jiahao Qiu, Xuan Qi, Yiran Wu, Hongru Wang, Han Xiao, Yuhang Zhou, Shaokun Zhang, Jiayi Zhang, Jinyu Xiang, Yixiong Fang, Qiwen Zhao, Dongrui Liu, Qihan Ren, Cheng Qian, Zhenhailong Wang, Minda Hu, Huazheng Wang, Qingyun Wu, Heng Ji, and Mengdi Wang. 2025. A Survey of Self-Evolving Agents: What, When, How, and Where to Evolve on the Path to Artificial Super Intelligence. arXiv:2507.21046 [cs.AI] https://arxiv.org/abs/2507.21046 [3] Anthropic. 2025. Equipping Agents for the Real World with Agent Skills . An-thropic. https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills Agent Skills open standard and reference SDK at https://agentskills.io. [4] Gal Bakal. 2026. Knowledge Activation: AI Skills as the Institutional Knowledge Primitive for Agentic Software Development. arXiv:2603.14805 [cs.SE] https: //arxiv.org/abs/2603.14805 [5] BenchFlow. 2026. BenchFlow: Open-Source Benchmark Hub and Evaluation In-frastructure . BenchFlow. https://docs.benchflow.ai/introduction [6] Wenhu Chen, Xueguang Ma, Xinyi Wang, and William W. Cohen. 2023. Program of Thoughts Prompting: Disentangling Computation from Reasoning for Numer-ical Reasoning Tasks. arXiv:2211.12588 [cs.CL] https://arxiv.org/abs/2211.12588 [7] Luyu Gao, Aman Madaan, Shuyan Zhou, Uri Alon, Pengfei Liu, Yiming Yang, Jamie Callan, and Graham Neubig. 2023. PAL: Program-aided Language Models. arXiv:2211.10435 [cs.CL] https://arxiv.org/abs/2211.10435 [8] Google. 2025. Agent Development Kit (ADK) . Google. https://adk.dev/ Open-source framework with sequential, parallel, and loop workflow agents. [9] Jie Huang, Xinyun Chen, Swaroop Mishra, Huaixiu Steven Zheng, Adams Wei Yu, Xinying Song, and Denny Zhou. 2024. Large Language Models Cannot Self-Correct Reasoning Yet. arXiv:2310.01798 [cs.CL] https://arxiv.org/abs/2310.01798 ICLR 2024. [10] Carlos E. Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, and Karthik Narasimhan. 2024. SWE-bench: Can Language Models Resolve Real-World GitHub Issues? arXiv:2310.06770 [cs.CL] https://arxiv.org/abs/2310. 06770 [11] Omar Khattab, Arnav Singhvi, Paridhi Maheshwari, Zhiyuan Zhang, Keshav San-thanam, Sri Vardhamanan, Saiful Haq, Ashutosh Sharma, Thomas T. Joshi, Hanna Moazam, Heather Miller, Matei Zaharia, and Christopher Potts. 2023. DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines. arXiv:2310.03714 [cs.CL] https://arxiv.org/abs/2310.03714 [12] LangChain. 2025. LangGraph . LangChain, Inc. https://docs.langchain.com/ langgraph Orchestration framework modeling stateful agent workflows as directed graphs of nodes and edges. [13] Xiangyi Li, Wenbo Chen, Yimin Liu, Shenghan Zheng, Xiaokun Chen, Yifeng He, Yubo Li, Bingran You, Haotian Shen, Jiankai Sun, Shuyi Wang, Binxu Li, Qunhong Zeng, Di Wang, Xuandong Zhao, Yuanli Wang, Roey Ben Chaim, Zonglin Di, Yipeng Gao, Junwei He, Yizhuo He, Liqiang Jing, Luyang Kong, Xin Lan, Jiachen Li, Songlin Li, Yijiang Li, Yueqian Lin, Xinyi Liu, Xuanqing Liu, Haoran Lyu, Ze Ma, Bowei Wang, Runhui Wang, Tianyu Wang, Wengao Ye, Yue Zhang, Hanwen Xing, Yiqi Xue, Steven Dillmann, and Han chung Lee. 2026. SkillsBench: Benchmarking How Well Agent Skills Work Across Diverse Tasks. arXiv:2602.12670 [cs.AI] https://arxiv.org/abs/2602.12670 [14] Qiliang Liang, Hansi Wang, Zhong Liang, and Yang Liu. 2026. From Skill Text to Skill Structure: The Scheduling-Structural-Logical Representation for Agent Skills. arXiv:2604.24026 [cs.AI] https://arxiv.org/abs/2604.24026 [15] Sherlock A. Licorish, Ansh Bajpai, Chetan Arora, Fanyu Wang, and Kla Tan-tithamthavorn. 2025. Comparing Human and LLM Generated Code: The Jury is Still Out! arXiv:2501.16857 [cs.SE] https://arxiv.org/abs/2501.16857 [16] Xiao Liu, Hao Yu, Hanchen Zhang, Yifan Xu, Xuanyu Lei, Hanyu Lai, Yu Gu, Hangliang Ding, Kaiwen Men, Kejuan Yang, Shudan Zhang, Xiang Deng, Aohan Zeng, Zhengxiao Du, Chenhui Zhang, Sheng Shen, Tianjun Zhang, Yu Su, Huan AIP: A Graph Representation for Learning and Governing Agent Skills 
+
+Sun, Minlie Huang, Yuxiao Dong, and Jie Tang. 2025. AgentBench: Evaluating LLMs as Agents. arXiv:2308.03688 [cs.AI] https://arxiv.org/abs/2308.03688 [17] Long Ouyang, Jeff Wu, Xu Jiang, Diogo Almeida, Carroll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schul-man, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Pe-ter Welinder, Paul Christiano, Jan Leike, and Ryan Lowe. 2022. Training language models to follow instructions with human feedback. arXiv:2203.02155 [cs.CL] https://arxiv.org/abs/2203.02155 [18] Maxime Robeyns, Martin Szummer, and Laurence Aitchison. 2025. A Self-Improving Coding Agent. arXiv:2504.15228 [cs.AI] https://arxiv.org/abs/2504. 15228 [19] Ian Robinson, Jim Webber, and Emil Eifrem. 2015. Graph Databases: New Oppor-tunities for Connected Data (2 ed.). O’Reilly Media. [20] Sandeep Saini. 2026. Governing the Agentic Enterprise: A New Operat-ing Model for Autonomous AI at Scale. California Management Review 
+
+(2026). https://cmr.berkeley.edu/2026/03/governing-the-agentic-enterprise-a-new-operating-model-for-autonomous-ai-at-scale/ Published online March 20, 2026. [21] Timo Schick, Jane Dwivedi-Yu, Roberto Dessì, Roberta Raileanu, Maria Lomeli, Luke Zettlemoyer, Nicola Cancedda, and Thomas Scialom. 2023. Toolformer: Language Models Can Teach Themselves to Use Tools. arXiv:2302.04761 [cs.CL] https://arxiv.org/abs/2302.04761 [22] Erik Schluntz and Barry Zhang. 2024. Building Effective Agents . Anthropic. https://www.anthropic.com/engineering/building-effective-agents [23] Melanie Sclar, Yejin Choi, Yulia Tsvetkov, and Alane Suhr. 2024. Quantifying Language Models’ Sensitivity to Spurious Features in Prompt Design or: How I Learned to Start Worrying About Prompt Formatting. arXiv:2310.11324 [cs.CL] https://arxiv.org/abs/2310.11324 ICLR 2024. [24] Prasann Singhal, Tanya Goyal, Jiacheng Xu, and Greg Durrett. 2024. A Long Way to Go: Investigating Length Correlations in RLHF. arXiv:2310.03716 [cs.CL] https://arxiv.org/abs/2310.03716 COLM 2024. [25] Richard S. Sutton and Andrew G. Barto. 2018. Reinforcement Learning: An Intro-duction (2 ed.). MIT Press. http://incompleteideas.net/book/the-book-2nd.html [26] Pauli Virtanen, Ralf Gommers, Travis E. Oliphant, Matt Haberland, Tyler Reddy, David Cournapeau, Evgeni Burovski, Pearu Peterson, Warren Weckesser, Jonathan Bright, Stéfan J. van der Walt, Matthew Brett, Joshua Wilson, K. Jar-rod Millman, Nikolay Mayorov, Andrew R. J. Nelson, Eric Jones, Robert Kern, Eric Larson, C.J. Carey, Ilhan Polat, Yu Feng, Eric W. Moore, Jake VanderPlas, Denis Laxalde, Josef Perktold, Robert Cimrman, Ian Henriksen, E. A. Quintero, Charles R. Harris, Anne M. Archibald, Antônio H. Ribeiro, Fabian Pedregosa, Paul van Mulbregt, and SciPy 1.0 Contributors. 2020. SciPy 1.0: Fundamental Al-gorithms for Scientific Computing in Python. Nature Methods 17 (2020), 261–272. https://doi.org/10.1038/s41592-019-0686-2 [27] Guanzhi Wang, Yuqi Xie, Yunfan Jiang, Ajay Mandlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anandkumar. 2023. Voyager: An Open-Ended Embodied Agent with Large Language Models. arXiv:2305.16291 [cs.AI] https://arxiv.org/ abs/2305.16291 [28] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc V. Le, and Denny Zhou. 2022. Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. In Advances in Neural Information Processing Systems , Vol. 35. 24824– 24837. https://proceedings.neurips.cc/paper_files/paper/2022/hash/ 9d5609613524ecf4f15af0f7b31abca4-Abstract-Conference.html [29] Ruixuan Xiao, Wentao Ma, Ke Wang, Yuchuan Wu, Junbo Zhao, Haobo Wang, Fei Huang, and Yongbin Li. 2024. FlowBench: Revisiting and Benchmarking Workflow-Guided Planning for LLM-based Agents. arXiv:2406.14884 [cs.CL] https://arxiv.org/abs/2406.14884 [30] Renjun Xu and Yang Yan. 2026. Agent Skills for Large Language Models: Archi-tecture, Acquisition, Security, and the Path Forward. arXiv:2602.12430 [cs.AI] https://arxiv.org/abs/2602.12430 [31] Wenda Xu, Guanglei Zhu, Xuandong Zhao, Liangming Pan, Lei Li, and William Yang Wang. 2024. Pride and Prejudice: LLM Amplifies Self-Bias in Self-Refinement. arXiv:2402.11436 [cs.CL] https://arxiv.org/abs/2402.11436 [32] Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. ReAct: Synergizing Reasoning and Acting in Language Models. arXiv:2210.03629 [cs.CL] https://arxiv.org/abs/2210.03629 [33] Yusen Zhang, Sarkar Snigdha Sarathi Das, and Rui Zhang. 2024. Verbosity 
+
+≠ Veracity: Demystify Verbosity Compensation Behavior of Large Language Models. arXiv:2411.07858 [cs.CL] https://arxiv.org/abs/2411.07858 [34] Adam Zweiger, Jyothish Pari, Han Guo, Ekin Akyürek, Yoon Kim, and Pulkit Agrawal. 2025. Self-Adapting Language Models. arXiv:2506.10943 [cs.LG] https://arxiv.org/abs/2506.10943 NeurIPS 2025.

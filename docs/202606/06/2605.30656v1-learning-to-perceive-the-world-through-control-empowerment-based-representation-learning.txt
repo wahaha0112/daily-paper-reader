@@ -1,0 +1,2358 @@
+Title: Learning to Perceive the World Through Control: Empowerment-Based Representation Learning
+
+URL Source: https://arxiv.org/pdf/2605.30656v1
+
+Published Time: Mon, 01 Jun 2026 00:25:54 GMT
+
+Number of Pages: 31
+
+Markdown Content:
+# Learning to Perceive the World Through Control: Empowerment-Based Representation Learning 
+
+Mahsa Bastankhah 1 Sophie Broderick 1 Benjamin Eysenbach 1
+
+## Abstract 
+
+In many practical reinforcement learning (RL) environments, observations are far higher-dimensional than the variables that matter for con-trol. In this work, we ask: can we learn represen-tations that capture only control-relevant features of the environment without relying on any reward function? We study this question through the em-powerment objective, which maximizes an agent’s influence over the environment and is widely used for unsupervised skill learning. We show that em-powerment agents optimized by variational lower bound induce two distinct representations — for-ward and backward — that capture complemen-tary aspects of the state, and both of which are invariant to control-irrelevant features. Thus, em-powerment maximization leads agents to learn an implicit, control-centric model of the world. Our analysis highlights the importance of learning rep-resentations through interaction rather than from passive datasets: interaction aimed at maximizing control is essential for learning useful invariance properties, a perspective that aligns closely with the causal learning literature. 
+
+Project website: mahsa-bastankhah.github.io/MISL 
+
+## 1. Introduction 
+
+Learned representations have proven crucial to the success of Reinforcement Learning (RL) systems in applications from backgammon (Tesauro, 1994) to Go (Schrittwieser et al., 2020) to Grand Turismo (Wurman et al., 2022). How-ever, Unlike vision and language models trained on passive datasets, RL agents must collect their own data through interaction, and it remains unclear what kind of interac-tion leads to representations that generalize to any control 
+
+> 1
+
+Princeton University, USA. Correspondence to: Mahsa Bas-tankhah <mb6458@princeton.edu >.
+
+Proceedings of the 43 rd International Conference on Machine Learning , Seoul, South Korea. PMLR 306, 2026. Copyright 2026 by the author(s). 
+
+task (Ilyas et al., 2019). Learning representations with the-oretical gaurantees typically requires access to a reward function (e.g., bisimulation; Ferns et al. 2011; Zhang et al. 2020b) or a dataset of sufficient coverage and breadth (Du et al., 2019; Wang et al., 2022a;b; Zhang et al., 2020a). But reward-based representations may discard features that are irrelevant for the current task but essential for control in other tasks (Zhang et al., 2020b;a). And methods that rely on a fixed dataset, inherit the biases of that data (Touati & Ollivier, 2021). (Lamb et al., 2023; Efroni et al., 2022). In this paper, we instead ask: how can an agent learn an intrinsic representation of its environment, independent of any task and any collected data? 
+
+The causal learning literature emphasizes that agents must actively intervene in the environment to rule out spurious correlations and identify causal structures essential for gen-eralization (Pearl, 2009; Peters et al., 2017). In this paper, we will study how empowerment, an objective predicated on interaction, is a suitable objective for driving invariant rep-resentation learning. Empowerment is the channel capacity between the policy (skill) and the resulting future outcome and it quantifies how many distinct policies can be reliably distinguished from observing their future outcomes (Gregor et al., 2016; Klyubin et al., 2005). Prior work has shown this objective drives skill learning and exploration (Gregor et al., 2016; Klyubin et al., 2005; Eysenbach et al., 2018; Zheng et al., 2025; Park et al., 2024). We will use the terms empowerment and mutual information skill learning (MISL) interchangeably in this paper. To maximize empowerment, the agent must learn a sort of 
+
+world model that is sufficient for predicting which actions lead to a certain outcome from an initial state. Prior work has referred to this type of model as an inverse dynamics model (Du et al., 2019; Ghosh et al., 2018). This model allows the agent to identify and discard policies that produce redundant outcomes, instead keeping policies that produce diverse outcomes (Eysenbach et al., 2018; Zheng et al., 2025; Park et al., 2024). In this work, we study the state representations implicitly learned by this world model. Our main conceptual building block is to relate empow-erment maximization to two representations, forward and 
+
+backward representations. We show that these representa-1
+
+> arXiv:2605.30656v1 [cs.LG] 28 May 2026 Learning to Perceive the World Through Control
+
+tions capture complementary aspects of state: the forward representation encodes what outcomes can be influenced, while the backward representation encodes how the state can be reached by different policies (Section 5.1). Using these representations, we will study the interplay between data collection and representation learning in em-powerment. We show that empowerment under certain as-sumptions induces policies that (i) ignore control-irrelevant features; (ii) maximize coverage of controllable outcomes; and (iii) are invariant to action-interface changes 1. These properties respectively yield representations that are (i) in-variant to control-irrelevant features; and (ii) preserve all control-relevant structure 2; and (iii) invariant to action rela-beling, respectively (Sections 5.2, 5.3 and 5.1). Our analysis highlights the central role of data collection; because em-powerment policies maximize control over the environment, the representations they induce have these invariance prop-erties. Our work removes the common assumption in prior control-focused representation learning methods of access to either a reward function (Ferns et al., 2011; Zhang et al., 2020b) or expert datasets (Du et al., 2019; Wang et al., 2022a;b; Zhang et al., 2020a). We theoretically characterize the in-variance properties of empowerment-based representations and empirically demonstrate their usefulness for reward maximization in high-dimensional environments. In particular, our contributions are as follows: 1. We introduce MISL forward and backward representa-tions as a conceptual tool for understanding the state aliasing of empowerment-maximizing agents (Sections 4 and 5.1). 2. We prove that MISL policies and representations admit solutions invariant to control-irrelevant features of the environment and to the change in action interface (Sec-tion 5.2, Section 5.1). 3. We characterize conditions under which MISL represen-tations preserve all control-relevant features, and show that this yields a strictly more generalizable, reward-agnostic analogue of bisimulation (Section 5.3). 4. We provide didactic tabular experiments illustrating the forward–backward asymmetry of MISL representations and demonstrating that they capture all controllable fea-tures (Sections 6 and Appendix H.1). 5. We validate the noise invariance and control utility of MISL representations in high-dimensional and pixel-based control tasks, and show that they enable substan-tially higher downstream reward maximization perfor-
+
+> 1If two states differ only in the action interface (a relabeling of actions) but induce the same outcomes, then MISL learns interface-invariant skills: it takes the corresponding action in each state. Details in Theorem 5.1.
+> 2Under certain assumptions specified in proposition 5.8
+
+mance under severe noise (Section 6). 
+
+## 2. Related Works 
+
+Invariant representation learning in reinforcement learn-ing A class of methods consists of model-based approaches. For example, Wang et al. (2022a) use a VAE to disentan-gle controllable, uncontrollable, and reward-relevant factors, while Wang et al. (2022b) learn causal dynamics via forward models and conditional independence tests. A common limi-tation of these methods is that they require learning a full en-vironment model before irrelevant features can be removed, which can hinder scalability. Inverse-dynamics–based meth-ods learn representations by predicting actions between state pairs (Lamb et al., 2023; Efroni et al., 2022). Although they guarantee invariance to uncontrollable features under suf-ficient coverage, they assume access to data collected by policies that are invariant to uncontrollable features. In con-trast, we show that optimizing the empowerment objective naturally yields policies with these properties. 
+
+Empowerment and mutual information skill learning 
+
+Empowerment, defined as the channel capacity between actions and future states, was introduced as a principle for adaptive behavior (Klyubin et al., 2005) and later incorpo-rated into reinforcement learning via variational objectives that induce diverse skills (Gregor et al., 2016; Eysenbach et al., 2018; Park et al., 2024; Barreto et al., 2017; Park et al., 2022). While these methods focus on behavioral di-versity, the representations induced by MISL have received limited theoretical analysis. Recent work studies properties of these representations under particular implementations and parameterizations (Reizinger et al., 2025) or their in-variance to temporally uncorrelated features (Levy et al., 2025). In contrast, we provide a method-agnostic character-ization of MISL representations and characterize their prop-erties with respect to control. Prior work has empirically observed that empowerment-trained policies are invariant to noise (Hansen et al., 2021; Gregor et al., 2016; Mohamed & Jimenez Rezende, 2015). However to the best of our knowledge we provide the first formal characterization of these invariance properties. 
+
+## 3. Preliminaries 
+
+We consider infinite-horizon Markov decision processes (MDPs) with state space S, action space A, and transition dynamics p(st+1 | st, a t) in a fully observable setting. The policy is denoted by π(a | s), and γ ∈ (0 , 1) is the discount factor. The discounted occupancy measure dπγ (s | s0) is the distribution of the state ST obtained by starting from 
+
+s0, following π, and sampling time T ∼ Geom(1 − γ);equivalently, dπγ (s | s0) := (1 − γ) P∞ 
+
+> t=1
+
+γt−1 Pr π (St =
+
+s | S0 = s0).
+
+2Learning to Perceive the World Through Control 
+
+Unsupervised skill learning The empowerment of an initial state s0 is defined as the channel capacity between a latent policy variable Z (also called a skill), which indexes a family of policies π : S × Z → ∆( A), and a future state S+
+
+sampled from the discounted occupancy measure induced from s0:
+
+Eγ (s0) = max  
+
+> p(z|s0)
+
+I(Z; S+ | s0), S+ ∼ dπz 
+
+> γ
+
+(· | s0).
+
+(1) Here, with a slight abuse of notation, we write πz to denote the policy indexed by skill z. Some prior works instead use the n-step state distribution for a fixed horizon n (Levy et al., 2025): 
+
+En(s0) = max  
+
+> p(z|s0)
+
+I(Z; Sn | s0). (2) Solving the empowerment optimization problem results in an optimal distribution over the skills that we denote by 
+
+p∗(z|s0). Intuitively, empowerment measures the maxi-mum number of distinguishable behaviors that can be ex-ecuted from s0, where behaviors are considered distinct if they induce reliably different terminal states (Mohamed & Jimenez Rezende, 2015, Appendix A). Most prior work (Gregor et al., 2016; Achiam et al., 2018; Hansen et al., 2019; Sharma et al., 2019; Eysenbach et al., 2018; Zheng et al., 2025; Park et al., 2022) optimizes this objective via a variational lower bound (Barber & Agakov, 2004) (see Appendix A.1): 
+
+max  
+
+> p(z|s0)
+
+I(Z; S+ | s0) ≥ max  
+
+> p(z|s0), θ
+
+Ez,s +
+
+
+
+log qθ (z | s0, s +)
+
+p(z | s0)
+
+
+
+,
+
+(3) This bound is tight when the discriminator is Bayes-optimal: 
+
+qθ∗ (z | s0, s +) = p(z | s0) dπz 
+
+> γ
+
+(s+ | s0)
+
+p(s+ | s0) . (4) In this work, we assume an expressive discriminator that attains the Bayes-optimal solution. In practice, direct opti-mization over distributions on policies is intractable. There-fore, prior methods (Eysenbach et al., 2018; Zheng et al., 2025; Park et al., 2022) fix a prior p(z | s0) and instead opti-mize a skill-conditioned policy πω (a | s, z ), which induces an occupancy measure dπω (.|z) 
+
+> γ
+
+(s+ | s0). This yields the practical objective 
+
+max  
+
+> ω,θ
+
+Ez Es+∼dπw (.|z)
+
+> γ
+
+
+
+log qθ (z | s0, s +)
+
+p(z | s0)
+
+
+
+, (5) In this work, we follow Eysenbach et al. (2022) and adopt the theoretically well-studied empowerment objective in Equation 1 for our analysis. 
+
+## 4. MISL Forward and Backward Representations 
+
+In this section, we characterize the representations learned by MISL. We will show that although the discriminator 
+
+qθ (z | s0, s +) is typically introduced as an auxiliary model for estimating and optimizing the mutual information objec-tive, it can be viewed as a standalone representation-learning mechanism. In particular, the representations it learns from the initial and future states exhibit meaningful and useful structure. We consider the following factorization for the discriminator: 
+
+qθ (z | s0, s +) = q z | ϕ(s0), ψ (s+) , (6) where ϕ : S → Rd and ψ : S → Rd define the forward and 
+
+backward MISL representations, respectively. We adopt this terminology because, as shown later, ϕ(·) clusters states by similar future , whereas ψ(·) clusters states by similar past . Note that this factorization doesn’t preclude us from representing any posterior distribution if ϕ, ψ are expressive enough. We want these representations to retain exactly the information needed to predict the skill. So we define the notion of minimal representations: 
+
+Definition 4.1 (Minimal representations) . Let the posterior over skills be p(z | s0, s +), and let q(z | ϕ(s0), ψ (s+)) 
+
+denote its estimate, where ϕ : S → Rd and ψ : S → Rd
+
+are learned state representations. We call (ϕ, ψ ) a pair of 
+
+minimal representations if: 1. Sufficiency: the representations preserve all information needed to predict the skill: 
+
+q(z | ϕ(s0), ψ (s+)) = p(z | s0, s +), ∀ z, s 0, s +.
+
+2. Minimality: two states share the same representation if and only if they induce the same posterior over skills. That is, 
+
+p(z | s0, s +) = p(z | ˆs0, s +) ∀ z, s +
+
+⇐⇒ ϕ(s0) = ϕ(ˆ s0)
+
+and symmetrically for ψ(.).Intuitively, these representations should capture exactly the parts of the state that are predictive of the skill and discard the rest. In our theoretical analysis, we assume that the dis-criminator is sufficiently regularized—e.g., via information bottleneck–style regularization—to induce minimal repre-sentations (Tishby et al., 1999; Alemi et al., 2017). However, appendix A.2 discusses why existing MISL methods satisfy this property even without explicit information-bottleneck regularization, and Appendix A.2 provides empirical sup-port for this claim. Because we assume minimal representa-tions, any part of the state that is not predictive of the skill is ignored by the representation. Formally: 
+
+Definition 4.2 (Representation Invariance) . Let the state be decomposed into s = (x, e ) ∈ X ×
+
+3Learning to Perceive the World Through Control 
+
+E. If the posterior is independent of the feature e,i.e., p(z | (x, e ), s +) = p(z | (x, ˆe), s +) ∀ z, s +, x, e, ˆe, 
+
+then the MISL forward representation is invariant to 
+
+e: ϕ(x, e ) = ϕ(x, ˆe), ∀ x, e, ˆe. A symmetric statement holds for the backward representation ψ(·).Conversely, If two states lead to different posteriors, they must have different representations. 
+
+Remark 4.3 . If there exist s+ and z such that 
+
+p(z | s0, s +)̸ = p(z | ˆs0, s +), then ϕ(s0)̸ = ϕ(ˆ s0). A sym-metric statement holds for ψ(·).
+
+## 5. Theoretical Results 
+
+We first characterize in Subsection 5.1 how MISL forward and backward representations alias states and highlighting a fundamental asymmetry between them. We then relate these representations to existing representation-learning frame-works. Next, in Subsection 5.2 we show that both MISL for-ward and backward representations are invariant to control-irrelevant state features. Finally, in Subsection 5.3, we char-acterize the conditions under which MISL representations capture all control-relevant features. 
+
+5.1. Aliasing in MISL representations MISL forward representations encode control over the future The forward representation captures how states differ in the actions available to them and the outcomes of those actions. For example, two maze states at the same location but with different wall colors allow the same actions and transitions and thus share the same forward representation (Figure 1a, states B and C). 
+
+Theorem 5.1. Let s0 and ˆs0 be two states. Suppose that for every action a ∈ A (s0) 3 there exists an action ˆa ∈ A (ˆ s0)
+
+such that p(s+ | s0, a ) = p(s+ | ˆs0, ˆa), and vice versa, Then: 1. any policy selected by MISL induces the same action distribution in the two states: 
+
+p∗(z | s0) > 0 = ⇒ π(a | s0, z ) = π(ˆ a | ˆs0, z ) ; 
+
+2. under the minimal representation assumption (Defini-tion 4.1), the MISL forward representations coincide: 
+
+ϕ(s0) = ϕ(ˆ s0).
+
+Proof in Appendix C. 
+
+Implication. Theorem 5.1 shows MISL policies have invari-ance to changes in the action interface . For example, con-sider two versions of the same game that differ only in the action interface: in s0 pressing “A” makes the agent jump and pressing “B” makes it crouch, while in ˆs0 the labels are swapped. The underlying dynamics are identical—only   
+
+> 3A(s)is the set of actions available to the agent at state s.
+
+the interface mapping changes—so a skill such as “jump” should transfer by simply executing the corresponding inter-face action. Theorem 5.1 shows MISL has exactly this consistency: it learns skills (e.g., “jump” and “crouch”) that remain the same across interface changes. This property is extremely useful for generalization as the agent doesn’t need to re-learn when the interface is changed. Moreover, Theorem 5.1 shows that MISL also learns identical forward representa-tions in these states. The forward representation ignores superficial interface differences and groups states by their controllability structure. We empirically verify this property in Appendix H.2. 
+
+Advantage over forward representations in SR This in-variance is not guaranteed for representation learning meth-ods such as successor representations (SR), which learn 
+
+on-policy representations (Barreto et al., 2017). SR features depend on the behavior policy used to collect data and do not, by themselves, prescribe how that policy should be cho-sen. As a result, if the data-collection policy is not invariant to an interface change, the learned representation will not be invariant either. This creates a circular dependence: learn-ing an invariant representation requires collecting data with an invariant policy. MISL breaks this circle by prescribing a policy objective that naturally yields interface-invariant optimal behavior. 
+
+Geometric intuition The geometric interpretation of em-powerment by Eysenbach et al. (2022) shows that the set of achievable state occupancies across skills forms a convex polytope in the state simplex, and MISL assigns probability only to the vertex policies of this polytope 4. In simple terms, MISL prefers “extreme” ways of affecting the future, not policies that blend the outcomes of other policies. Here, taking different (non-matching) actions in s0 and ˆs0 makes the skill behave like a blend of two different skills, so its future occupancy is a convex combination of theirs. So such policies will never be chosen by MISL. Since MISL policies take the same action at s0 and ˆs0, the two states induce exactly the same skill-outcome channel: for each skill z,
+
+dπz 
+
+> γ
+
+(s+ | s0) and dπz 
+
+> γ
+
+(s+ | ˆs0) are the same. Consequently, the induced posterior over skills is identical as well. 
+
+MISL backward representations cluster states by how they are reached While forward MISL representations char-acterize what an agent can do next , backward MISL repre-sentations characterize how a state was reached . Intuitively, if two states s+ and ˆs+ can be reached in indistinguishable ways—so that observing either state provides the same evi-dence about which policy was executed to reach there—then they should share the same backward representation. 
+
+Proposition 5.2 (Backward aliasing) . Suppose two states 
+
+> 4Refer to Lemma B.1
+
+4Learning to Perceive the World Through Control          
+
+> (a) Band Chave similar dy-namics in the future hence they have the same forward represen-tations but not the same back-ward representations. end
+> (b) Hand Kare similarly reach-able hence have the same back-ward representations but not the same forward representations.
+> Figure 1. Forward and backward representations are asymmetric
+
+s+ and ˆs+ satisfy the following condition: for every initial state s0, either (i) Both s+ and ˆs+ are unreachable from s0,or (ii) There exists a constant α(s0) > 0 such that 
+
+dπγ (s+ | s0) = α(s0) dπγ (ˆ s+ | s0) ∀ π ∈ Π.
+
+Then, under the minimal representation assump-tion, the MISL backward representations alias these states: ψ(s+) = ψ(ˆ s+).
+
+Importantly, states that are aliased by the backward repre-sentation may have very different forward representations. For example, consider two states corresponding to the same location on a map that is next to a door; in one state the door is locked (state H in Fig. 1b), while in the other it is open (state K in Fig. 1b), the door is open with probability 
+
+0.5. From any initial state, both states can be reached by the same action sequences, resulting in identical backward rep-resentations. However, the open door state ( K) allows much greater control over future outcomes than the locked-door state, and therefore has a different forward representation. Interestingly, to the best of our knowledge, prior work has not identified this fundamental asymmetry in MISL repre-sentations and instead employs symmetric parameterizations for the forward and backward representations (Park et al., 2024; Zheng et al., 2025). In Section 6, we empirically verify this asymmetry in practice and show that enforcing symmetric representations will decrease the skill and out-come mutual information. Backward representations are particularly well suited for representing goals. If two goal states are reached by the same policies, then from the perspective of policy train-ing they are equivalent and should be represented similarly. This idea closely matches the notion of actionable repre-sentations introduced by Ghosh et al. (2018). While Ghosh et al. (2018) obtain such representations by explicitly train-ing and comparing goal-reaching policies for every pair of states, MISL backward representations recover this struc-ture implicitly. In Appendix D, we show that the ℓ1 distance between MISL backward representations has a clear inter-pretation as a measure of reachability difference, making it especially useful for goal embedding. 
+
+5.2. Invariance to control-irrelevant features 
+
+In this section, we analyze MISL representations in MDPs whose states contain control-irrelevant components, show-ing that they are invariant to control-irrelevant factors. 
+
+Definition 5.3. Consider an MDP with state st =(yt, w t, e t) whose transition dynamics factorize as 
+
+p(st+1 | st, a t) = p(yt+1 | yt, w t, a t)
+
+× p(wt+1 | wt) p(et+1 | et). (7) • yt is controllable , since its dynamics depend on the agent’s action. • wt and et are uncontrollable , as their dynamics are action-independent. • Among uncontrollable features, wt is control-relevant 
+
+because it affects the dynamics of yt, whereas et is control-irrelevant .Refer to Figure 2. For notational convenience, we group all the control-relevant features as xt := ( yt, w t). Throughout, when we refer to xt as the control-relevant features and 
+
+et as the control-irrelevant features. We assume a fully observable setting, so all components of st are observed by the agent. In the main body of the paper, we analyze the factorization in Equation 7. However, all results also extend to the more general case where wt is additionally a parent of et+1 . In that case, the transition factorization becomes 
+
+p(st+1 | st, a t) = p(yt+1 | yt, w t, a t)
+
+× p(wt+1 | wt) p(et+1 | et, w t).
+
+All theoretical results still hold under a mild additional assumption. Since the analysis is more involved, we defer the full discussion and the details of the proof in this case to Appendix G. Next, given the state factorization in Definition 5.3, we ask whether policies optimized with the empowerment objective need to attend to all components y, w, e . Since MISL poli-cies maximize the diversity of reachable future outcomes, the key question is whether conditioning actions on the control-irrelevant component e allows the agent to reach a broader range of future state distributions. Showing that this is not the case will allow us to prove that maximizing empowerment naturally leads to representations that are invariant to these control-irrelevant features: 
+
+Theorem 5.4. Consider an MDP as in Definition 5.3. There exists at least one empowerment-maximizing skill distribution 
+
+p∗(z | s0) ∈ arg max 
+
+> p(z|s0)
+
+I(Z; S+ | S0 = s0)
+
+5Learning to Perceive the World Through Control          
+
+> Figure 2. yis controllable; wis uncontrollable but control-relevant;
+> eis uncontrollable and control-irrelevant. If the dashed line exists,
+> yand eshare a confounding parent. Minimal empowerment-based representations and policies ignore e.
+
+composed of policies that are invariant to the control-irrelevant feature e:
+
+p∗(z | s0) > 0 = ⇒
+
+π(a | (x, e ), z ) = π(a | (x, ˆe), z ) ∀ x, e, ˆe, a, a. 
+
+Proof in Appendix E. 
+
+Proof sketch. To obtain this result, we first show that the un-controllable component e+ cannot contribute to the mutual information objective, since it carries no information about the executed policy. As a result, empowerment depends only on the mutual information between the controllable state component x+ and the skill z. We then show that con-ditioning actions on e also does not help in increasing the mutual information between z and x+. Intuitively, reacting to e cannot increase the diversity of future x+ states: any policy that depends on e can be matched by a (possibly non-stationary) policy that depends only on x+. By Theorem 3.1 of Altman (1999), nonstationary policies do not enlarge the set of achievable discounted occupancy measures. There-fore, conditioning actions on the noise component e cannot increase the mutual information. In practice, the set of e-invariant policies is only one subset of the optimal solutions: Theorem 5.4 does not rule out optimal policies that depend on e. We therefore impose a policy minimality assumption to ensure the selected optimum is noise-invariant. 
+
+Definition 5.5 (Policy minimality) . Fix a discounted occu-pancy kernel dγ (· | s0). Define the equivalence class 
+
+Πd := 
+
+n
+
+π : dπγ (s+ | s0) = dγ (s+ | s0) ∀s0, s +o
+
+.
+
+A minimal policy for Πd is any ˆπd ∈ Πd that minimizes the state-action mutual information: ˆπd ∈
+
+arg min π∈Πd I(S; A).
+
+While theoretically we need this assumption, in practice as illustrated in our experiments in Section ?? , we observe noise invariance in MISL policies without any explicit regu-larization.        
+
+> Figure 3. Initial states with the same xbut different eproduce similar achievable future-state distributions, differing only by rota-tion and translation (bottom), while states with different xproduce fundamentally different polytopes (top).
+
+Corollary 5.6. Consider an MDP as in Definition 5.3 with an irreducible noise process 5, under the minimal representa-tion assumption 4.1 and the minimal policy assumption 5.5, both forward and backward MISL representations become invariant to et.
+
+Since according to Theorem 5.4 all minimal MISL poli-cies choose actions independently of e, we can show that, given an initial state (x0, e 0) and a final state (x+, e +), the optimal posterior used to infer which skill was executed does not need to use the noise component e. As a result, the posterior—and hence the learned representations—are invariant to the noise. 
+
+Geometric intuition. We use the geometric perspective of Eysenbach et al. (2022) to build intuition for empower-ment’s invariance to e. In this view, for a fixed start state the set of achievable next-state distributions across actions forms a convex polytope in the probability simplex. Em-powerment selects the extreme points of this polytope—the actions whose induced distributions are maximally sepa-rated (saturated dots in Figure 3). Figure 3 (top) illustrates the achievable occupancy polytope in a 4-state MDP for two different start states that differ in their control-relevant feature x. Because these states have different controllable futures, their available next-state distributions (dots) form different polytopes, and empowerment selects different ex-treme actions in each case. Therefore the choice of policy and the skill posterior varies by changing x0. On the other hand, Figure 3 (bottom) shows a different MDP with states 
+
+s0 = ( x, e ), s1 = ( x, e ′), s2 = ( x′, e ), s3 = ( x′, e ′). Since actions can affect only x, the achievable next-state distri-         
+
+> 5Irreducible noise process is a stochastic process that for any
+> e+, e ,P
+> tγtP(Et=e+|e0=e)>0. Or in other words, every state is reachable from another state.
+
+6Learning to Perceive the World Through Control 
+
+butions lie on a line segment . Changing the initial e does not alter this line in an essential way: it only shifts/rotates the same segment by moving mass between states that have a common x part i.e., s0, s 1 and s2, s 3. Consequently, em-powerment selects the same extreme actions (here a0 and 
+
+a2) invariant of e0 and the posteriors become invariant to e0
+
+as well. 
+
+5.3. Capturing the control-relevant state features 
+
+Representations in reinforcement learning are most use-ful when they discard control-irrelevant features while pre-serving all control-relevant ones. By capturing all control-relevant features, we mean that the representation distin-guishes any two states that differ in their controllable part y
+
+or in their uncontrollable but control-relevant part w (Defi-nition 5.3). As shown in Section 5.1, forward or backward representa-tions alone are insufficient: two states may share identical backward representations while having different forward dynamics, and vice versa. Unfortunately, in the absence of additional structural assumptions, there is no guarantee that combining forward and backward representations is sufficient to capture all control-relevant features either. 
+
+Proposition 5.7. There are MDPs in which forward and backward representations together fail to capture all control-relevant features. (Proof in Appendix F.) 
+
+However, we show that when the control-relevant dynamics i.e., x dynamics are deterministic and sufficiently connected, backward representations learned using the n-step empow-erment objective (Equation 2) alone are sufficient to capture all control-relevant features. 
+
+Proposition 5.8. Consider an MDP in which the control-relevant dynamics ( x) is deterministic and satisfies the fol-lowing connectivity condition: for any two states x+ and 
+
+ˆx+, there exists at least one state x0 from which both x+
+
+and ˆx+ are reachable in n steps. Then the MISL backward representations learned using the n-step objective (Eq. 2) assign distinct representations to any two states with dif-ferent x; that is, ψ(x+)̸ = ψ(ˆ x+) whenever x+̸ = ˆ x+.
+
+(Proof in Appendix F) 
+
+Intuition. Intuitively, MISL learns a sufficiently rich set of skills so that all reachable control-relevant outcomes are realized by different skills (Lemma B.3). Therefore, for any two distinct future states x+ and ˆx+, there exist distinct skills z and ˆz such that executing z reaches x+ at time n,while executing ˆz reaches ˆx+ at time n. Moreover, MISL admits deterministic optimal policies (Lemma B.2). 6 As a result, the terminal state uniquely identifies the executed skill: observing x+ at time n implies that skill z was run, 
+
+> 6Although multiple optimal policies may exist, the solution set always contains at least one deterministic policy.
+
+while observing ˆx+ implies that skill ˆz was run. Conse-quently, the posterior distributions over skills differ at x+
+
+and ˆx+, and therefore these two states have distinct back-ward representations. Finally, in Appendix F we show that bisimulation with respect to reward functions that are only a function of the control-relevant part (i.e., R(( x, e )) = R(x)) ignores control-irrelevant features as well, however, it may as well discard control-relevant features if the reward does not de-pend on them. As a result, bisimulation-based representa-tions may fail to generalize to new reward functions. In contrast, MISL backward representations under the assump-tion of Proposition 5.8 provably capture all control-relevant features without relying on any reward signal. Consequently, MISL representations form sufficient statistics for optimiz-ing any reward function of the form R(( x, e )) = R(x).
+
+Remark 5.9 . Under the assumptions of Proposition 5.8, MISL backward representations correspond to the most gen-eral bisimulation that preserves all control-relevant features. (Appendix F) 
+
+## 6. Empirical Validations and Experiments 
+
+In this section, we empirically validate the theoretical claims from Section 5. We answer the following research questions: • RQ1. Are MISL representations invariant to control-irrelevant features? • RQ2. Does this invariance make MISL representations useful for downstream tasks in high-dimensional and pixel-based environments in the presence of noise? • RQ3. Do representations remain invariant to noise dis-tributions unseen during training? (out of distribution generalization) • RQ4 Do MISL forward and backward representations exhibit the state aliasing and asymmetry predicted in Sec-tion 5.1? and is capturing this asymmetry necessary for estimating the empowerment properly? • RQ5 Do MISL backward representations capture all control-relevant features as promised by Proposition 5.8? • RQ6 Do the policy and discriminator networks require additional regularization to learn noise-invariant represen-tations? In Appendix I, we compare MISL with bisimulation (Ferns et al., 2011) and AC-state (Lamb et al., 2022). Appendix I.2 shows that bisimulation is sensitive to temporally correlated noise because its objective relies on a latent forward predic-tor, while MISL remains invariant to noise regardless of its temporal correlation (Figure 6). Appendix I.1 shows that AC-state representations depend on the training data: if the data is collected by a policy that even partially attends to 7Learning to Perceive the World Through Control noise dim state dim  
+
+> 10 3
+> 10 0
+> 10 3
+> Representation variance  Invariance to noise
+> Point Maze
+> Ant
+> Kitchen
+
+(a) A MISL representation of a state doesn’t change by changing its noise component, and hence is noise invariant. 0 50k 100k 150k 200k 250k          
+
+> Environment steps
+> -100
+> -75
+> -50
+> -25
+> Episodic return  Kitchen (slide cabinet)
+> 0175k 350k 525k 700k
+> Environment steps
+> -250
+> 0
+> 250
+> 500
+> 750
+> Ant (forward)
+> 0500 1k 1.5k 2k
+> Environment steps
+> -6k
+> -4k
+> -2k
+> 0Point maze (goal reaching)
+> No encoder MISL encoder
+
+(b) MISL representations improve the downstream task performance in the presence of noise. 
+
+Figure 4. MISL representations are noise-invariant and useful for downstream task across environments. 
+
+noise, the learned representations are not noise-invariant. In contrast, MISL requires no pre-collected data. Furthermore, the appendix includes additional experiments on invariance under action relabeling H.2. 
+
+Experimental setup. We evaluate invariance to control-irrelevant features in the point-Maze environment based on Gym (Gymnasium Robotics, 2026), Ant and pixel-based Lexa Kitchen from METRA (Park et al., 2024). We augment the original state space (respectively 2, 29 , and 
+
+64 × 64 × 3 state dimensions) with additional Guassian noise dimensions (respectively 5, 10 , and 10 × 10 × 3 noise dimensions). These noise dimensions are uncontrollable, correlated over time, and do not affect the environment dynamics. We then study how MISL representations behave under this augmentation. We use METRA (Park et al., 2024) as the MISL algorithm 7.
+
+RQ1. Are MISL representations invariant to control-irrelevant features? We examine how sensitive the learned MISL representation is to changes in individual state dimen-sions. For each dimension, we fix all other state variables and vary only that dimension, then record how much the learned MISL representation changes on average with vary-ing noise versus state dimensions 8. Figure 4a reports the results for different environments. We find that the represen-tation variance with respect to control-relevant dimensions is approximately at least 10 3 times larger than with respect to control-irrelevant dimensions across the three environ-ments. 
+
+RQ2. Does invariance improve downstream perfor-mance in the presence of noise? To answer this question, we train a reward maximization agent 9 on top of frozen 
+
+> 7
+
+Although METRA was originally introduced with aWasserstein-distance objective, subsequent work has shown its equivalence to a mutual information objective (Zheng et al., 2025). 
+
+> 8
+
+Quantified by computing the trace of the covariance matrix of the representation 
+
+> 9
+
+We use Soft Actor Critic (SAC) for Point maze and Kitchen 
+
+MISL representations. The agent receives the dense envi-ronment reward. We compare the return of the agent that uses the raw noisy state versus the agent that uses the frozen MISL representations. As shown in Figures 4b, MISL rep-resentations substantially improve performance across all three environments, demonstrating their ability to ignore noise while preserving control-relevant state features. 
+
+RQ3. Do representations generalize to out-of-distribution noise? We evaluate the robustness of the learned representations to unseen noise distributions in the 
+
+Point-Maze environment. At training time, the environ-ment is augmented with 5-dimensional i.i.d. Gaussian noise that is temporally uncorrelated. We then test invariance un-der noise with temporal correlation and cross-dimensional correlation, varying the strength of correlation. As shown in Figure 6 and 15, the representations remain invariant to noise under these unseen distributions. Similar forward dynamics 
+
+> Similar backward dynamics
+
+Figure 5. States b and c share forward dynamics, while e
+
+and f share backward dy-namics, but not vice versa. 0 0.4 0.6 0.99     
+
+> Temporal correlation
+> 10 6
+> 10 4
+> 10 3
+> 10 1
+> Representation variance
+> Invariance to unseen noise
+> (temporally correlated)
+> state dim
+> noise dim
+
+Figure 6. MISL representations are invariant to noise distributions unseen during training. 
+
+RQ4. Forward and backward representation asymmetry 
+
+To illustrate the asymmetry between forward and backward representations, we consider the simple MDP shown in Fig-
+
+environments and PPO for the Ant environment. 
+
+8Learning to Perceive the World Through Control 
+
+ure 5. We use convex optimization tools to solve for the empowerment-maximizing distribution over skills, and the corresponding posteriors (Eq. 6). (anonymous code here). We use the average ℓ1 distance between posterior vectors as a proxy of representation distance. For states b and c, we find that they have distinct backward (on average ℓ1 norm of distance is 2) but identical forward representations 10 . Con-versely, states e and f , have identical backward but distinct forward representations (on average ℓ1 norm of distance is 1), confirming our theory. We further ask would forcing the representations to be symmetry limit empowerment? To test this, we compare empowerment at state A with and without enforcing representation symmetry. In particular, since states b and c have identical forward representations, we enforce identical backward representations by constrain-ing q(z | A, b ) = q(z | A, c ). We observe that imposing a symmetry constraint on the representations reduces the empowerment at state A from 0.69 to 0.
+
+RQ5. Do MISL representations capture all the control-relevant state features? To answer this question, in the PointMaze environment augmented with 5 Gaussian noise dimensions, we train a linear regressor Aϕ (s) to pre-dict the control-relevant coordinates (x, y ) from the learned representations. We evaluate prediction quality using the 
+
+R2 metric, R2 
+
+> x
+
+= 1 − 
+
+> P
+> i(xi−ˆxi)2
+> P
+> i(xi−¯x)2
+
+, and similarly for R2 
+
+> y
+
+,where ¯x is the mean of the x-coordinates. An R2 value of 
+
+1 corresponds to perfect prediction. As shown in Figure 7, both R2 
+
+> x
+
+and R2 
+
+> y
+
+quickly approach 1, demonstrating that the learned representations fully recover the control-relevant variables despite the presence of noise. Further experiments in Appendix H. 5000 10000 
+
+> Checkpoint
+> 0.0
+> 0.5
+> 1.0
+> R2
+
+Linear probe R2 
+
+> x
+
+and R2    
+
+> y
+> R2
+> x
+> R2
+> y
+> Figure 7. Linear probes on MISL representations can accurately recover the control-relevant features (x, y )in PointMaze .
+
+RQ5. Do the networks require regularization for noise-invariance? Theorem 5.4 requires information bottleneck regularization to guarantee noise-invariant policies and rep-resentations. However, in practice, we use the implementa-tion of (Park et al., 2024), which applies no explicit regu-larization to either the policy or discriminator networks. The default implementation uses a 2-layer MLP policy with hidden width 1024 and a 2-dimensional skill vector in the Point-Maze environment, yet noise invariance still               
+
+> 10 Identical representations means ℓ1distance of 001k 2k 3k 4k 5k 6k
+> Epoch (k)
+> 10 7
+> 10 4
+> 10 1
+> Var(noise) / Var(state)  Network Size vs. Rep. Noise Invariance
+> Large Discriminator
+> Large Policy
+> Skill vector dim=16
+> Figure 8. Variance of the representations to the noise relative to the state dimensions (lower is better) . Even as the network sizes increase, the representations remain noise-invariant without requiring explicit regularization.
+
+emerges empirically. To investigate whether this effect is due to limited network size acting as an implicit regularizer, we scale each component independently: increasing the pol-icy to a 5-layer MLP with width 1536, the discriminator to an 8-layer MLP with width 2048, and the skill dimen-sion from 2 to 16. We then measure the variance of the learned representations along the 5-dimensional Gaussian noise directions versus the state dimensions. Figure 8 shows that at convergence, the representations remain consistently noise-invariant even at these larger scales, suggesting that explicit regularization may not be necessary in practice. 
+
+## 7. Conclusion 
+
+For an agent to understand the world, they should not only be able to predict the future, but also reason about which bits are uncontrollable and hence need not be predicted. Learning such a model, or the representations that support it, requires interaction. The main result of our paper is that representations learned through empowerment — a training method that requires interaction — capture only the control-relevant aspects of the environment, and noth-ing more. Broadly, while representation learning is often viewed as finding patterns in a dataset, or in the solution to a particular task, our analysis casts empowerment as learning to represent some minimal sufficient statistic of the world, before a task is specified. 
+
+Limitations. Our theoretical analysis suggests a connection between causal learning and empowerment. In reinforce-ment learning, causal learning has traditionally been used to identify state features that are not causally affected by actions and ignore them (Wang et al., 2022b). Our results indicate that, under certain conditions, empowerment ob-jectives may automatically discard such irrelevant features while capturing all control-relevant ones. However, it re-mains unclear whether these representations are sufficient to recover the full causal structure of the control-relevant fea-tures, and if so, to what extent such a causal model would be useful. Moreover, our analysis is restricted to fully observ-able settings; a theoretical analysis of MISL representations in partially observable settings remains unexplored. 9Learning to Perceive the World Through Control 
+
+## Impact Statement 
+
+This paper presents work whose goal is to advance the field of Machine Learning. There are many potential societal consequences of our work, none which we feel must be specifically highlighted here. 
+
+Acknowledgment 
+
+The authors are pleased to acknowledge that the work reported on in this paper was substantially performed using Princeton Uni-versity’s Research Computing resources. This material is based upon work supported by the National Science Foundation under Award No. 2441665. Any opinions, findings and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the National Science Foundation. This work was supported in part by Google. 
+
+## References 
+
+Achiam, J., Edwards, H., Amodei, D., and Abbeel, P. Variational option discovery algorithms. arXiv preprint arXiv:1807.10299 ,2018. Alemi, A. A., Fischer, I., Dillon, J. V., and Murphy, K. Deep variational information bottleneck. In International Confer-ence on Learning Representations , 2017. URL https:// openreview.net/forum?id=HyxQzBceg .Altman, E. Constrained Markov Decision Processes . Routledge, 1 edition, 1999. doi: 10.1201/9781315140223. Barber, D. and Agakov, F. The im algorithm: a variational approach to information maximization. Advances in neural information processing systems , 16(320):201, 2004. Barreto, A., Dabney, W., Munos, R., Hunt, J. J., Schaul, T., van Hasselt, H., and Silver, D. Successor features for transfer in reinforcement learning. NIPS’17, pp. 4058–4068, Red Hook, NY, USA, 2017. Curran Associates Inc. ISBN 9781510860964. Du, S., Krishnamurthy, A., Jiang, N., Agarwal, A., Dudik, M., and Langford, J. Provably efficient rl with rich observations via latent state decoding. In International Conference on Machine Learning , pp. 1665–1674. PMLR, 2019. Efroni, Y., Misra, D., Krishnamurthy, A., Agarwal, A., and Lang-ford, J. Provably filtering exogenous distractors using multistep inverse dynamics. In International Conference on Learning Representations , 2022. URL https://openreview.net/ forum?id=RQLLzMCefQu .Eysenbach, B., Gupta, A., Ibarz, J., and Levine, S. Diversity is all you need: Learning skills without a reward function, 2018. URL https://arxiv.org/abs/1802.06070 .Eysenbach, B., Salakhutdinov, R., and Levine, S. The in-formation geometry of unsupervised reinforcement learning. In International Conference on Learning Representations ,2022. URL https://openreview.net/forum?id= 3wU2UX0voE .Ferns, N., Panangaden, P., and Precup, D. Bisimulation metrics for continuous markov decision processes. SIAM Journal on Computing , 40(6):1662–1714, 2011. Ghosh, D., Gupta, A., and Levine, S. Learning actionable rep-resentations with goal-conditioned policies. arXiv preprint arXiv:1811.07819 , 2018. Gregor, K., Rezende, D. J., and Wierstra, D. Variational intrinsic control. arXiv preprint arXiv:1611.07507 , 2016. Gymnasium Robotics. Point maze environment, 2026. URL https://robotics.farama.org/envs/maze/ point_maze/ . Accessed: 2026-05-04. Hansen, S., Dabney, W., Barreto, A., Van de Wiele, T., Warde-Farley, D., and Mnih, V. Fast task inference with variational intrinsic successor features. arXiv preprint arXiv:1906.05030 ,2019. Hansen, S. S., Desjardins, G., Baumli, K., Warde-Farley, D., Heess, N., Osindero, S., and Mnih, V. Entropic desired dynamics for intrinsic control. In Beygelzimer, A., Dauphin, Y., Liang, P., and Vaughan, J. W. (eds.), Advances in Neural Information Processing Systems , 2021. URL https://openreview. net/forum?id=Juk1LKbFvd .Hansen-Estruch, P., Zhang, A., Nair, A., Yin, P., and Levine, S. Bisimulation makes analogies in goal-conditioned reinforce-ment learning. In International Conference on Machine Learn-ing , pp. 8407–8426. PMLR, 2022. Ilyas, A., Santurkar, S., Tsipras, D., Engstrom, L., Tran, B., and Madry, A. Adversarial examples are not bugs, they are features. 
+
+Advances in neural information processing systems , 32, 2019. Klyubin, A., Polani, D., and Nehaniv, C. Empowerment: a univer-sal agent-centric measure of control. In 2005 IEEE Congress on Evolutionary Computation , volume 1, pp. 128–135 Vol.1, 2005. doi: 10.1109/CEC.2005.1554676. Lamb, A. Controllablelatentstate: Repo of public code for the ac-state paper. https://github.com/alexmlamb/ ControllableLatentState , 2026. GitHub repository, accessed 2026-03-30. Lamb, A., Islam, R., Efroni, Y., Didolkar, A., Misra, D., Foster, D., Molu, L., Chari, R., Krishnamurthy, A., and Langford, J. Guaranteed discovery of control-endogenous latent states with multi-step inverse models. arXiv preprint arXiv:2207.08229 ,2022. Lamb, A., Islam, R., Efroni, Y., Didolkar, A. R., Misra, D., Foster, D. J., Molu, L. P., Chari, R., Krishnamurthy, A., and Lang-ford, J. Guaranteed discovery of control-endogenous latent states with multi-step inverse models. Transactions on Machine Learning Research , 2023. ISSN 2835-8856. URL https: //openreview.net/forum?id=TNocbXm5MZ .Levy, A., Allievi, A. G., and Konidaris, G. Representation learn-ing and skill discovery with empowerment. In Reinforcement Learning Conference , 2025. URL https://openreview. net/forum?id=w61h2RK8ni .Mohamed, S. and Jimenez Rezende, D. Variational information maximisation for intrinsically motivated reinforcement learning. 
+
+Advances in neural information processing systems , 28, 2015. Park, S., Choi, J., Kim, J., Lee, H., and Kim, G. Lipschitz-constrained unsupervised skill discovery. In International Con-ference on Learning Representations , 2022. URL https: //openreview.net/forum?id=BGvt0ghNgA .
+
+10 Learning to Perceive the World Through Control 
+
+Park, S., Rybkin, O., and Levine, S. Metra: Scalable unsuper-vised rl with metric-aware abstraction, 2024. URL https: //arxiv.org/abs/2310.08887 .Pearl, J. Causality . Cambridge University Press, 2 edition, 2009. Peters, J., Janzing, D., and Schlkopf, B. Elements of Causal Inference: Foundations and Learning Algorithms . The MIT Press, 2017. ISBN 0262037319. Reizinger, P., Mucs ´anyi, B., Guo, S., Eysenbach, B., Sch ¨olkopf, B., and Brendel, W. Skill learning via policy diversity yields identifiable representations for reinforcement learning, 2025. URL https://arxiv.org/abs/2507.14748 .Schrittwieser, J., Antonoglou, I., Hubert, T., Simonyan, K., Sifre, L., Schmitt, S., Guez, A., Lockhart, E., Hassabis, D., Graepel, T., et al. Mastering atari, go, chess and shogi by planning with a learned model. Nature , 588(7839):604–609, 2020. Sharma, A., Gu, S., Levine, S., Kumar, V., and Hausman, K. Dynamics-aware unsupervised discovery of skills. arXiv preprint arXiv:1907.01657 , 2019. Tesauro, G. Td-gammon, a self-teaching backgammon program, achieves master-level play. Neural computation , 6(2):215–219, 1994. Tishby, N., Pereira, F. C., and Bialek, W. The information bottle-neck method. In Proc. of the 37-th Annual Allerton Conference on Communication, Control and Computing , pp. 368–377, 1999. URL https://arxiv.org/abs/physics/0004057 .Touati, A. and Ollivier, Y. Learning one representation to opti-mize all rewards. Advances in Neural Information Processing Systems , 34:13–23, 2021. Wang, T., Du, S. S., Torralba, A., Isola, P., Zhang, A., and Tian, Y. Denoised mdps: Learning world models better than the world itself. arXiv preprint arXiv:2206.15477 , 2022a. Wang, Z., Xiao, X., Xu, Z., Zhu, Y., and Stone, P. Causal dynamics learning for task-independent state abstraction. In Proceedings of the 39th International Conference on Machine Learning (ICML2022) , July 2022b. Wurman, P. R., Barrett, S., Kawamoto, K., MacGlashan, J., Sub-ramanian, K., Walsh, T. J., Capobianco, R., Devlic, A., Eckert, F., Fuchs, F., et al. Outracing champion gran turismo drivers with deep reinforcement learning. Nature , 602(7896):223–228, 2022. Zhang, A., Lyle, C., Sodhani, S., Filos, A., Kwiatkowska, M., Pineau, J., Gal, Y., and Precup, D. Invariant causal prediction for block mdps. In International Conference on Machine Learning ,pp. 11214–11224. PMLR, 2020a. Zhang, A., McAllister, R., Calandra, R., Gal, Y., and Levine, S. Learning invariant representations for reinforcement learn-ing without reconstruction. arXiv preprint arXiv:2006.10742 ,2020b. Zheng, C., Tuyls, J., Peng, J., and Eysenbach, B. Can a misl fly? analysis and ingredients for mutual information skill learning. In Yue, Y., Garg, A., Peng, N., Sha, F., and Yu, R. (eds.), Inter-national Conference on Representation Learning , volume 2025, pp. 31876–31903, 2025. URL https://proceedings. iclr.cc/paper_files/paper/2025/file/ 4f0396df41b7ddcd10cafe7c16e0db85-Paper-Conference. pdf .
+
+11 Learning to Perceive the World Through Control 
+
+## A. Background Theoretical Derivations 
+
+A.1. Empowerment variational lower bound 
+
+max  
+
+> p(z|s0)
+
+I(Z; Sn | s0)= max  
+
+> p(z|s0)
+
+Ez,s n
+
+
+
+log p(z | s0, s n)
+
+p(z | s0)
+
+
+
+= max  
+
+> p(z|s0)
+
+Ez,s n
+
+
+
+log qθ (z | s0, s n)
+
+p(z | s0)
+
+
+
++ Ez,s n
+
+
+
+log p(z | s0, s n)
+
+qθ (z | s0, s n)
+
+
+
+= max  
+
+> p(z|s0)
+
+Ez,s n
+
+
+
+log qθ (z | s0, s n)
+
+p(z | s0)
+
+
+
++ Esn [DKL (p(z | s0, s n)∥qθ (z | s0, s n))] 
+
+≥ max  
+
+> p(z|s0)
+
+Ez,s n
+
+
+
+log qθ (z | s0, s n)
+
+p(z | s0)
+
+
+
+A.2. The plausibility of minimal representation assumption in practice 
+
+A track of prior work on invariant representation learning uses inverse dynamics models: a representation of the state is learned and used to predict the action that caused a transition between two states. The bottleneck regularization is required to prevent the representation from capturing task-irrelevant information (Lamb et al., 2022). In contrast, most MISL implementations learn a posterior over latent skills rather than actions. Specifically, the posterior network outputs a distribution over skills, typically parameterized as a Gaussian, and has the form q : S × S → ∆( Z)
+
+and usually the mean of this distribution is directly used as the state representation (current MISL methods learn just one representation for each state as opposed to distinct forward and backward)(Eysenbach et al., 2018). From Theorem 5.4 and Corollary 5.6 we know that the posterior over skill is in fact invariant to noise; therefore, since these representations are directly the skill distribution, they are invariant to noise too. In fact, as opposed to the prior work (Lamb et al., 2022) that looks at the middle layer of the neural network, hence requires information bottleneck regularization, MISL methods look at the final layer directly and therefore don’t need the regularization. Moreover, since the skill distribution is highly expressive in practice, representing the states directly with the skill doesn’t limit the expressivity of state representations. 
+
+## B. The Geometric Perspective on Empowerment Optimization 
+
+Eysenbach et al. (2022) provides a geometric view of the empowerment optimization problem: each achievable state distribution corresponds to a point in ∆|S|− 1, and the set of all achievable distributions forms a convex polytope. 
+
+Lemma B.1. The empowerment objective assigns nonzero probability only to vertices of the polytope formed by achievable state distributions. Proof. This follows directly from Lemma 6.1 in Eysenbach et al. (2022). 
+
+Lemma B.2. Under the empowerment objective, only deterministic policies are selected. Proof. Any stochastic policy induces a state distribution that is a convex combination of the distributions induced by deterministic policies that select the same actions. Consequently, stochastic policies correspond to interior points of the achievable polytope. By Lemma B.1, only vertices are selected, so stochastic policies are not chosen. 
+
+Lemma B.3. For any state s+, if there exists at least one policy πz such that P πz (Sn = s+ | s0) > 0, then under an optimal skill prior p∗(z | s0) we have 
+
+Ez∼p∗(z|s0) P πz (Sn = s+ | s0) > 0.
+
+Proof. We write the empowerment objective as 
+
+I(Z; Sn | s0) = X
+
+> z,s n
+
+p(z | s0) P πz (Sn = sn | s0) log P πz (Sn = sn | s0)
+
+P 
+
+> ¯z
+
+p(¯ z | s0) P π¯z (Sn = sn | s0) .
+
+12 Learning to Perceive the World Through Control 
+
+Define the induced mixture 
+
+p(sn) := X
+
+> ¯z
+
+p(¯ z | s0) P π¯z (Sn = sn | s0),
+
+and form the Lagrangian (enforcing P 
+
+> z
+
+p(z | s0) = 1 ): 
+
+L = I(Z; Sn | s0) + λ
+
+ X 
+
+> z
+
+p(z | s0) − 1
+
+
+
+.
+
+Fix a particular z and compute ∂L 
+
+> ∂p (z|s0)
+
+using the product rule. For clarity, note that 
+
+log P πˆz (Sn = sn | s0)
+
+p(sn) = log P πˆz (Sn = sn | s0) − log p(sn), ∂p (sn)
+
+∂p (z | s0) = P πz (Sn = sn | s0).
+
+Therefore, 
+
+∂L
+
+∂p (z | s0) = X
+
+> sn
+
+P πz (Sn = sn | s0) log P πz (Sn = sn | s0)
+
+p(sn)+ X
+
+> ˆz,s n
+
+p(ˆ z | s0) P πˆz (Sn = sn | s0) ∂∂p (z | s0)
+
+
+
+log P πˆz (Sn = sn | s0)
+
+p(sn)
+
+
+
++ λ. 
+
+The first line comes from differentiating the coefficient p(z | s0) in the z-summand. For the second line, only the term 
+
+− log p(sn) depends on p(z | s0), hence 
+
+∂∂p (z | s0)
+
+
+
+log P πˆz (Sn = sn | s0)
+
+p(sn)
+
+
+
+= − 1
+
+p(sn)
+
+∂p (sn)
+
+∂p (z | s0) = − P πz (Sn = sn | s0)
+
+p(sn) .
+
+Substituting this back, 
+
+∂L
+
+∂p (z | s0) = X
+
+> sn
+
+P πz (Sn = sn | s0) log P πz (Sn = sn | s0)
+
+p(sn) − X
+
+> ˆz,s n
+
+p(ˆ z | s0) P πˆz (Sn = sn | s0) P πz (Sn = sn | s0)
+
+p(sn) + λ
+
+= X
+
+> sn
+
+P πz (Sn = sn | s0) log P πz (Sn = sn | s0)
+
+p(sn) − X
+
+> sn
+
+P πz (Sn = sn | s0)
+
+p(sn)
+
+ X 
+
+> ˆz
+
+p(ˆ z | s0) P πˆz (Sn = sn | s0)
+
+
+
++ λ
+
+= X
+
+> sn
+
+P πz (Sn = sn | s0) log P πz (Sn = sn | s0)
+
+p(sn) − X
+
+> sn
+
+P πz (Sn = sn | s0) + λ
+
+= DKL 
+
+ P πz (Sn = · | s0) ∥ p(·) − 1 + λ. 
+
+At an optimum p∗(z | s0), the KKT conditions imply that there exists a constant C such that 
+
+DKL 
+
+ P πz (Sn = · | s0) ∥ p(·) = C for all z with p∗(z | s0) > 0,
+
+and for any z with p∗(z | s0) = 0 we must have 
+
+DKL 
+
+ P πz (Sn = · | s0) ∥ p(·) ≤ C, 
+
+otherwise increasing p(z | s0) slightly would improve L.Now suppose for contradiction that there exists s+ and a policy πz1 such that P πz1 (Sn = s+ | s0) > 0, but 
+
+Ez∼p∗(z|s0) P πz (Sn = s+ | s0) = 0 .
+
+The latter implies p(s+) = 0 . Then 
+
+DKL 
+
+ P πz1 (Sn = · | s0) ∥ p(·)
+
+≥ X
+
+> s̸=s+
+
+P πz1 (Sn = s+ | s0) log P πz1 (Sn = s+ | s0)
+
+p(s+) +
+
+       : ∞
+
+P πz1 (Sn = s+ | s0) log P πz1 (Sn = s+ | s0)
+
+p(s+)= ∞,
+
+13 Learning to Perceive the World Through Control 
+
+so DKL (·∥· ) > C , contradicting the necessary condition that any excluded z must satisfy DKL (·∥· ) ≤ C. Hence p(s+) > 0
+
+and at least one policy that reaches s+ is selected by the optimal prior. 
+
+## C. Proofs of Forward and Backward State Aliasing in MISL 
+
+Proof of Theorem 5.1 
+
+Proof. Consider the states s0 and ˆs0 described in the theorem statement. We show that any policy that takes non-corresponding actions in s0 and ˆs0 induces an occupancy measure that is a convex combination of two interface-consistent 
+
+(symmetric) policies. Hence, by Lemma B.1, such asymmetric policies are never chosen at the empowerment optimum. Pick two actions a1, a 2 ∈ A (s0) and their corresponding actions ˆa1, ˆa2 ∈ A (ˆ s0). By Lemma B.2, it suffices to consider deterministic skill-policies. Define the symmetric skill-policy for latent z1:
+
+π(a | s0, z 1) = δ(a1), π(a | ˆs0, z 1) = δ(ˆ a1),
+
+and the symmetric skill-policy for latent z2:
+
+π(a | s0, z 2) = δ(a2), π(a | ˆs0, z 2) = δ(ˆ a2),
+
+where δ(·) denotes the Dirac delta. πz1 and πz2 take the same actions everywhere else. 
+
+Truncated discounted occupancy. For a fixed horizon T , define the truncated discounted occupancy under πz1 as 
+
+GTγ, 1(s) := (1 − γ) 
+
+> T−1
+
+X
+
+> t=1
+
+γt−1 P πz1 (St = s | S0 = s0),
+
+and analogously under πz2 ,
+
+GTγ, 2(s) := (1 − γ) 
+
+> T−1
+
+X
+
+> t=1
+
+γt−1 P πz2 (St = s | S0 = s0).
+
+By the theorem assumption (action-interface relabeling), starting from s0 or from ˆs0 yields the same distribution over future trajectories under the corresponding symmetric actions. Therefore the same definitions hold if we replace the initial state 
+
+S0 = s0 by S0 = ˆ s0, i.e., 
+
+GTγ,i (s) = (1 − γ) 
+
+> T−1
+
+X
+
+> t=1
+
+γt−1 P πzi (St = s | S0 = ˆ s0), i ∈ { 1, 2}.
+
+Hitting-time notation. Define the (random) first hitting times under πz1 :
+
+T1 := inf {t ≥ 1 : St = s0}, ˆT1 := inf {t ≥ 1 : St = ˆ s0},
+
+where the process starts from S0 ∈ { s0, ˆs0}. By the theorem assumption and the fact that πz1 takes corresponding actions in 
+
+s0 and ˆs0, the distribution of future trajectories (and thus of T1, ˆT1 and truncated occupancies) is the same whether we start from s0 or from ˆs0.
+
+Occupancy recursion for symmetric skills. Expanding the discounted occupancy of πz1 starting from s0 by conditioning on which of s0 or ˆs0 is hit first yields 
+
+dπz1 
+
+> γ
+
+(s | s0) = E
+
+h
+
+1{T1 ≤ ˆT1} GT1
+
+> γ, 1
+
+(s) + γT1−1(1 − γ)δ(s0) + γT1 dπz1 
+
+> γ
+
+(s | s0)i
+
++ E
+
+h
+
+1{T1 > ˆT1} G ˆT1
+
+> γ, 1
+
+(s) + γ ˆT1−1(1 − γ)δ(ˆ s0) + γ ˆT1 dπz1 
+
+> γ
+
+(s | ˆs0)i
+
+.
+
+14 Learning to Perceive the World Through Control 
+
+Since πz1 is symmetric, we have dπz1 
+
+> γ
+
+(s | s0) = dπz1 
+
+> γ
+
+(s | ˆs0); denote this common quantity by d1(s). Then the recursion simplifies to 
+
+d1(s) = E
+
+h
+
+1{T1 ≤ ˆT1} GT1
+
+> γ, 1
+
+(s) + γT1−1(1 − γ)δ(s0) + γT1 d1(s)i
+
++ E
+
+h
+
+1{T1 > ˆT1} G ˆT1
+
+> γ, 1
+
+(s) + γ ˆT1−1(1 − γ)δ(ˆ s0) + γ ˆT1 d1(s)i
+
+. (8) 
+
+d1(s) = E[Gmin {T1, ˆT1} 
+
+> γ, 1
+
+(s)] + ET1, ˆT1 [1{T1 ≤ ˆT1}γT1−1(1 − γ)δ(s0) + 1{T1 > ˆT1}γ ˆT1−1(1 − γ)δ(ˆ s0)] 
+
+ 1 − E[γmin {T1, ˆT1}]
+
+Similarly, we denote d2(s) := dπz2 
+
+> γ
+
+(s | s0) = dπz2 
+
+> γ
+
+(s | ˆs0) and simplify the occupancy measure: 
+
+d2(s) = E[Gmin {T2, ˆT2} 
+
+> γ, 2
+
+(s)] + ET2, ˆT2 [1{T2 ≤ ˆT2}γT2−1(1 − γ)δ(s0) + 1{T2 > ˆT2}γ ˆT2−1(1 − γ)δ(ˆ s0)] 
+
+ 1 − E[γmin {T2, ˆT2}]
+
+Let’s denote: 
+
+α(s) := E[Gmin {T1, ˆT1} 
+
+> γ, 1
+
+(s)] + ET1, ˆT1 [1{T1 ≤ ˆT1}γT1−1(1 − γ)δ(s0) + 1{T1 > ˆT1}γ ˆT1−1(1 − γ)δ(ˆ s0)] 
+
+β(s) := E[Gmin {T2, ˆT2} 
+
+> γ, 2
+
+(s)] + ET2, ˆT2 [1{T2 ≤ ˆT2}γT2−1(1 − γ)δ(s0) + 1{T2 > ˆT2}γ ˆT2−1(1 − γ)(1 − γ)δ(ˆ s0)] 
+
+λ1 := E[γmin {T1, ˆT1}]
+
+λ2 := E[γmin {T2, ˆT2}]
+
+With the new notation d1(s) = α(s) 
+
+> λ1
+
+and d1(s) = β(s) 
+
+> λ2
+
+.Now define the asymmetric skill-policy πz1,2 by 
+
+π(a | s0, z 1,2) = δ(a1), π(a | ˆs0, z 1,2) = δ(ˆ a2),
+
+and let πz1,2 agree with πz1 and πz2 on every other state (i.e., the three policies differ only in their choice of action at s0 and 
+
+ˆs0). Starting from s0, the trajectory repeatedly returns to the set C := {s0, ˆs0}. Between two consecutive returns to C, the policy behaves like πz1 if the return state is s0 (because it will take a1 next), and like πz2 if the return state is ˆs0 (because it will take ˆa2 next). Therefore the full discounted occupancy can be written as a discounted sum of “excursions” of two types, which yields a weighted mixture of the two symmetric occupancies. Define rounds indexed by i = 1 , 2, . . . , where round i starts when the process enters C and ends at the next entrance to C.Let 
+
+τi := the length (hitting time) of round i until the next visit to C, mi := 
+
+(
+
+1, if round i ends in s0,
+
+2, if round i ends in ˆs0.
+
+We generate (τi, m i) sequentially as follows. • Round 1. Starting from s0, sample the first hitting times (T1, ˆT1) of (s0, ˆs0) under the action a1. If T1 ≤ ˆT1 set 
+
+(m1, τ 1) = (1 , T 1); otherwise set (m1, τ 1) = (2 , ˆT1).15 Learning to Perceive the World Through Control 
+
+• Round i ≥ 2. If mi−1 = 1 , then the process is at s0 and the policy will take a1, so sample (T1, ˆT1) again and set 
+
+(mi, τ i) by the same rule as above. If mi−1 = 2 , then the process is at ˆs0 and the policy will take ˆa2, so sample the corresponding hitting times (T2, ˆT2) under πz2 and set (mi, τ i) = (1 , T 2) if T2 ≤ ˆT2 and (mi, τ i) = (2 , ˆT2) otherwise. This defines a random “tree” of modes and durations (mi, τ i)i≥1, which keeps track of which element of C is reached first at each return. Starting from s0,
+
+dπz1,2 
+
+> γ
+
+(s | s0) = α(s) + E
+
+" ∞X
+
+> i=1
+
+γPij=1 τj
+
+
+
+1{mi = 1 }α(s) + 1{mi = 2 }β(s)
+
+#
+
+.
+
+In particular, the occupancy under πz1,2 is a weighted sum of the two excursion types, and hence can be written as a convex combination of the symmetric occupancies d1(s) and d2(s) (with weights given by the discounted frequency of mi = 1 
+
+versus mi = 2 ). By Lemma B.1, empowerment (and hence MISL) can be optimized using only vertex occupancies, so such asymmetric skills receive zero probability under the optimal prior p∗(z | s0). The same conditioning argument applies when starting from ˆs0, showing that dπz1,2 
+
+> γ
+
+(· | ˆs0) is also a convex combination of d1 and d2. Therefore, only symmetric (interface-consistent) policies can have nonzero probability under MISL. therefore we can only look at the set of symmetric policies for thoe polciies Zsymm .
+
+dπz 
+
+> γ
+
+(s+ | s0) = dπz 
+
+> γ
+
+(s+ | ˆs0) ∀z ∈ Z symm .
+
+Therefore the empwoemrnt objective max p(z|s0)∈∆|Z symm |− 1 Ez
+
+P 
+
+> s+
+
+dπz 
+
+> γ
+
+(s+ | s0) log dπz γ (s+|s0)   
+
+> P
+> ¯zp(¯ z|s0)dπ¯zγ(s+|s0)
+
+is teh same across 
+
+s0 , ˆs0 and has the same optimal skill prior Consequently, 
+
+p∗(z | s0) = p∗(z | s′
+
+> 0
+
+).
+
+note that if the set of skills were not all symmetric skills then the occupancy of asymmetric skills starting from s0 and ˆs0
+
+were different and we coun’t donbtain this result anymore. since both the prior and the likelihoods are symmetric, Using Bayes’ rule, the corresponding optimal posteriors is also identical, for any future state s+,
+
+q∗(z | s0, s +) = p∗(z | s0) dπz 
+
+> γ
+
+(s+ | s0)
+
+P 
+
+> ¯z
+
+p∗(¯ z | s0) dπ¯z 
+
+> γ
+
+(s+ | s0)= p∗(z | ˆs0) dπz 
+
+> γ
+
+(s+ | ˆs0)
+
+P 
+
+> ¯z
+
+p∗(¯ z | s0) dπ¯z 
+
+> γ
+
+(s+ | ˆs0)= q∗(z | ˆs0, s +),
+
+Finally, by the minimal representation assumption and Remark 4.2, equality of the Bayes-optimal posteriors implies equality of the forward representations. Hence, 
+
+ϕ(s0) = ϕ(s′
+
+> 0
+
+).
+
+Proof of Proposition 5.2 
+
+Proof. Fix an initial state s0 and consider the Bayes-optimal posterior over skills given a future state s+:
+
+q∗(z | s0, s +) = p∗(z | s0) dzγ (s+ | s0)
+
+P 
+
+> ¯z
+
+p∗(¯ z | s0) d¯zγ (s+ | s0) .
+
+If both s+ and ˆs+ are unreachable from s0, then dzγ (s+ | s0) = dzγ (ˆ s+ | s0) = 0 for all z, and the posterior is undefined on the same support for both states. However if both s+ and ˆs+ are reachable from s0 and satisfy the condition that for this s0
+
+there exists a constant α(s0) > 0 such that 
+
+dπz (s+ | s0) = α(s0) dπz (ˆ s+ | s0) ∀ z. 
+
+16 Learning to Perceive the World Through Control 
+
+Substituting into the posterior, the factor α(s0) cancels from both the numerator and denominator, yielding 
+
+q∗(z | s0, s +) = q∗(z | s0, ˆs+) ∀ z. 
+
+Thus, the two terminal states induce identical posteriors over skills for every initial state s0. By the minimal representation assumption, this implies 
+
+ψ(s+) = ψ(ˆ s+).
+
+## D. MISL Backward Representations Have Interpretable ℓ1 Distance 
+
+We define the reachability vector as: 
+
+ρs0 (s+) := 
+
+h dπγ (s+|s0)  
+
+> P
+> ¯πd¯πγ(s+|s0)
+
+i
+
+> π
+
+. (9) We show that closeness of the normalized reachability vectors is equivalent to closeness of the backward representations, and vice versa. 
+
+Proposition D.1. Assume the posterior q(· | ϕ(s0), ψ (s+)) denoted for simplicity by qs0 (s+) is bi-Lipschitz in ψ, i.e., there exist 0 < ℓ ≤ L such that for all s0, s +, ˆs+,
+
+ℓ∥ψ(s+) − ψ(ˆ s+)∥1 ≤ ∥ qs0 (s+) − qs0 (ˆ s+)∥1 ≤ L∥ψ(s+) − ψ(ˆ s+)∥1,
+
+Then there exist constants c, C > 0 such that 
+
+cL min 
+
+> s0
+
+∥ρs0 (s+) − ρs0 (ˆ s+)∥1 ≤ ∥ ψ(s+) − ψ(ˆ s+)∥1 ≤ Cℓ max 
+
+> s0
+
+∥ρs0 (s+) − ρs0 (ˆ s+)∥1.
+
+Intuition. This proposition establishes a bidirectional correspondence between reachability and backward representations. In particular, states that are reachable by similar sets of policies—i.e., that have similar reachability vectors—induce similar backward representations, and conversely. As a consequence, backward representations provide a principled notion of goal similarity. In goal-conditioned reinforcement learning, this implies that if a policy is trained to reach a target state s+, then the same policy can be expected to reach another state ˆs+ whenever s+ and ˆs+ have similar backward representations ψ(·),enabling generalization across the goal space. In order to prove Proposition D.1, we first prove an auxiliary Lemma. 
+
+Lemma D.2. Let c, k, b ∈ ∆n−1 with cmin := min i ci and cmax := max i ci. Define 
+
+q1(i) := ciki
+
+c · k , q2(i) := cibi
+
+c · b .
+
+Let 
+
+m := min {c · k, c · b}, M := max {c · k, c · b}.
+
+Then the following two-sided bounds hold: 
+
+1
+
+  Mcmin + M 2
+
+> c2
+> min
+
+ ∥k − b∥1 ≤ ∥ q1 − q2∥1 ≤ 2cmax 
+
+m ∥k − b∥1.
+
+Proof. Upper bound 
+
+17 Learning to Perceive the World Through Control 
+
+∥q1 − q2∥1 = X
+
+> i
+
+| ciki
+
+c.k − cibi
+
+c.b |
+
+= X
+
+> i
+
+| ciki
+
+c.k − cibi
+
+c.b + cibi
+
+c.k − cibi
+
+c.k |≤ X
+
+> i
+
+| ciki
+
+c.k − cibi
+
+c.k | + | cibi
+
+c.k − cibi
+
+c.b |≤ cmax 
+
+m ∥k − b∥1 + | c.b c.k − 1|
+
+= cmax 
+
+m ∥k − b∥1 + | c. (b − k)
+
+c.k |
+
+= cmax 
+
+m ∥k − b∥1 + | P 
+
+> i
+
+ci(bi − ki)|
+
+c.k 
+
+≤ cmax 
+
+m ∥k − b∥1 +
+
+P 
+
+> i
+
+|ci(bi − ki)|
+
+c.k 
+
+≤ cmax 
+
+m ∥k − b∥1 + cmax ∥k − b∥1
+
+c.k 
+
+≤ 2cmax 
+
+m ∥k − b∥1
+
+Lower bound 
+
+∥k − b∥1 = X
+
+> i
+
+| c.k q 1(i)
+
+ci
+
+− c.b q 2(i)
+
+ci
+
+|
+
+= X
+
+> i
+
+| c.k q 1(i)
+
+ci
+
+− c.b q 2(i)
+
+ci
+
++ c.k q 2(i)
+
+ci
+
+− c.k q 2(i)
+
+ci
+
+|≤ X
+
+> i
+
+| c.k q 1(i)
+
+ci
+
+− c.k q 2(i)
+
+ci
+
+| + | c.k q 2(i)
+
+ci
+
+− c.b q 2(i)
+
+ci
+
+|≤ Mcmin 
+
+∥q1 − q2∥1 + X
+
+> i
+
+| q2(i) c.k − c.b 
+
+ci
+
+|≤ Mcmin 
+
+∥q1 − q2∥1 + 1
+
+cmin 
+
+X
+
+> i
+
+|q2(i) c.k − c.b |≤ Mcmin 
+
+∥q1 − q2∥1 + 1
+
+cmin >1
+
+X
+
+> i
+
+q2(i) × | c.k − c.b |
+
+= Mcmin 
+
+∥q1 − q2∥1 + 1
+
+cmin 
+
+(c.k )( c.b ) | 1
+
+c.k − 1
+
+c.b |
+
+= Mcmin 
+
+∥q1 − q2∥1 + 1
+
+cmin 
+
+(c.k )( c.b ) | X
+
+> i
+
+q1(i)
+
+ci
+
+− X
+
+> i
+
+q2(i)
+
+ci
+
+| (1) 
+
+≤ Mcmin 
+
+∥q1 − q2∥1 + 1
+
+cmin 
+
+(c.k )( c.b ) X
+
+> i
+
+| q1(i)
+
+ci
+
+− q2(i)
+
+ci
+
+|≤ Mcmin 
+
+∥q1 − q2∥1 + 1
+
+c2
+
+> min
+
+(c.k )( c.b ) ∥q1 − q2∥1
+
+≤   Mcmin 
+
++ M 2
+
+c2
+
+> min
+
+∥q1 − q2∥1 =⇒ ∥ q1 − q2∥1 ≥ 1
+
+  Mcmin + M 2
+
+> c2
+> min
+
+ ∥k − b∥1
+
+18 Learning to Perceive the World Through Control 
+
+Note that in (1) we used the fact that since all vectors are normalized: 
+
+X
+
+> i
+
+q1(i)
+
+ci
+
+− X
+
+> i
+
+q2(i)
+
+ci
+
+= X
+
+> i
+
+ki
+
+c.k − X
+
+> i
+
+bi
+
+c.b = 1
+
+c.k − 1
+
+c.b 
+
+Moreover note that M, m both are expected value of c therefore cmin ≤ m ≤ M ≥ cmax and 2cmax  
+
+> m
+
+≥ 2 and 1  Mcmin + M 2
+
+> c2
+> min
+
+ ≤
+
+> 12
+
+Proof of proposition D.1 
+
+Proof. Lemma D.2 shows that for any fixed initial state s0, there exist constants c, C > 0 such that 
+
+c ∥ρs0 (s+) − ρs0 (ˆ s+)∥1 ≤ ∥ qs0 (s+) − qs0 (ˆ s+)∥ ≤ C ∥ρs0 (s+) − ρs0 (ˆ s+)∥1.
+
+By the definition of a bi-Lipschitz posterior, taking the minimum over s0 in the lower bound and the maximum over s0 in the upper bound immediately yields the result of Proposition D.1. 
+
+## E. Control-Irrelevant Features Invariance results 
+
+Proof of Theorem 5.4 
+
+Proof. We begin by simplifying the empowerment objective under the state factorization s = ( x, e ) (Definition 5.3). For any policy—whether or not it conditions on e—the future noise component satisfies E+ ⊥ Z | e0. Consequently, 
+
+I(E+; Z | s0 = ( x0, e 0)) = 0 .
+
+This follows directly from the graphical model in Figure 9a. Although both the action selection and the skill choice z may depend on e0, the future noise variable E+ is generated solely from e0. Thus, conditioned on e0, E+ and Z are independent. ... 
+
+> ...
+
+(a) General case, If the policy uses e to make decisions, XT̸ ⊥ ET | s0, z .... 
+
+> ...
+
+(b) When the policy is e-invariant, XT ⊥
+
+ET | s0, z .
+
+Figure 9. Graphical models illustrating the effect of policy invariance on conditional independence. T is sampled from Geom (1 − γ)
+
+Therefore, we can simplify the mutual information using the chain rule: 
+
+I(S+; Z | s0) = I(X+, E +; Z | x0, e 0)=   : 0
+
+I(E+; Z | x0, e 0) + I(X+; Z | E+, x 0, e 0) (10) In general, from writing both sides of the chain rule we have: 
+
+I(X+, E +; Z | x0, e 0) =   : 0
+
+I(E+; Z | x0, e 0) + I(X+; Z | E+, x 0, e 0)= I(X+; Z | x0, e 0) + I(E+; Z | X+, x 0, e 0)
+
+> MI ≥0
+
+=⇒ I(X+; Z | x0, e 0) ≤ I(X+; Z | E+, x 0, e 0) (11) 19 Learning to Perceive the World Through Control 
+
+However, we show that since e doesn’t change the dynamics of x, conditioning on E+ doesn’t increase the MI. Or in simple words, for any skill distribution that supports e-variant policies, there is another skill distribution that only supports 
+
+e-invariant policies that achieves the same mutual information. Before proceeding with the proof, we define some notation: Recall that each skill indexes a Markovian policy. Let Z denote the set of all skills. We define Zinv as the subset of skills corresponding to e-invariant policies (possibly nonstationary in x), and Zstat as the subset corresponding to policies that are both e-invariant and stationary in x. By construction, 
+
+Zstat ⊂ Z inv ⊂ Z .
+
+1. Step 1 We first show that for any distribution over skills p(z | s0) ∈ ∆|Z|− 1 that assigns nonzero probability to policies that take actions based on e, we can construct a new distribution pinv (z | s0) ∈ ∆|Z inv |− 1 whose support consists only of e-invariant policies (which may be nonstationary in x), without decreasing the mutual information. Formally, 
+
+Ip(X+; Z | E+, s 0) ≤ Ipinv (X+; Z | x0), ∃ pinv (z | s0) ∈ ∆|Z inv |− 1 (12) where Ip(·) and Ipinv (·) denote mutual information computed under the joint distributions induced by p(z | s0) and 
+
+pinv (z | x0), respectively. 2. Step 2 In the second step of the proof, we show that restricting the skills further to non-stationary policies in x does not further increase the mutual information. In particular, 
+
+Ipinv (X+; Z | x0) ≤ max  
+
+> p(z|s0)∈∆|Z inv |− 1
+
+I(X+; Z | x0) = max 
+
+> p(z|s0)∈∆|Z stat |− 1
+
+I(X+; Z | x0), (13) where Zstat denotes the set of skills corresponding to e-invariant, Markovian, and stationary policies in x. This completes the proof because with step 1 together, it shows the empowerment objective in the presence of a control-irrelevant feature e, can be reduced to the empowerment objective only over the control-relevant part x and only policies that take decisions based on x. To put all the results together: 
+
+max  
+
+> p(z|s0)
+
+I(S+; Z | s0) 10 
+
+= max 
+
+> p(z|s0)∈∆|Z|− 1
+
+I(X+; Z | E+, s 0)
+
+> 13
+
+≤ max 
+
+> p(z|s0)∈∆|Z stat |− 1
+
+I(X+; Z | x0) (14) On the other hand, the other side of the inequality holds as well, i.e., 
+
+max  
+
+> p(z|s0)
+
+I(S+; Z | s0) 10 
+
+= max 
+
+> p(z|s0)∈∆|Z|− 1
+
+I(X+; Z | E+, s 0)
+
+> 11
+
+≥ max 
+
+> p(z|s0)∈∆|Z stat |− 1
+
+I(X+; Z | s0) (15) Therefore from Equation 14 and Equation 15: 
+
+max  
+
+> p(z|s0)
+
+I(S+; Z | s0) = max 
+
+> p(z|s0)∈∆|Z stat |− 1
+
+I(X+; Z | x0)
+
+Moreover, we note that from Equation 10 and graphical model 9b, we note that when the policies are e-invariant, 
+
+X+ ⊥ E+ | Z, X 0 and in that case we have: 
+
+I(S+; Z | s0) = I(X+; Z | x0)
+
+therefore the empowerment optimization problem over the full state boils down to the optimization problem over the x
+
+feature and we know that since e-invariant policy achieve the channel capacity according to the conclusion of step 1 , 2 above, we can instead solve the empowerment optimization problem over x.Now, we provide the proof for steps 1 and 2: 20 Learning to Perceive the World Through Control 
+
+Step 1. We expand the conditional MI: 
+
+I(X+; Z | E+, x 0, e 0) = Ee+∼dγ (e+|e0)I(X+; Z | e+, x 0, e 0)= Ee+∼dγ (e+|e0)Ez∼p(z|s0),x +∼dπz γ (x+|e+,s 0)[log dπz 
+
+> γ
+
+(x+ | e+, s 0)
+
+P 
+
+> ¯z
+
+p(¯ z | s0)dπ¯z 
+
+> γ
+
+(x+ | e+, s 0) ] (16) Note that when the policy depends on e, X+ is generally not conditionally independent of the future noise E+:
+
+X+̸ ⊥⊥ E+ | Z, s 0.
+
+This follows from the causal structure in Figure 9a: if actions depend on e, then there exists an active path 
+
+ET −1 → AT −1 → XT , T ∼ Geom(1 − γ),
+
+so conditioning on (Z, s 0) alone does not block the dependence between E+ and X+.As a result, the conditional distribution dπz 
+
+> γ
+
+(x+ | s0, z, e +) generally depends on e+. Intuitively, each value of e+ can be viewed as defining a different communication channel between the skill Z and the outcome X+. If the policies (the transmission method) take actions based on the noise e, then these channels have different sender to receiver mutual information; however, we show that since e doesn’t change the dynamics of x, its value does not change the capacity of each channel index, meaning that no matter e+ is, the capacity of the Z, X + is the same and there are e-invariant policies (transmission methods that ignore the noise) that achieve this capacity. We show this fact by constructing such policies. Fix an arbitrary skill distribution p(z | s0), which may assign positive probability to policies that depend on e. Consider the mutual information conditioned on a particular realization of e+,
+
+I(X+; Z | e+, s 0),
+
+since the policy in general could depend on e, the conditional MI differs based on e. Define the noise realization that maximizes this quantity as 
+
+e∗ := arg max  
+
+> e+
+
+I(X+; Z | e+, s 0). (17) We now construct a new distribution over skills that removes dependence on the noise process and always achieves 
+
+max e+ I(X+; Z | e+, s 0) no matter what the noise value is. For each skill z with policy π(· | (x, e ), z ), we construct a new skill z′ that indexes a policy π′(· | x, t, z ′) (e-invariant but non stationary) defined by 
+
+π′(a | x, t, z ′) := Eet∼p(et|e+=e∗,e 0)[π(a | x, e t, z )] . (18) Intuitively, π′ behaves as if the future noise realization were e∗, averaging over the noise trajectory consistent with that endpoint. Let pinv (z′ | s0) assign the same probability mass to z′ as p(z | s0) assigns to z.Conditioned on e+ = e∗, the discounted occupancy under πz is 
+
+dπz 
+
+> γ
+
+(x+ | e∗, s 0) = (1 − γ)
+
+> ∞
+
+X
+
+> t=0
+
+γt Pr 
+
+> πz
+
+(Xt = x+ | e∗, s 0).
+
+Using the law of total probability and the fact that e does not affect the dynamics of x, we can write 
+
+Pr 
+
+> πz
+
+(Xt = x+ | e+, s 0) = X
+
+> x,a
+
+Pr( Xt−1 = x | e∗, s 0) Eet−1|e+=e∗,e 0 [π(a | x, e t−1, z )] p(x+ | x, a ). (19) By construction of π′, the expectation over et−1 equals π′(a | x, t − 1, z ′), yielding 
+
+dπz 
+
+> γ
+
+(x+ | e∗, s 0) = dπ′ 
+
+> z′
+> γ
+
+(x+ | s0) = dπ′ 
+
+> z′
+> γ
+
+(x+ | x0).
+
+Since the induced distribution over X+ is identical, 
+
+Ip(X+; Z | e∗, s 0) = Ipinv (X+; Z | x0).
+
+Moreover, because e∗ maximizes the conditional mutual information, 
+
+Ipinv (X+; Z | x0) ≥ Ip(X+; Z | E+, s 0).
+
+This concludes the proof of step 1. 21 Learning to Perceive the World Through Control 
+
+Step 2. Note that the new policy we constructed in step 1 is e-invariant but non-stationary, however in order to show the second claim of the theorem statement, i.e, the fact that e-invariant stationary Markovian policies are enough for optimizing the MI, we need to show that the same MI could be achieved by restricting to the stationary policies. We directly use the result of Theorem 3.1 of Altman (1999), any discounted occupancy measure that is achievable by a (possibly non-Markovian or non-stationary) policy can also be achieved by a Markovian and stationary policy. Therefore, the set of distributions {dπz 
+
+> γ
+
+(x+ | s0)} induced by e-invariant Markovian policies is identical whether we restrict to stationary or nonstationary policies. This completes Step 2 of the proof. 
+
+Proof of Corollary 5.6 
+
+Proof. Theorem 5.4 shows that, under the state factorization in Definition 5.3, the empowerment objective is equivalent to 
+
+max  
+
+> p(z|s0)
+
+I(X+; Z | x0),
+
+i.e., only the control-relevant component x matters for channel capacity. By the policy minimality assumption (Definition 5.5), among all optimal solutions we select an optimal set of skills whose induced policies are e-invariant. In particular, for any fixed x0 there exists an optimal skill prior supported only on e-invariant policies, and the policy minimality assumption 5.5 selects such a prior independently of the nuisance realization e0. Hence the optimal prior satisfies 
+
+p∗(z | (x0, e 0)) = p∗(z | (x0, ˆe0)) ∀ x0, e 0, ˆe0. (20) Now fix any skill z in the support of p∗ and any successor state s+ = ( x+, e +). Since πz is e-invariant, its discounted occupancy factorizes as 
+
+dπz (s+ | s0) = dπz (x+ | x0) dγ (e+ | e0),
+
+where the e-term does not depend on z. Plugging this factorization into the optimal posterior gives 
+
+q(z | (x0, e 0), s +) = p∗(z | (x0, e 0)) dπz (s+ | s0)
+
+P 
+
+> ¯z
+
+p∗(¯ z | (x0, e 0)) dπ¯z (s+ | s0) (21) 
+
+= p∗(z | x0) dπz (x+ | x0)  
+
+dγ (e+ | e0)
+
+P 
+
+> ¯z
+
+p∗(¯ z | x0) dπ¯z (x+ | x0)  
+
+dγ (e+ | e0) (22)  
+
+> equation 20
+
+= q(z | (x0, ˆe0), s +) ∀ x0, e 0, ˆe0, z, s +. (23) Therefore the posterior (and thus the forward representation induced by q) is invariant to the nuisance component e0.Note that since we assume the noise process is irreducible dγ (e+ | e0) is always positive. The same argument applies when conditioning on the terminal state: for any s+ = ( x+, e +) and ˆs+ = ( x+, ˆe+), the factorization and cancellation above imply 
+
+q(z | s0, (x+, e +)) = q(z | s0, (x+, ˆe+)) ∀ s0, x +, e +, ˆe+,
+
+which yields e-invariant backward representations as well. Importantly, note that this invariance relies on e-invariance of the selected optimal policies; if optimal policies were allowed to depend on e, the occupancy would generally not factorize and the cancellation in equation 21 would fail. 
+
+## F. Control-Relevant Features Identifiability Results 
+
+Proof of Proposition 5.7 In general, in stochastic MDPs backward representations may cluster distinct states, since the same action can lead to different next states due to stochasticity (see Figure 1b). Unfortunately, forward representations do not necessarily resolve this ambiguity. In particular, there exist cases where states that share the same backward representation also induce identical forward representations, despite having different forward dynamics. Consider two states H and K in Figure 1b with identical reachability, i.e., 
+
+∀s, a, p(H | s, a ) = p(K | s, a ),
+
+22 Learning to Perceive the World Through Control 
+
+so that H and K have the same backward representation. We now construct their forward dynamics so that their forward representations are also identical. Suppose that in both H and K there are three available actions a0, a 1, a 2, and that actions a1 and a2 induce identical dynamics from both states: 
+
+p(J | H, a 1) = p(J | K, a 1) = 1 , p(L | H, a 2) = p(L | K, a 2) = 1 .
+
+Action a0, however, induces different transitions: 
+
+p(J | H, a 0) = 0 .2, p(L | H, a 0) = 0 .8, p(J | K, a 0) = 0 .5, p(L | K, a 0) = 0 .5.
+
+Under the MISL objective, the optimal action distributions in both states place all mass on the extreme actions: 
+
+p∗(a1 | H) = p∗(a2 | H) = 12 , p∗(a1 | K) = p∗(a2 | K) = 12 ,
+
+with p∗(a0 | H) = p∗(a0 | K) = 0 , since a0 induces a less extreme next-state distribution. Because only a1 and a2 are selected and their dynamics are identical from H and K, the resulting posteriors coincide: 
+
+q(a | H, J ) = q(a | K, J ), q(a | H, L ) = q(a | K, L ).
+
+Thus, H and K have identical forward representations as well, even though their forward dynamics differ for action a0. This shows that forward and backward representations together may still fail to capture all control-relevant features in stochastic MDPs. 
+
+Proof of Proposition 5.8 Since Theorem 5.4 and Corollary 5.6 show that control-irrelevant components are neither captured by the representation nor used by the policy, we ignore them in the analysis. Consider two distinct states x+ and ˆx+ that are both reachable from some state x0 in n steps via policies z and ˆz, respectively. By Lemma B.3, at least one policy that reaches x+ and one policy that reaches ˆx+ with nonzero probability must receive positive mass under the optimal empowerment distribution. Hence there are skills z, ˆz such that, 
+
+p∗(z | x0) > 0 and p∗(ˆ z | x0) > 0.
+
+Because the dynamics of x are deterministic, we have 
+
+P πz (Xn = x+ | x0) = 1 and P πˆz (Xn = ˆ x+ | x0) = 1 .
+
+Therefore, the backward posterior satisfies 
+
+q(z | x0, x +) = p∗(z | x0)
+
+E¯z [P π¯z (Xn = x+ | x0)] > 0,
+
+while 
+
+q(z | x0, ˆx+) = p∗(z | x0) · 0
+
+E¯z [P π¯z (Xn = ˆ x+ | x0)] = 0 .
+
+Note that the denominator is well defined since ˆx+ is reachable under some policy. An analogous argument shows 
+
+q(ˆ z | x0, x +) = 0 and q(ˆ z | x0, ˆx+) > 0.
+
+Thus, x+ and ˆx+ induce different posterior distributions over policies for the same initial state x0, and therefore cannot share the same backward representation. 23 Learning to Perceive the World Through Control 
+
+Discussion of Remark 5.9 We first show that any bisimulation defined with respect to a reward function that depends only on control-relevant features, i.e., R(( x, e )) = R(x), must ignore the control-irrelevant component e. Intuitively, if two states share the same control-relevant feature x but differ only in e, then merging them does not change either the reward or the dynamics relevant for bisimulation. As a result, any bisimulation can be made coarser by grouping together all states with the same x, and the coarsest bisimulation necessarily clusters states that differ only in e; therefore, such a bisimulation is invariant to e.
+
+Lemma F.1. Let Π = {C1, . . . , C m} be any bisimulation partition of S = X × E . Define a relation on the blocks of Π as follows: 
+
+C ∼ D ⇐⇒ ∃x ∈ X such that (x, e ) ∈ C and (x, ¯e) ∈ D for some e, ¯e ∈ U .
+
+and merge all blocks that are connected under ∼. Denote the resulting partition by Π′ = {C′
+
+> 1
+
+, . . . , C ′
+
+> k
+
+}, where k ≤ m.Then: 1. Π′ is still a bisimulation. 2. By construction, if (x, e ) ∈ C′ 
+
+> j
+
+, then (x, ¯e) ∈ C′ 
+
+> j
+
+for all ¯e ∈ E .Proof. We argue that merging blocks in this way does not violate either the reward or transition conditions of bisimulation. 
+
+Rewards. Because rewards depend only on x, all states of the form (x, e ) have the same reward for any action. Within each original block of Π, rewards were already equal by the bisimulation property. Therefore, when we merge blocks that contain states with the same x, the reward remains constant within each new block C′ 
+
+> j
+
+.
+
+Transitions. The key observation is that every new block C′ 
+
+> j
+
+is complete with respect to e. That is, if (x, e ) ∈ C′ 
+
+> j
+
+,then (x, ¯e) ∈ C′ 
+
+> j
+
+for all ¯e ∈ E . As a result, when we compute the probability of transitioning into C′ 
+
+> j
+
+, all uncontrollable components are summed out. Fix a state s = ( x, e ) and an action a. Then the probability of transitioning into a new block C′ 
+
+> j
+
+can be written as 
+
+PΠ′ (C′ 
+
+> j
+
+| s, a ) = X
+
+> (x′,e ′)∈C′
+> j
+
+p(x′, e ′ | x, e, a ) = X
+
+> x′∈Xj
+
+p(x′ | x, a ),
+
+where Xj = {x′ : ( x′, e ′) ∈ C′ 
+
+> j
+
+for some e′}. The sum over e′ disappears because each block contains all e′ for a given x′,and X
+
+> e′
+
+p(e′ | e) = 1 .
+
+Crucially, this expression depends only on x and not on e. Therefore, any two states that share the same x have identical transition probabilities into every block C′ 
+
+> j
+
+. Now Take any two states s, t that were in the same original block Cr ∈ Π.Because Π is a bisimulation, for every original block Ci ∈ Π,
+
+PΠ(Ci | s, a ) = PΠ(Ci | t, a ) ∀a. 
+
+Now consider any merged block C′ = S 
+
+> i∈I
+
+Ci ∈ Π′. Then by additivity over disjoint blocks, 
+
+PΠ′ (C′ | s, a ) = X
+
+> s′∈C′
+
+p(s′ | s, a ) = X
+
+> i∈I
+
+X
+
+> s′∈Ci
+
+p(s′ | s, a ) = X
+
+> i∈I
+
+PΠ(Ci | s, a ).
+
+Applying the equality blockwise for Π,
+
+X
+
+> i∈I
+
+PΠ(Ci | s, a ) = X
+
+> i∈I
+
+PΠ(Ci | t, a ) = PΠ′ (C′ | t, a ).
+
+So PΠ′ (C′ | s, a ) = PΠ′ (C′ | t, a ) for all merged blocks C′ ∈ Π′ and all a. Thus Π′ satisfies the transition condition and is a bisimulation. Or in simpler words, consider t that was originally bisimilar to s under Π. Because Π was a bisimulation, s
+
+and t had the same transition probabilities into each original block. Since each new block C′ 
+
+> j
+
+is just a union of original blocks, the transition probability into C′ 
+
+> j
+
+is simply the sum of the probabilities into those original blocks. Thus, s and t still have identical transition probabilities into every block of Π′.24 Learning to Perceive the World Through Control 
+
+## G. Theoretical Results for Coupled e and y Dynamics Through w
+
+Here we discuss how our theoretical results extend to the more general state factorization 
+
+p(st+1 | st, a t) = p(yt+1 | yt, w t, a t)
+
+× p(wt+1 | wt) p(et+1 | et, w t).
+
+In this setting, we require the following additional assumption. 
+
+Assumption G.1. We assume Wτ ⊥ Et, Y t | Wt and Eτ ⊥ Wt | Et for any τ < t .This assumption means both E and W are more informative about their own history than the other variables about them. While this assumption might sound restrictive but it makes sense to assume that a variable effects its own future more than the future of others therefore given its own future the past variables become independent of the other variables. 
+
+Corollary G.2. From assumption G.1, we can immediately infer Yt ⊥ Et | Wt, A t−1 for any policy. 
+
+Note that in general Yt ⊥ Et | Wt, A t−1, since Wt−1 is a common parent of both Et and Yt (Figure 10c). However, if Wt
+
+contains all the information from the history of itself that is relevant to Yt, then conditioning on Et provides no additional information about Yt. Intuitively, the assumption requires that Et does not reveal information about Wt−1 beyond what is already contained in Wt. For example, if the dynamics of W are deterministic and invertible, then Wt−1 can be recovered from Wt, and the assumption holds. 
+
+(a) Z ⊥ E+|s0. (b) Z ⊥ W +|E+, s 0. (c) In general Yt̸ ⊥ Et | Wt, A t−1,because there is a non blocked path between them through Wt−1.
+
+Figure 10. Graphical model in the presence of a w that is a confounding factor for both e and y. Purple and gray shades are, respectively, primary and secondary shades in the Bayesian ball algorithm for determining d-separation. 
+
+G.1. Extending the proof of Theorem 5.4 
+
+We start by using the chain rule to rewrite the MI objective. 
+
+I(S+; Z | s0) = I(Y +, W +, E +; Z | y0, w 0, e 0)=    : 0
+
+I(E+; Z | y0, w 0, e 0) + 
+
+   : 0
+
+I(W +; Z | E+, y 0, w 0, e 0) + I(Y +; Z | E+, W +, y 0, w 0, e 0) (24) The first two mutual information terms are zero. This can be verified directly from the graphical model by applying the Bayes-ball algorithm to check the corresponding d-separation relations; see respectively Figure 10a and Figure 10b. The third term, however in general cannot be reduced to I(Y +; Z | W +, s 0) even if the policy is e-invariant, because 
+
+Yt̸ ⊥ Et | Wt, s 0, Z even if the policy is e-invariant due to the unblocked path through Wt−1 (Refer to Figure 10c). However under assumption G.1 and if the policy is e-invariant then: 25 Learning to Perceive the World Through Control 
+
+Assumption G.1 and e-invariant policy =⇒ I(Y +; Z | E+, W +, y 0, w 0, e 0) = I(Y +; Z | W +, y 0, w 0)=⇒ 
+
+> I(W+;Z|E+,y 0,w 0,e 0)=0
+
+I(Y +, W +; Z | E+, s 0) = I(Y +, W +; Z | y0, w 0)
+
+Again remember the notation X = ( Y, W ). So far we obtained that I(S+; Z | s0) = I(X+; Z | x0) if the policy is 
+
+e-invariant, but now we need to show that limiting ourselves to the set of e-invariant policies does not reduce the MI. It suffices to show that for any distribution p(z | s0), there is another distribution of skills p′(z′ | x0) that only has a support on e-invariant policies and I(S+; Z | s0) ≤ I(X+; Z′ | x0).
+
+I(S+; Z | s0) 24 
+
+= I(Y +; Z | E+, W +, s 0)= Ee+∼dγ (e+|e0,w 0)[I(Y +; Z | W +, e +, s 0)] = Ee+∼dγ (e+|e0,w 0)Ew+∼dγ (w+|w0)Ez∼p(z|s0),y +∼dπz γ (y+|e+,w +,s 0)[log dπz 
+
+> γ
+
+(y+ | e+, w +, s 0)
+
+P 
+
+> ¯z
+
+p(¯ z | s0)dπ¯z 
+
+> γ
+
+(y+ | e+, w +, s 0) ]
+
+(25) Similar to the proof outlined in E for any policy π that attends to the noise e we construct a new policy π′ that treats e as an inner randomness so the policy itself doesn’t need to attend to e in order to make decisions. For each w0, e 0 there is a e+
+
+that maximizes I(Y +; Z | W +, e +, s 0), let’s denote that best e+ by e∗. We use conditional independence in the markov chain graphical model and the assumption G.1 to simplify p(yt | e+ = e∗, w +, s 0, z ) for any t > 0.
+
+p(yt | e+ = e∗, w +, s 0, z ) = X
+
+> wt−1,a t−1,y t−1
+
+p(yt−1 | e∗, w +, s 0, z ) p(wt−1 | e∗, y t−1, w +, s 0, z)
+
+× p(at−1 | wt−1, y t−1, e ∗,w+, s 0, z ) p(yt | wt−1, a t−1, y t−1) (26) Where by definition: 
+
+p(at−1 | wt−1, y t−1, e ∗, s 0, z ) = Eet−1∼p(et−1|e+=e∗,s 0)[π(at−1 | wt−1, y t−1, e t−1, z )] (27) For any policy π that attends to e, we can construct a new policy π′ as follows: 
+
+π′
+
+> t
+
+(a | y, w, z ′) := Eet∼p(et|e+=e∗,e 0,w 0)[π(a | y, w, e t, z )] . (28) We assess p(yt | w+, s 0, z ′) for the new policy: 
+
+p(yt | w+, s 0, z ′) = X
+
+> wt−1,a t−1,y t−1
+
+p(yt−1 | w+, s 0, z ′) p(wt−1 | yt−1, w +, s 0)
+
+× p(at−1 | wt−1, y t−1, s 0, z ′)
+
+| {z }
+
+> π′
+> t−1(a|yt−1,w t−1,z ′)
+
+p(yt | wt−1, a t−1, y t−1) (29) No we use an induction argument, since the initial state is the same for both π and π′, if p(yt−1 | w+, s 0, z ′) = p(yt−1 |
+
+w+, s 0, e ∗, z ) then we immediately conclude p(yt | w+, s 0, z ′) = p(yt | w+, s 0, e ∗, z ) from Equations 26, 27, 28 and 29. Therefore dπz (y+ | e∗, w +, s 0) = dπ′ 
+
+> z′
+
+(y+ | w+, s 0) Therefore by replacing all e-dependent policies that have a non zero support under p(z | s0) with their corresponding e-invariant policy we will get the following: 
+
+I(Y +; Z′ | W +, s 0) = Ew+∼dγ (w+|w0)Ez′∼p(z′|s0)Ey+∼dπ′ 
+
+> z′
+> γ(y+|w+,s 0)
+
+"
+
+log dπ′ 
+
+> z′
+> γ
+
+(y+ | w+, s 0)
+
+P 
+
+> ¯z
+
+p(¯ z | s0)dπ′ 
+
+> ¯z
+> γ
+
+(y+ | w+, s 0)
+
+#
+
+= I(Y +; Z | W +, e ∗, s 0)
+
+≥ I(Y +; Z | W +, E ∗, s 0).
+
+26 Learning to Perceive the World Through Control 
+
+Finally we note that, i) the construction of π′ depends on e0, e ∗ but for each w0 there is a e0 that e∗ that yields the maximum MI and we consider those as the inner parameters of the policy. The important fact is that the policy itself doesn’t need to actively sense et instead it is parameterized by these parameters and it means that if we search in the space of the e-invariant policies, the optimal policy is in that set. And ii) Similar to the argument discussed in E, Theorem 3.1 of Altman (1999) shows that the set of stationary Markovian policies is sufficient to produce any possible discounted occupancy measure therefore, although π′ is non-stationary by construction, there is a stationary policy (stationary in w, y ) that produces the same discounted occupancy measure. 
+
+G.2. Extending the proof of Corollary 5.6 to the coupled y and e through w
+
+We write the Bayes optimal discriminator: 
+
+q(z | (y0, w 0, e 0), s +) = p∗(z | s0) dπz (s+ | s0)
+
+P 
+
+> ¯z
+
+p∗(¯ z | s0) dπ¯z (s+ | s0)= p∗(z | (y0, w 0))  
+
+dγ (w+ | w0) dπz (y+ | (y0, w 0), w +) dπz 
+
+> γ
+
+(e+ | (e0, w 0, y 0), w +, y +)
+
+P 
+
+> ¯z
+
+p∗(¯ z | (y0, w 0))  
+
+dγ (w+ | w0) dπ¯z (y+ | (y0, w 0), w +) dπ¯z 
+
+> γ
+
+(e+ | (e0, w 0, y 0), w +, y +) (30) 
+
+> Wt−1⊥Yt|Wt
+
+= p∗(z | (y0, w 0)) dπz (y+ | (y0, w 0), w +)((((((((( (
+
+dγ (e+ | (e0, w 0), w +)
+
+P 
+
+> ¯z
+
+p∗(¯ z | (y0, w 0)) dπ¯z (y+ | (y0, w 0), w +)((((((((( (
+
+dγ (e+ | (e0, w 0), w +)= q(z | (y0, w 0, ˆe0), s +) ∀y0, w 0, e 0, ˆe0, s +, z 
+
+Where Equation 30 comes from Theorem 5.4, the fact that empowerment picks only e-invariant policies in the presence of information bottleneck regularizer therefore p∗(z | s0) and dπz (.) are invariant to e. And the third equality is the direct implication of Assumption G.1, the fact that Wt−1 of the past is independent of Yt given Wt, so conditioned on w+, the old 
+
+ws are all independent of y+ and the policy therefore e+ is independent of them too since the only possible dependence of 
+
+e+ to the policy or y+ is through wt−1.A very similar argument can be done to show q(z | s0, (y+, w +, e +)) = q(z | s0, (y+, w +, ˆe+)) ∀y+, w +, e +, ˆe+, s 0, z 
+
+## H. Experiments Backing The Theoretical Results 
+
+H.1. RQ5.Identifiability of control-relevant features 
+
+Prior work shows that practical MISL algorithms, such as CSF (Zheng et al., 2025), can recover identifiable state repre-sentations (Reizinger et al., 2025), but these results rely on specific algorithmic choices, including contrastive losses and inner-product parameterizations. Here, we ask whether backward MISL representations capture all control-relevant features in principle, independent of the algorithm. To show this, we design a didactic experiment in which we construct 50 random deterministic MDPs with 5 states that satisfy the connectivity assumption of Proposition 5.8. For each MDP, we solve the empowerment optimization at the most connected state (a state where every other state is reachable from it in two steps) and compute the resulting posterior over skills. We use the ℓ1 distance between posteriors as a proxy for backward representation distance and report the minimum distance across all state pairs and MDPs, which is always equal to or greater than 2, meaning that no two states have the same backward representation. The code is available here. 
+
+H.2. Representation invariance to action relabeling 
+
+In order to verify Theorem 5.1, we augment the pointMaze environment as follows: in the beginning of each episode we pick one of room 0 or 1 with probability 12 , the id of the room will be indicated as part of the state i.e., (x, y, roomID ). In room 0 the actions ax, a y behave as expected i.e., shift the x, y respectively by ax, a y ; However in room 1, a scaling of 2x is applied to the actions while limiting the range of the actions by half (so the range of possible movement in room 0 and 1 is the same). States (x, y, 0) and (x, y, 1) are states with similar future outcomes but with different action labeling e.g., taking action ax in state (x, y, 0) will produce the same outcome as taking action ax 
+
+> 2
+
+in state (x, y, 1) .We measure the relative normalized mean squared error of ϕ(s, y, 0) and ϕ(x, y, 1) for x, y sampled from the trajectories as 27 Learning to Perceive the World Through Control 0.0 0.2 0.4 0.6 0.8 1.0  
+
+> Environment steps (×10 6)
+> 10 −5
+> 10 −4
+> 10 −3
+> 10 −2
+> 10 −1
+> RelNMSE
+> mean ± SEM across seeds ( n=3)
+> Figure 11. States with similar future state distribution but different action scaling have the same representation.
+
+follows: RelNMSE = Ex,y ∥ϕ(x, y, 0) − ϕ(x, y, 1) ∥2
+
+Ex,y ∥ϕ(x, y, 0) ∥2 + Ex,y ϕ(x, y, 1) ∥2
+
+Lower values of RelNMSE shows that the corresponding states have a similar representations. As indicated by Figure 11, RelNMSE quickly drops and later stabilizes as training progresses, verifying our theoretical prediction in Theorem 5.1. 
+
+## I. Baseline Experiments 
+
+In this section, we compare MISL-based representation learning to prior methods—namely AC-state (Lamb et al., 2022; Efroni et al., 2022) and deep bisimulation (Zhang et al., 2020b)—that also aim to learn representations invariant to uncontrollable features. Our goal is not to provide a pure performance comparison, since these methods may perform well, or even better, in certain settings and under their intended assumptions. Instead, we focus on the conceptual limitations and practical assumptions required for them to succeed, and contrast these with empowerment-based representation learning. This emphasis aligns with the theoretical focus of the paper. We empirically challenge the key assumptions—explicit or implicit—under which these methods operate, and show where they can fail. A broader empirical comparison is left to future work. 
+
+I.1. Multi-step inverse dynamics (AC-State) 
+
+Efroni et al. (2022); Lamb et al. (2022) present a representation-learning framework in which an encoder f (·) and an action predictor network Pθ (at | f (xt), f (xt+k); k) are trained jointly, where the action predictor is trained to estimate the first action at taken to move from observation xt to a future observation xt+k. Observations consist of a control-relevant (endogenous) part and a control-irrelevant (exogenous) part (BlockMDP setup). They show that if the training data is itself invariant to the exogenous noise, then the learned representation f (x) is also noise invariant. Moreover, under additional assumptions such as bounded diameter of the endogenous dynamics and deterministic transitions, the representation provably recovers all control-relevant state features (Efroni et al., 2022; Lamb et al., 2022). Conceptually, this framework is closely related to MISL, but there is an important difference: AC-state does not specify how the training data should be collected, yet its guarantees rely on the data already being noise invariant. In practice, this is a strong assumption. For example, the implementation of Lamb (2026) relies on pre-collected datasets for robotic manipulation and self-driving tasks. In the robotic setting, the dataset is generated using a small set of high-level actions such as “Move North,” “Move South”, etc. This provides structured, high-coverage, and largely noise-invariant action selection. However, in many realistic settings the environment is unknown, expert-style data is unavailable, and it is unclear how to design a noise-invariant exploration policy, especially when the noise dimensions are not known in advance. In contrast, MISL is fully unsupervised: it does not rely on expert datasets, and it prescribes both policy learning and data collection as part of the algorithm itself. As a result, policy noise invariance emerges naturally during training rather than being assumed beforehand (Theorem 5.4). To study the importance of noise-invariant data collection, we adapt the codebase of Lamb (2026) to a 2D point-maze 28 Learning to Perceive the World Through Control 0 10 20 30 40 
+
+Epoch    
+
+> 10 3
+> 10 2
+> 10 1
+> 10 0
+> 10 1
+> Var to noise / Var to state
+
+Rep. noise invariance  
+
+> Data collection with 20% noise invariance
+> Data collection with 60% noise invariance
+> Data collection with 95% noise invariance
+> Figure 12. AC-state representations noise invariance ( Lower better ). This method are unable of learning noise-invariant representations if the data collection is not noise invariant.
+
+environment augmented with one Gaussian noise dimension. We collect datasets using policies with different levels of noise dependence, and then measure the ratio of representation variance along the noise dimension to the variance along the true state dimensions. During data collection, the 2d actions are generated as a linear combination of a goal-directed component and a noise-driven component: 
+
+a = wstate a(10 ,10) (x, y ) + wnoise tanh( n)⃗u, 
+
+where a(10 ,10) (x, y ) is the 2d action that moves toward the fixed goal at (10 , 10) from (x, y ), n is the scalar noise variable and ⃗u is a fixed 2d direction. The weights wstate and wnoise control how noise-invariant the behavior policy is: larger wstate 
+
+and smaller wnoise produce more noise-invariant trajectories. Figure 12 shows that when the data collection policy is highly noise invariant (e.g., 95% ), the learned representations largely ignore the noise dimension. However, as the behavior policy becomes more noise dependent (e.g., 60% or 20% noise invariance), the learned representations increasingly encode the noise variable. It is worth noting that, in tabular environments, the codebase of (Lamb, 2026) proposes a variant that jointly performs data collection and representation learning, without requiring a pre-collected dataset, and ensures noise-invariant data collection. However, this approach assumes a tabular setting with a finite set of latent states (e.g., 120 in their implementation), which limits its practicality in high-dimensional or continuous domains. Their method builds a transition model in the learned latent space and uses Dijkstra-style planning to guide exploration. Since planning is performed entirely in the latent space, the resulting actions inherit the noise invariance of the representation. While effective in small, discrete settings, this approach does not readily scale to non-tabular environments. 
+
+I.2. Bisimulation 
+
+Bisimulation is a widely used representation-learning principle in reinforcement learning. It aims to encode states according to how similar they are in terms of immediate reward and future outcomes. Intuitively, if two states under the current policy lead to similar rewards now and similar rewards in the future, then they should have similar representations (Ferns et al., 2011; Hansen-Estruch et al., 2022; Zhang et al., 2020b). For example, Zhang et al. (2020b) train representations using the loss 
+
+J(ϕ) = 
+
+
+
+∥zi − zj ∥1 − | ri − rj | − γ W 2
+
+ ˆP (· | zi, a i), ˆP (· | zj , a j )
+
+ 2
+
+,
+
+where zi = ϕ(si) and zj = ϕ(sj ) are the learned representations of states si and sj , and ˆP (· | z, a ) is a learned transition model in the latent space. Here, W2 denotes the 2-Wasserstein distance between the predicted next-state distributions. This objective encourages states with similar reward and similar future behavior to be close in representation space. In practice, Zhang et al. (2020b) show that this approach works well in high-dimensional noisy environments when the reward does not depend on the noise. In such cases, states that differ only in nuisance variables but share the same endogenous state have the same reward and future reward, and are therefore mapped to similar representations. 29 Learning to Perceive the World Through Control 
+
+We evaluate the noise invariance of bisimulation representations in a 2D maze augmented with 5-dimensional Gaussian noise. We use the codebase of Zhang et al. (2020b). We consider two reward functions in two different settings. The first is a standard dense reward given by the negative distance to a fixed goal at (10 , 10) . The second is 
+
+−∥ x − xtarget ∥,
+
+which depends only on the x coordinate and encourages the agent to reach any state satisfying x = xtarget .We test bisimulation under both temporally uncorrelated and temporally correlated noise. In Figure 13 (left), where the noise is temporally uncorrelated, the representation variance along the noise dimensions is much smaller than along the true state dimensions (x, y ), as expected. However, interestingly, when the noise is made temporally correlated (Figure 13, right), the variance of the representation along the noise dimensions increases significantly. To understand this, note that bisimulation relies on a learned transition model ˆP (· | z, a ). When the noise is temporally correlated, the transition model can predict future noise from the current noise. As a result, even two states that differ only in their noise components induce different next-state distributions, leading to a large Wasserstein distance W2
+
+ ˆP (· | zi, a i), ˆP (· | zj , a j )
+
+
+
+, and therefore different representations, even though their endogenous (control-relevant) features are identical. This is further supported by Figure 14, which shows the variance of the mean of the transition model ˆP (· | z, a ) (modeled as a Gaussian in this codebase) along the noise dimensions relative to the true state dimensions. The transition model clearly captures the noise, and its trend closely matches that of the learned representation in the right panel of Figure 13. This strongly suggests that the transition model is the main source of the representation’s sensitivity to temporally correlated noise. 0 50k 100k 150k 200k 250k 300k                          
+
+> Training step
+> 10 2
+> 10 3
+> 10 4
+> Variance (trace of Cov of  ϕ) i.i.d. noise / goal=(10,10)
+> noise (n= 3)
+> xposition (n= 3)
+> yposition (n= 3)
+> 050k 100k 150k 200k 250k 300k
+> Training step
+> 10 1
+> 10 2
+> 10 3
+> 10 4
+> 10 5
+> 10 6
+> Variance (trace of Cov of  ϕ) temporally correlated noise / xtarget = 10
+> noise (n= 3)
+> xposition (n= 3)
+> yposition (n= 3)
+> Figure 13. Bisimulation representation variance to noise and state dims. (lower better , higher better , higher better).
+
+This result is surprising, since maximal bisimulation is often interpreted as enforcing noise invariance. However, in practice, methods such as Zhang et al. (2020b) do not guarantee the maximal bisimulation relation. Instead, capturing temporally correlated noise arises as a byproduct of using a predictive transition model within the learning objective. In contrast, as shown earlier in Figure 6, temporal correlation in the noise does not break MISL; instead, it further strengthens its noise invariance, showing the conceptual superiority of MISL-based representation learning that doesn’t use any predictive modeling. The second conceptual limitation we observe in bisimulation is reward dependence. When we change the reward from the goal-based reward that depends on both (x, y ) (Figure 13, left) to the xtarget reward that depends only on x (Figure ?? , right), the learned representation becomes much less sensitive to y. This highlights that bisimulation representations primarily capture the state features that the reward depends on. As a result, if the reward is not sufficiently expressive, they may fail to encode all control-relevant features. This makes bisimulation representations well-suited for a specific known reward, but less suitable as a general pretraining objective when the downstream task is unknown or may change. In contrast, MISL-based representations aim to capture all control-relevant features, rather than only those emphasized by a particular reward. This makes them more appropriate for adaptation to new reward functions at test time. 30 Learning to Perceive the World Through Control 0 50k 100k 150k 200k 250k 300k 
+
+Training step 
+
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 10 4
+> 10 5
+> 10 6
+> Variance (trace of Cov of  μnext )
+
+temporally correlated noise / xtarget = 10 
+
+noise (n = 3) 
+
+x position (n = 3) 
+
+y position (n = 3) 
+
+Figure 14. The variance of the mean of the transition model to noise and state dims. (lower better , higher better , higher better). 
+
+## J. Additional figures 
+
+We evaluate whether MISL representations trained with 5-dimensional i.i.d. Gaussian noise remain invariant when tested on Gaussian noise with cross-dimensional correlations in the Point-Maze environment. Figure 15 shows that, even as the correlation strength increases, the representations maintain low variance along the noise dimensions and high variance along the state dimensions, demonstrating strong generalization to out-of-distribution noise distributions. 0 0.4 0.6 0.95 
+
+Cross-dim correlation    
+
+> 10 6
+> 10 4
+> 10 2
+> 10 0
+> Representation variance
+
+Invariance to unseen noise 
+
+(cross dim correlated) 
+
+state dim 
+
+noise dim 
+
+Figure 15. MISL representations trained with i.i.d. noise dimensions are also invariant to correlated noise dimensions. 
+
+31

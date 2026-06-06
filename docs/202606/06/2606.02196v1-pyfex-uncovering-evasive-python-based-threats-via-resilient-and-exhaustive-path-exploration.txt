@@ -1,0 +1,681 @@
+Title: PyFEX: Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration
+
+URL Source: https://arxiv.org/pdf/2606.02196v1
+
+Published Time: Tue, 02 Jun 2026 03:16:53 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration 
+
+# Meng Wang 
+
+CISPA Helmholtz Center for Information Security Saarbrücken, Germany 
+
+# Yue Ma 
+
+University of Electronic Science and Technology Chengdu, China 
+
+# Majid Garoosi 
+
+CISPA Helmholtz Center for Information Security Saarbrücken, Germany 
+
+# Wenting Fan 
+
+Shanghai Jiao Tong University Shanghai, China 
+
+# Liwei Guo 
+
+University of Electronic Science and Technology Chengdu, China 
+
+# Jianqiang Wang 
+
+Max Planck Institute for Security and Privacy Bochum, Germany 
+
+# Ali Abbasi 
+
+CISPA Helmholtz Center for Information Security Saarbrücken, Germany 
+
+## Abstract 
+
+The rapid expansion of the Python ecosystem has fueled two dis-tinct but converging threats: adversaries increasingly target the software supply chain via the Python Package Index (PyPI), while also building evasive, cross-platform malicious binaries compiled from source code written in Python. Current program analysis tech-niques struggle to address this dual threat. Static analysis based tools are often blinded by runtime obfuscation and compiled byte-code, while dynamic analysis based ones are fragile, prone to eva-sion by environmental guardrails, and often terminate prematurely due to unsatisfied dependencies. To overcome these limitations, we present PyFEX , a resilient forced-execution engine. PyFEX explores a program’s behavioral space systematically by forcing execution across all conditional branches to bypass evasion checks. To address the fragility of dy-namic execution, it introduces a novel resilient crash recovery mech-anism that creates synthetic objects to satisfy failed operations at runtime, allowing analysis to proceed past fatal errors, and employs path merging to mitigate path explosion. PyFEX further incorpo-rates an automated entry identification mechanism that proactively discovers and invokes dormant functions, exposing malicious logic hidden within uncalled APIs. To demonstrate the efficacy of this engine, we built PyFEXScan , a proof-of-concept malware detector built on top of PyFEX . Evaluated against both known malicious PyPI packages and real-world compiled binaries, PyFEX exposes critical behaviors missed by the existing state-of-the-art tools. In a live deployment on PyPI, PyFEXScan discovered 212 previously  
+
+> Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. Copyrights for components of this work owned by others than the author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permissions from permissions@acm.org.
+> Conference acronym ’XX, Woodstock, NY
+> ©2018 Copyright held by the owner/author(s). Publication rights licensed to ACM. ACM ISBN 978-1-4503-XXXX-X/2018/06 https://doi.org/XXXXXXX.XXXXXXX
+
+unknown malicious packages accounting for over 91,648 down-loads, underscoring the necessity of resilient, exhaustive analysis for securing the Python ecosystem. 
+
+## CCS Concepts 
+
+• Security and privacy → Malware and its mitigation .
+
+## Keywords 
+
+Software supply chain security, PyPI, Dynamic Analysis, Forced Execution 
+
+ACM Reference Format: 
+
+Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi. 2018. PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration. In Proceedings of Make sure to enter the correct conference title from your rights confirmation email (Conference acronym ’XX). ACM, New York, NY, USA, 18 pages. https: //doi.org/XXXXXXX.XXXXXXX 
+
+## 1 Introduction 
+
+Python’s emergence as the world’s most popular programming lan-guage [42] is a double-edged sword. While its simplicity and rich ecosystem have driven innovation across web infrastructure, ma-chine learning, and scientific computing, its ubiquity has also made it a prime vehicle for adversaries to deploy what we collectively re-fer to as Python-based threats . This threat landscape is twofold: first, attackers leverage Python to develop cross-platform malware [22, 8], often packaging compiled Python bytecode into standalone ex-ecutables using tools like PyInstaller [34]. This approach allows adversaries to leverage Python’s rich ecosystem for rapid develop-ment while simultaneously evading signature-based defenses [4]. Second, adversaries directly target the software supply chain by publishing malicious Python packages to the Python Package In-dex (PyPI). With PyPI receiving over 500 malware submissions monthly [27], the scale of this dual threat is substantial, indicating that Python’s ecosystem is increasingly targeted by attackers.  
+
+> arXiv:2606.02196v1 [cs.CR] 1 Jun 2026 Conference acronym ’XX, June 03–05, 2018, Woodstock, NY Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi
+
+To counter these risks, a range of analysis techniques has been proposed [7, 26, 13, 47, 15, 17, 40, 53, 55] to detect these Python-based threats. Yet, despite significant research efforts, existing meth-ods are still hindered by critical visibility gaps that leave malicious program capabilities within their blind spots. First, existing static analysis based techniques [13, 47, 53, 40] are limited by their lack of runtime information. They are blinded by common evasion techniques, such as dynamic code generation (e.g., eval), code encoding, or fetching payloads from remote servers [1, 21]. Even state-of-the-art tools like Malguard [13] acknowledge lim-itations against such runtime obfuscation. While theoretically pos-sible to flag all obfuscated code, doing so causes unacceptably high false positives due to legitimate protection tools like PyArmor [14]. Furthermore, without runtime provenance, static systems often fail to distinguish between user-requested sensitive operations (e.g., process termination) and malicious abuse. Second, dynamic analysis based techniques [17, 32, 29, 55] suffer from fragility and incomplete coverage. Traditional dynamic anal-ysis approaches [17, 55] struggle to identify correct entry points in modular libraries and are easily evaded by anti-analysis envi-ronment checks that suppress malicious behavior. To address these challenges, state-of-the-art forced-execution techniques (e.g., X-Force [33] for executable binaries, FV8 [32] for JavaScript, and MalMax [29] for PHP) have been proposed. However, these tools provide an incomplete analysis of the target program due to fragility and limited scope. Their analysis often terminates prematurely upon encountering unrecoverable states such as offline C2 (Command and Control) servers, preventing the discovery of downstream be-haviors. Additionally, they do not proactively recognize and trigger implicit entry points, leaving dormant functions untouched by the analysis tool. Crucially, FV8 [32] only applies forced execution to conditional blocks containing specific APIs (e.g., eval() ) and relies on a deobfuscator to identify those conditional blocks. While this strategy mitigates path explosion, it fundamentally limits the anal-ysis scope and consequently misses critical malicious behaviors. Similarly, MalMax [29] relies on a coarse-grained external PHP in-terpreter emulator, which limits both scalability and the granularity of collected information compared to inside-interpreter analysis. Third, compiled Python bytecode represents a major blind spot. Existing Python package analyzers are overwhelmingly designed for source code and cannot process the compiled binaries (.pyc) in-creasingly used in real-world attacks [56]. Approaches like FV8 [32] are ill-suited for this domain, as their reliance on Abstract Syntax Tree (AST) instrumentation is fundamentally incompatible with compiled bytecode, where AST reconstruction is unreliable. Al-though decompilation is a potential workaround, attackers fre-quently exploit decompiler bugs to prevent successful source code recovery [2], rendering this approach ineffective. Consequently, the visibility gaps inherent in existing analysis techniques inevitably degrade the efficacy of downstream detection systems. Whether relying on traditional machine learning classi-fiers [1, 13] or modern Large Language Models (LLMs) [13, 20], these detectors are fundamentally constrained by the incomplete-ness of their input data. These limitations motivate the design of 
+
+PyFEX , the first forced-execution engine specifically designed to analyze the full spectrum of Python-based threats, covering both source code and compiled bytecode. By integrating directly into the CPython interpreter [41], PyFEX achieves fine-grained con-trol over the runtime execution state, enabling novel capabilities designed to overcome the fragility and blindness of prior work. Specifically, PyFEX systematically Forces Execution down condi-tional branches to overcome evasive guardrails (e.g., environment checks) and employs a novel Resilient Crash Recovery mechanism. This mechanism intercepts fatal runtime errors, such as connection attempts to abandoned C2 servers, and creates Synthetic Objects 
+
+to satisfy the operation, ensuring analysis proceeds deep into the execution chain where critical behaviors often reside. To ensure scalability without sacrificing semantic information, PyFEX uti-lizes a Semantic-Preserving Path Merging strategy that consolidates divergent execution states while preserving the data provenance required to distinguish benign functionality from malicious intent. Finally, it incorporates a Dormant Function Analysis module that actively identifies and invokes uncovered callable objects, exposing malicious logic hidden in non-standard entry points. These capabilities enable PyFEX to resiliently expose runtime behaviors that attackers actively attempt to conceal. Crucially, the rich semantic information preserved during analysis allows for the accurate differentiation of benign packages with sensitive function-alities from genuinely malicious ones. To demonstrate the efficacy of PyFEX , we developed PyFEXScan , a proof-of-concept detector that integrates PyFEX ’s deep analytical traces with the reasoning capabilities of a Large Language Model (LLM) [52]. Our evalua-tion against 10,920 malicious PyPI packages and 417 malicious executables collected in the wild demonstrates PyFEXScan ’s supe-rior detection efficacy. Furthermore, in a 90-day live deployment analyzing daily PyPI uploads, PyFEXScan discovered 212 previ-ously unknown malicious packages accounting for over 91,648 downloads, confirming its real-world utility. 
+
+Contributions. Our approach has the following highlights: 
+
+• Novel Analysis Framework. We design and implement 
+
+PyFEX , the first forced-execution based analysis tool inte-grated directly into the CPython interpreter, capable of an-alyzing both Python source code and compiled bytecode. This approach enables precise state manipulation and deep exploration of both source and binary-only threats. 
+
+• Resilient Execution. We introduce a resilient crash recov-ery mechanism that utilizes on-demand object synthesis to prevent analysis termination during fatal runtime errors (e.g., dead C2 servers). Coupled with a Dormant Function Analy-sis strategy that actively identifies and invokes unexecuted callable objects, this design allows the engine to generate more complete behavioral traces than existing fragile dy-namic analyzers. 
+
+• Semantic-Aware State Management. We build a scalable path-merging method that consolidates divergent execution paths at post-dominators while preserving the data prove-nance. This semantic richness enhances the performance of downstream detectors, enabling them to distinguish between user-intended sensitive actions and malicious ones. 
+
+• Empirical Validation and Discovery. We evaluate PyFEXS-can on a rigorously calibrated dataset, where we identified and corrected 112 misclassified benign packages in estab-lished ground-truth benchmarks used by other academic works [13, 40]. Furthermore, our live deployment discovered PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration Conference acronym ’XX, June 03–05, 2018, Woodstock, NY 
+
+212 previously unknown malicious packages having 91,648 times of downloading on PyPI, underscoring the necessity of resilient dynamic analysis. 
+
+## 2 Background 2.1 CPython Interpreter 
+
+CPython [41] serves as the reference implementation and dominant interpreter for the Python ecosystem. We architected PyFEX di-rectly on top of CPython to ensure broad applicability to real-world threats. The interpreter operates by compiling source code into bytecode instructions, which are then executed by the stack-based Python Virtual Machine. This architecture reduces complex high-level logic to a finite set of predictable operations, providing ideal instrumentation points for fine-grained analysis. By instrumenting the execution loop, PyFEX gains direct control over control-flow instructions (e.g., POP_JUMP_IF_FALSE ). This al-lows the engine to override boolean checks and force execution down evasive paths that malware authors attempt to hide. Further-more, this deep integration also enables PyFEX to intercept fatal runtime exceptions such as connection errors to offline C2 servers at the instruction level. By synthesizing counterfactual states to satisfy these operations, execution can continue, exposing the logic that would otherwise remain unseen. Operating inside the inter-preter gives us the ability not only to observe but also to control, transforming a simple runtime into a rich analysis platform. 
+
+## 2.2 Python-Based Malware 
+
+In this paper, we call Python-based threats as malicious software developed using the Python language. This threat contains two vectors: supply chain infiltration via public repositories and stan-dalone executables compiled from Python scripts using popular, open-source tools such as PyInstaller [34] and Py2Exe [11] to evade traditional defenses [4]. Adversaries target the Python Package Index (PyPI) to distribute malware directly into developer environments. Techniques such as typosquatting (e.g., colourama vs. colorama [35]) and dependency confusion exploit PyPI’s open model and the automatic resolution of transitive dependencies, allowing malicious code to propagate silently across the ecosystem. Attackers [44, 30] are increasingly using tools like PyInstaller [34] or Py2Exe [11] to bundle malicious Python scripts into a single ex-ecutable. For an attacker, this process offers a powerful twofold advantage: simplified deployment and effective evasion. The tech-nique serves as a formidable layer of obfuscation against security tools. When a standard static analyzer scans the compiled exe-cutable, it does not see Python bytecode; instead, it sees the legiti-mate bootloader of the packaging tool. The actual malicious script is typically compressed and archived within the executable’s data section, remaining invisible to scanners that are not specifically designed to unpack these formats. Runtime analysis is similarly challenged. Upon execution, the bootloader first unpacks the in-terpreter and the malicious bytecode into a temporary directory before executing it, often in a separate process. This means the malicious behavior is detached from the initial file that a sandbox might be monitoring. This method is highly effective and has been used to deliver a wide range of malware, from information steal-ers [3] to the recent wave of Python-based ransomware [10], posing a significant challenge to detection. These vectors present distinct challenges: supply chain attacks primarily involve source code, while standalone executables conceal logic within compiled bytecode. Despite the prevalence of compiled threats, existing research has largely focused on source-based PyPI analysis. PyFEX addresses this critical blind spot by providing the first unified platform capable of analyzing both Python source code and compiled binaries 
+
+## 3 Motivation Example: PyLocky Ransomware 
+
+To illustrate the limitations of existing tools and motivate the design of PyFEX , we examine PyLocky, a real-world ransomware that exemplifies the complexity of current attackers and serves as a motivation example. PyLocky is developed in Python and packaged into a standalone executable using PyInstaller [34], a legitimate tool often abused by attackers to obscure malicious code. This packaging, combined with runtime evasions, renders PyLocky particularly difficult for existing tools to detect and analyze.           
+
+> 1LockRAM = int(round(system_ram))
+> 2#evasive technique for sandbox detection
+> 3if LockRAM < 4:
+> 4time.sleep(9999)
+> 5# command server
+> 6url = "http://centredentairenantes.fr/wp-system.php"
+> 7r = requests.get(url)
+> 8....
+> 9# later code for encrypting files
+
+Listing 1: Code Snippet of PyLocky Ransomware (Decom-piled and Deobfuscated) 
+
+Listing 1 shows a simplified representation of PyLocky’s core logic. The malware was distributed via spam email campaigns tar-geting European businesses [10]. Its execution involves several stages designed to thwart analysis before the final encryption pay-load is deployed. 
+
+## 3.1 Challenge 1: Packaging and Obfuscation 
+
+PyLocky’s primary delivery mechanism is a PyInstaller executable. This immediately presents a barrier to the existing malware anal-ysis tools, including state-of-the-art static analysis systems like Malguard [13] or hybrid analysis systems like OSSF Package Anal-ysis [17], which are designed for Python source code (.py) files. These tools cannot directly parse the compiled bytecode (.pyc) em-bedded within the executable. While decompilation is theoretically possible, it is often unreliable and can be easily defeated by anti-analysis techniques [2, 50]. Furthermore, runtime decoding often hides the final payload, presents a further barrier to any form of static inspection, as admitted by Malguard [13]. 
+
+PyFEX ’s solution : By operating directly within the CPython in-terpreter, PyFEX executes and analyzes the bytecode, bypassing the need for unreliable decompilation and directly observing the code as it runs from an internal perspective, regardless of initial packaging. Conference acronym ’XX, June 03–05, 2018, Woodstock, NY Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi 
+
+## 3.2 Challenge 2: Runtime Evasion 
+
+PyLocky employs explicit anti-sandbox checks. One of them is the RAM check (Line 3) in Listing 1): if the system has less than 4GB of memory, it enters the sleep status without doing any malicious behaviors. Conventional dynamic analysis sandboxes typically run with minimal resources for scalability and would trigger this sleep condition. The analysis would time out long before the malware performs any encryption or C2 communication, resulting in a false negative report. 
+
+PyFEX ’s solution : PyFEX ’s forced execution mechanism instru-ments bytecode-level conditional jumps. It will discover both branches regardless of the conditions, ensuring the later malicious code in-cluding subsequent C2 communication and encryption logic are always exposed during analysis. 
+
+## 3.3 Challenge 3: Fragility 
+
+PyLocky relies on communication with a C2 server (Line 7) to po-tentially retrieve configuration or commands. If this server is offline during analysis (a common scenario for older malware samples or post-attack analysis), the network request will fail. Existing forced-execution tools like MalMax [29] or FV8 [32], if ported, would crash or terminate the analysis of this path upon encountering the unhan-dled network exception. This prevents observation of the critical downstream encrypt_files routine. Furthermore, FV8’s AST-based approach is fundamentally incompatible with bytecode analysis. Naively expanding FV8’s scope would also be computationally in-tractable due to path explosion. 
+
+PyFEX ’s solution : PyFEX has a resilient crash recovery mecha-nism to intercept the exceptions. Instead of crashing, it synthesizes a counter-factual state and allows execution to continue seamlessly into the later encrypt_files function. Combined with path merging to manage complexity, PyFEX ensures that the complete encryption behavior is revealed, regardless of external dependencies or evasive checks. This motivating example illustrates the need for an analysis system that can systematically explore the execution space to reveal the target program’s hidden malicious behaviors, both in binary format and obfuscated code. 
+
+## 4 Design 
+
+This section details the design of PyFEX , a dynamic analysis en-gine built to expose the behaviors of evasive Python-based threats. Malware developers increasingly abuse Python’s dynamic features, such as runtime metaprogramming and environmental checks, to conceal malicious logic from static analysis and evade dynamic anal-ysis by placing malicious behavior behind environmental checks. The ultimate goal of these techniques is to ensure that critical pay-loads remain unobserved during analysis. To address these challenges, as shown in Fig. 1, PyFEX systemat-ically explores the execution space of the target program by four complementary designs to ensure robustness and scalability. First, we employ Context-Aware Forced Execution to explore every conditional path. Unlike prior work, PyFEX uses a novel state-sharing model that synchronizes objects within the same closure across branches, ensuring forced paths inherit the valid computa-tional state required to proceed without crashing. Second, to address the fragility of dynamic analysis, we introduce Resilient Crash Re-covery . When fatal errors occur, the engine intercepts the exception and synthesizes a Synthetic Object to satisfy the operation. These objects actively record the crash origin and track their propagation lineage, allowing the analysis to reconstruct the semantic context of hidden behaviors even after failures. To manage the complexity of exhaustive exploration, PyFEX implements Semantic-Preserving Path Merging , which consolidates divergent execution paths at their post-dominator points while rigorously retaining the data provenance of sensitive objects. Finally, to ensure complete cov-erage, we incorporate a Dormant Function Analysis phase. If callable objects remain uninvoked after the initial trace, PyFEX 
+
+proactively executes them using synthesized inputs, exposing logic hidden behind non-standard entry points. The output of PyFEX is a set of comprehensive execution traces that capture not only the sequence of operations but also the semantic context in which they occur, providing a robust foundation for malware detection and forensic analysis. 
+
+## 4.1 Forced Execution 
+
+A fundamental challenge in dynamic malware analysis is achieving sufficient code coverage against evasion conditions that check for environmental artifacts (e.g., debuggers, sandboxes) and suppress malicious payloads if detected. Conventional dynamic analysis [17], which follows a single concrete execution path, typically fails to satisfy these predicates. As a result, the malicious logic is never ex-ecuted, the visibility gap remains, and the malware is misclassified as benign. 
+
+Table 1: Sample Instrumented Bytecodes for Counter-Factual Execution                  
+
+> Bytecode Instr. Action
+> 1. Conditional Branching
+> POP_JUMP_IF_FALSE Invert the condition
+> POP_JUMP_IF_TRUE Invert the condition
+> JUMP_ABSOLUTE Redirect to another code path.
+> 2. Looping Constructs
+> FOR_ITER Force premature loop termination/Inject items to prolong iteration.
+> JUMP_BACKWARD Force an early exit from the loop.
+> 3. Exception Handling
+> SETUP_FINALLY Inject a synthetic exception
+> RAISE_VARARGS Suppress the exception
+> JUMP_IF_NOT_EXC_MATCH Force a match to enter a specific except
+> 4. Context Management
+> SETUP_WITH Simulate an exception
+> WITH_EXCEPT_START Force the __exit__ method to suppress an excep-tion
+> 5. Generators & Asynchronous Flow
+> YIELD_VALUE Substitute the yielded value/Inject StopIteration
+> to terminate.
+> GET_AWAITABLE Replace the awaitable with a mock that resolves immediately with a counter-factual result.
+
+To overcome this, PyFEX implements a forced execution en-gine that explores the program’s behavioral space by traversing all control flow paths. Unlike prior approaches that rely on source-to-source transformation or Abstract Syntax Tree (AST) rewriting (e.g., FV8 [32]), PyFEX instruments the CPython interpreter directly at the bytecode level. This design choice is critical for robustness: while AST-based instrumentation is fragile and easily broken by PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration Conference acronym ’XX, June 03–05, 2018, Woodstock, NY PyPI Package 
+
+> (. whl , .tar,…)
+> Python -based
+> Executable
+> (.exe,…)
+> File
+> Extractor
+> Code for
+> Analysis
+> (. py , . pyc ,…)
+> Code
+> Execution
+> Force
+> Execution
+> De -
+> obfuscation
+> Crash
+> Crash
+> Recovery
+> PyF EX
+> Executor
+> Program
+> Execution
+> Traces
+> Entry
+> Identify
+> Legend
+> Basic
+> Block
+> Covered Basic
+> Block
+> Basic Block With
+> Obfuscation
+> Evasive Conditions
+> Crash
+> Identified Entry
+> Resume
+> Execution Uncovered
+> Code
+> Yes
+> No
+
+Figure 1: Overview of PyFEX 
+
+anti-parser techniques or syntax errors [2, 50], bytecode instrumen-tation operates on the definitive, low-level instructions executed by the Python Virtual Machine (PVM). This renders our analysis opaque to the malware and compatible with obfuscated or compiled code where AST reconstruction is unreliable. Specifically, we modified the C-level bytecode evaluation loop to intercept control-flow-altering bytecodes (e.g., POP_JUMP_IF_FALSE ,
+
+FOR_ITER in Table 1). When PyFEX encounters a control flow re-lated bytecode (full bytecodes list in Table 6), it forks the execution state. The original process continues along the concrete path dic-tated by the runtime values, while a forked counter-factual process is forced down the alternative branch by manipulating the instruc-tion pointer to the alternative jump target. This principle is applied recursively to if/else blocks, loops, and exception handlers, en-suring that the analysis proceeds past guards that would otherwise halt execution. To illustrate the rationale of our design, we show how PyFEX han-dles two distinct, real-world malware families: Pbot [9], known for its bytecode format and multi-layered obfuscation, and NodeStealer [36], which employs direct anti-analysis checks.           
+
+> 1...
+> 2butchertemper="4"
+> 3preventpennyworths="m"
+> 4timesmammet="txlbmStlQZ+uNYoFoVz8yrkEI1Um7OkJHXE"
+> 5villainweapon=exec
+> 6...
+> 7villainweapon( 'mannerseastern= '+placentiocherish)
+> 8...
+> 9villainweapon( 'maidenheadgoing= '+graciousstory)
+> 10 ...
+
+Listing 2: Code Snippet Pbot Malware Defeating Multi-Layered Obfuscation : This technique is equally effective against multi-layered obfuscation, as seen in the Pbot [9] malware as shown in Listing 2. Static analysis tools were easily defeated by its bytecode format as it abuses the bugs in the ex-isting decompilers [2]. Even if the de-compilation succeed, static analysis based malware detector can easily flag this package as suspicious while multi-layers of encoding and dynamic execution via eval() still make the analysis tool hard to answer what exactly are the malicious behaviors or indicator of compromise. While a conventional dynamic analysis might deobfuscate the first layer, it remains blind to any conditional logic within the deobfuscated pay-load. This is a critical flaw, as sophisticated malware often contains further evasive checks in its later stages. PyFEX ’s approach is more resilient. PyFEX executes the code to naturally bypass the initial de-obfuscation layers. Crucially, as the payload is materialized and executed by the interpreter, PyFEX recursively applies forced ex-ecution to the newly generated bytecode. This ensures that even conditional logic nested within dynamically generated payloads is fully explored.                            
+
+> 1blacklistedProcesses = [
+> 2"ollydbg", "vmwareuser", "vgauthservice",...]
+> 3#multiple processes indicating VMs or debuggers
+> 4def check_process() -> bool:
+> 5for proc in psutil.process_iter():
+> 6process_name = proc.name().lower()
+> 7for blacklisted_name in blacklistedProcesses:
+> 8if blacklisted_name in process_name:
+> 9return false
+> 10 return true
+> 11 if check_process():
+> 12 do_malicious()
+> 13 else :
+> 14 do_benign()
+
+Listing 3: Anti-Analyzer: NodeStealer Bypassing Anti-Analysis Evasion : Consider the NodeStealer [36] malware shown in Listing 3, which explicitly checks for the pres-ence of debugger-related processes and terminates if any are found. Attempting to create a perfect sandbox environment that is indis-tinguishable from a real user’s machine is an intractable arms race. forced execution fundamentally sidesteps this problem. if check_process ():             
+
+> do_malicious ()
+> else :
+> do_benign ()
+> 12 0 LOAD_GLOBAL 0 (check_process )
+> 2 CALL_FUNCTION 0
+> 4 POP_JUMP_IF_FALSE 6(to 16 )
+> 13 6 LOAD_GLOBAL 1 (do_malicious)
+> 8 CALL_FUNCTION 0
+> 10 POP_TOP
+> 12 LOAD_CONST 0 (None)
+> 14 RETURN_VALUE
+> 15 16 LOAD_GLOBAL 2 (do_benign)
+> 18 CALL_FUNCTION 0
+> 20 POP_TOP
+> 22 LOAD_CONST 0 (None)
+> 24 RETURN_VALUE
+> 0
+> 2
+> 4
+> fork
+> 6
+> 8
+> …
+> 16
+> 18
+> …
+> Force Executio n
+
+Figure 2: Nodestealer Forced Execution of One Conditional Statement 
+
+Upon reaching the conditional check for a debugger, PyFEX does not attempt to satisfy the predicate. Instead, as shown in Figure 2, Conference acronym ’XX, June 03–05, 2018, Woodstock, NY Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi 
+
+it spawns a new process to discover the other execution path. One path follows the concrete outcome (the return false call), while a second, counter-factual path is created that forces execution down the alternative branch. This approach guarantees that the malicious payload protected by an anti-analysis technique is reached and analyzed, regardless of the analysis environment’s characteristics. 
+
+## 4.2 Resilient Crash Recovery 
+
+A major limitation of existing forced-execution systems is fragility: analysis often terminates prematurely when a forced path encoun-ters a fatal error, such as a network request to an offline C2 server. This leads to the invisibility of the downstream code. To address this, PyFEX introduces a Resilient Crash Recovery mechanism that synthesizes valid execution states to recover from fatal runtime errors in incomplete or hostile environments. 
+
+Table 2: Part of Python Bytecode Instructions and Potential Terminating Exceptions           
+
+> Bytecode Instr. Potential Exception
+> Attribute and Name Access
+> LOAD_ATTR Attribute does not exist
+> LOAD_GLOBAL Global variable is not defined
+> LOAD_FAST Variable is used before assignment
+> Container Operations
+> BINARY_SUBSCR Index is invalid
+> UNPACK_SEQUENCE Object fails to unpack
+> Arithmetic Operations
+> BINARY_FLOOR_DIVIDE Division by zero
+> BINARY_MODULO Modulo by zero
+> Function and Control Flow
+> CALL_FUNCTION Object is not callable
+> FOR_ITER Object is not iterable
+
+4.2.1 Bytecode Level Crash Recovery . Our approach is built upon a key architectural insight into interpreted languages: exception handling is centralized within specific bytecode instructions. While a program may crash for various reasons at the source-code level, these failures invariably manifest as exceptions raised by a finite set of bytecode instructions. Table 2 shows a subset of the instructions we instrument and the exceptions they commonly trigger (full ver-sion is in Table 6). This observation allows us to construct a robust recovery system by instrumenting this finite set of instructions, avoiding the intractable task of patching every possible high-level error scenario. For instance, a single instrumentation point on the bytecode 
+
+CALL_FUNCTION can handle failures caused by missing functions, signature mismatches, or non-callable objects. Rather than address-ing these errors individually, the PyFEX interpreter intercepts the exception, clears the error state, and returns a Synthetic Object to satisfy the operation as the return object of the function call. This ensures that execution proceeds seamlessly past the point of failure to further analyze the downstream code. Crucially, a Synthetic Object is not only a static placeholder. It acts as a dynamic proxy capable of accepting any operation. Whether the malware attempts to access an attribute, invoke a method, or iterate over the object, the proxy recursively returns a new Syn-thetic Object . This mechanism resolves common crash scenarios: accessing an index out of bounds (e.g., my_list[10] ) returns a generic Synthetic Object instead of raising an IndexError ; query-ing a missing dictionary key (e.g., my_dict[’config’] ) suppresses the KeyError ; and failed imports trigger the creation of a synthetic module populated with synthetic functions. Consequently, PyFEX 
+
+enables the exploration of downstream logic that depends on these otherwise unavailable resources. 
+
+4.2.2 Semantic Reconstruction via Trace Properties. While the crash-recovery mechanism enables PyFEX to uncover previously unreach-able code, only execution is insufficient. We must also recover mean-ingful semantic information from these execution paths. Performing computations on simple empty placeholders yields no insight. To address this, PyFEX implements a data provenance tracking system. Our core design principle is that any bytecode instruction con-suming a Synthetic Object produces a new Synthetic Object as output. Crucially, this output is not a blank slate. Each Synthetic Object main-tains a Trace Property which serves as a symbolic expression that records the object’s origin and the history of operations performed on it. Instead of performing meaningless arithmetic on arbitrary values, PyFEX symbolically records the computation. For instance, if a Synthetic Object is used in an ADD instruction with the integer 1, the result is a new Synthetic Object that internally records its lineage as ADD(Synthetic_Object, 1) which will be stored in its trace property. If this new object is then used in a BINARY_SUBSCR 
+
+operation, the final Synthetic Object’s trace property would become 
+
+SUBSCR(ADD(Synthetic_Object, 1), 2) This ensures that even when concrete data is unavailable due to a crash, the system will still be able to recover some of the semantic context of the data flow. This mechanism is critical for analyzing real-world threats like the VBucks [48], a malware family that targets stealing sensitive information from the victim’s machine. As shown in part of the simplified, de-obfuscated, and decompiled code in Figure 3, the mal-ware first attempts to find a Discord token on the victim’s machine using a function like find_local_token . In a naive sandbox envi-ronment, this function will fail to find the required token path, and the program will terminate, leaving its true malicious behavior un-observed. PyFEX overcomes this challenge through a combination of forced execution and crash prevention. We forcefully execute the code path that assumes a token is found. When the code attempts to read the non-existent token file, our crash prevention mecha-nism intercepts the failure and synthesizes a Synthetic Object for the token variable. The analysis then proceeds to the subsequent 
+
+requests.get calls to the Discord API. These calls will naturally fail because they use an invalid token which is a Synthetic Object .However, because the requests.get function is consuming a Syn-thetic Object, PyFEX again intervenes. It bypasses the crash and creates a new Synthetic Object for the user_info variable. This new object’s trace property now records the entire chain of events, as illustrated in Figure 3. Similarly, as this user_info object is used to derive other variables, such as username and email , the trace property is continuously propagated. When the malware makes its final requests.post call to the attacker’s server, the data being sent contains Synthetic Objects whose trace properties can be re-cursively resolved. The final logs do not just show a network call; they reveal a complete, semantic narrative: data originating from PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration Conference acronym ’XX, June 03–05, 2018, Woodstock, NY token =find_local_token ()     
+
+> user_info =requests. get (‘…discord…/@me' ,{ 'Auth' :token, …})
+> bill_info =requests. get (‘…discord…/pay' ,{ 'Auth' :token ,…})
+> username =user_info. get ('username' )
+> email =user_info. get ('email' )
+> has_payment =bool (bill_info )
+> exfil_data ={"username" :username, "email" :email ,
+> "payment" :has_payment, "token" :token }
+> requests. post (EXFIL_C2_URL ,json =exfil_data,timeout =3)
+> CALL_FUNC( find_local_token )
+> CALL_METH( requests.get (“…me”, {‘auth’: Syntheti c_Object )…})
+> CALL_METH( requests.get (“…pay”, {‘auth’: Synthetic_Object )…})
+> CALL_METH (Synthetic_Object .get (‘username))
+> CALL_METH (Synthetic_Object .get (‘email’))
+> CALL_FUNC(bool (Synthetic_Object ))
+> Call Method: requests.post (www.c2.com, {"username":
+> CALL_METH(CALL_METH( requests.get (“…me”,
+> {‘ auth’:CALL_FUNC (find_local_token ) )…}).get(‘username))
+> ,…)
+> Execution Trace
+
+Figure 3: VBucks Malware: Trace Property 
+
+an attempt to read a Discord token file was processed by several functions and ultimately sent to an external server. By synthesizing objects to satisfy otherwise-crashing operations, 
+
+PyFEX uncovers logic contingent on data from unavailable sources. Simultaneously, the propagation of Synthetic Objects with detailed provenance tracking preserves a rich semantic trace of all compu-tations that would have occurred, providing a complete view of the malware’s capabilities, which would be used in further analysis. 
+
+## 4.3 Semantic-Preserving Path Merging 
+
+While forced execution and crash prevention are powerful for ex-posing otherwise hidden code, they introduce two major challenges: the exponential growth of execution paths (path explosion) and the potential for semantic incoherence when forcing execution down infeasible paths. Existing forced-execution systems such as FV8 [32] and MalMax [29] mitigate path explosion by significantly limiting their analysis scope or simply terminating upon encoun-tering a crash. While these design choices reduce the search space, they fundamentally sacrifice the completeness of exposed behav-iors, a compromise we have shown to be unsuitable for the diverse and evasive Python-based malware ecosystem (as detailed in Sec-tion 6.4). This subsection details PyFEX ’s approach to managing these complexities, which aims to maximize path exploration while rigorously preserving program semantics. 
+
+4.3.1 Integrated Path and State Merging. Forced execution, by its nature, creates divergent execution processes at every conditional branch. For nested conditions, this leads to an exponential increase in active paths, a formidable challenge known as path explosion. This issue makes comprehensive analysis computationally infea-sible. To ensure scalability while preserving completeness, PyFEX 
+
+implements a light-weight post-dominator-based path merging strategy for the forced execution. Our strategy begins by allowing divergent execution processes, each representing a distinct path through a conditional branch, to run independently until they reach their immediate post-dominator. For each PyCodeObject , PyFEX computes this merge point on an intra-procedural control-flow graph built from bytecode offsets, explicit jump targets, fall-through edges, and exception-handler metadata, which makes CFG construction straightforward. This de-fines the unique point in the control flow graph where all divergent paths from a specific branch must eventually reconverge. When the first process arrives, its corresponding post-dominator contin-ues execution. Once its slower peers arrive at the post-dominator later, PyFEX initiates the merging process. The merging process is designed to preserve the full spectrum of observed behaviors and prune the slower processes. It is noteworthy that the slower process does not simply disappear while its entire state, including local and global variables, imported modules, and other runtime objects, is logically transferred and associated with the continuing process. This means the surviving process now carries a superset of the state from both original paths. During subsequent execution, when the merged process needs to use a variable or object, it employs a conflict resolution mech-anism as follows: The process first attempts to use its own value for a computation. However, if its own value is a Synthetic Ob-ject (synthesized due to a previous crash) while the corresponding value from the pruned path is a concrete object, PyFEX prioritizes the concrete value. This ensures that valid data is used whenever possible. If the initial computation attempt with a preferred value results in a crash or error, and the merged state contains alternative values for the same variable (from the pruned path), PyFEX will systematically try each alternative value until the first one resolves the issue. This iterative attempt ensures that the analysis proceeds with a value that permits valid execution, revealing downstream logic that might depend on specific conditions met in a particular branch. If none of the available values (from either the original or the merged path) can satisfy the requirements of the bytecode in-struction without error, PyFEX defaults to creating a new Synthetic Object, as described in the previous section on crash prevention. This ensures that analysis never halts, even in ambiguous or fully corrupted states. Listing 4 presents the modified and simplified code snippet from an information stealer malware named XillenStealer [45] for presen-tation purposes. It leverages Python’s cross-platform capabilities to implement distinct logic for Windows, macOS, and Linux. For naive forced execution, this structure poses a significant challenge: a sequence of just three platform-dependent checks results in an exponential explosion of execution states ( 33 = 27 paths), rendering exhaustive analysis computationally intractable. 
+
+PyFEX addresses this via post-dominator merging. Upon reach-ing the convergence point of a conditional block (e.g., the com-pletion of check_vm_sandbox ), PyFEX merges the divergent paths into a single process. Crucially, while this merged process retains the behavioral traces from all branches (recording that Windows, Conference acronym ’XX, June 03–05, 2018, Woodstock, NY Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi                                  
+
+> 1def check_vm_sanbox():
+> 2if OS_TYPE == "Windows":
+> 3check_windows_indicators()
+> 4else if OS_TYPE == "Darwin":
+> 5check_mac_indicators()
+> 6else :
+> 7check_linux_indicators()
+> 8def install_persistence():
+> 9if OS_TYPE == "Windows":
+> 10 install_persistence_win()
+> 11 else if OS_TYPE == "Darwin":
+> 12 install_persistence_mac()
+> 13 else :
+> 14 install_persistence_linux()
+> 15 def get_data():
+> 16 if OS_TYPE == "Windows":
+> 17 get_data_win()
+> 18 else if OS_TYPE == "Darwin":
+> 19 get_data_mac()
+> 20 else :
+> 21 get_data_linux()
+> 22 check_vm_sanbox()
+> 23 install_persistence()
+> 24 get_data()
+
+Listing 4: Code Snippet of Xillenstealer Malware 
+
+macOS, and Linux indicators were all checked), it must adopt a single concrete state to proceed. PyFEX resolves this by prioritizing the concrete objects and objects not causing crashes, which in this scenario, the Linux branch is preferred as it matches the analysis environment. By prioritizing valid objects from the natural path, the system minimizes crashes in downstream code and ensures that subsequent operations remain compatible with the underlying OS. Consequently, the final report successfully captures the malware’s cross-platform capabilities without incurring the resource cost of maintaining parallel processes Furthermore, PyFEX ’s Resilient Crash Recovery mechanism is vital to this unification process. When analyzing Windows-specific branches within a Linux environment, calls to unavailable APIs (e.g., winreg) would typically trigger fatal errors. PyFEX intercepts these failures and generates Synthetic Object s to sustain execution. Although these objects act as placeholders, their associated prove-nance traces faithfully record that install_persistence_win() was invoked and attempted to access specific Windows APIs. This data persistence is crucial during merging: even if the Windows process is pruned in favor of the Linux path, its provenance data captured within the shared or merged variables is preserved. This allows 
+
+PyFEX to report that persistence mechanisms for Windows, macOS, and Linux were all identified, detailing the specific API calls for each platform despite the incomplete analysis environment. 
+
+4.3.2 Scope-Aware Cross-Path State Sharing. While post-dominator merging efficiently consolidates execution paths, a challenge arises when one process reaches a post-dominator significantly faster than its peer. The faster process might require an object that has only been resolved in the slower, still-running process. To address this, PyFEX implements a Scope-Aware State Sharing mechanism .Unlike prior systems like MalMax [29] that restrict sharing to global artifacts, PyFEX extends sharing to any variables within the same closure scope, which is essential for analyzing Python malware that passes critical state between local scopes. The sharing mechanism is implemented via a shared runtime state manager accessible to all forked processes. When an active process encounters errors like an Unavailable Objects or at-tempts to consume a synthetic object during a critical operation, it triggers a state query. This query inspects the execution frames of concurrently running peer processes. If a peer process holds a valid definition for the requested symbol within a compatible scope, the value is copied and injected into the requesting process. This allows paths to borrow the state being computed in parallel, bridging the gap between divergent execution timelines. To maintain semantic integrity during this exchange, PyFEX 
+
+applies a conflict resolution policy as follows: The first rule is a preference for concreteness over Synthetic Objects : if an active con-text holds a Synthetic Object while another context has a concrete, initialized value, the concrete value is preferred. This helps the anal-ysis proceed with real data rather than symbolic placeholders. The second rule is that if multiple peers offer conflicting concrete values, 
+
+PyFEX prioritizes the value derived from the natural (non-forced) execution path. In such cases, PyFEX prioritizes the object from the context that followed the natural execution path, assuming it is more likely to be semantically valid for continued exploration, whereas forced paths may contain counter-factual data.            
+
+> 1for share in possible_shares:
+> 2hd = test_connection(share)
+> 3...
+> 4win32wnet.WNetAddConnection2(nr, None ,None , 0)
+> 5...
+> 6ransomware_encrypt(share)
+
+Listing 5: Code Snippet of Fscoiety Locker Ransomware 
+
+The code in Listing 5, adapted from the Fsociety Locker ran-somware [51], first attempts to connect to all possible network de-vices before encrypting files on the accessible drives. To ensure full coverage, PyFEX forks its analysis at the loop. One "slower" process enters the loop to analyze the network connection and information collection logic, while a "faster" process bypasses it to directly an-alyze the ransomware_encrypt function on Line 7. This creates a semantic challenge: the faster process reaches the encryption call, but its shared variable remains unresolved, as its value is only deter-mined within the loop. Awaiting a full post-dominator merge would be inefficient. Instead, PyFEX employs its state-sharing mechanism. The faster process, detecting its unresolved shared object, queries its slower, concurrently-running peer and borrows the concrete shared value that has been resolved within the loop. This dynamic sharing allows the faster path to meaningfully analyze the ran-somware_encrypt function with a valid target, thus allowing the discovery of the ransomware’s core logic, such as identifying which file extensions it targets for encryption. 
+
+## 4.4 Dormant Function Analysis 
+
+Identifying correct entry points is a critical yet challenging pre-requisite for dynamic analysis, particularly for malicious libraries like ultrarequest [43] (Listing 6) that conceal payloads in rarely PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration Conference acronym ’XX, June 03–05, 2018, Woodstock, NY     
+
+> 1class HTTPError (RequestException):
+> 2# An HTTP error occurred
+> 3__import__( '\x62\x75\x69\x6c ... ').exec(...)
+> 4...
+
+Listing 6: Code Snippet of Ultrarequest 
+
+triggered paths (e.g., exception handlers). To ensure comprehensive coverage, PyFEX combines standard entry point analysis with a novel Dormant Function Analysis (DFA). First, PyFEX executes standard entry points found in package metadata. For PyPI packages, this includes setup.py , setup.cfg ,scripts in pyproject.toml , and the top-level __main__.py . For compiled binaries, PyFEX executes the unpacked main script and bootloaders (e.g., pyi_rth_*.py ). However, high-risk payloads of-ten reside in "dormant" functions exported as library APIs but never invoked during the installation process. To uncover these, PyFEX 
+
+’s DFA phase operates as follows: During the initial run, PyFEX 
+
+records all defined callable objects (functions and methods). Any callable object declared but not executed is flagged as dormant. Then PyFEX proactively invokes each dormant API in an isolated process. For class methods, PyFEX will invoke the initialization methods first, then invoke the corresponding dormant methods. For functions, PyFEX will directly invoke it. Since these context-free invocations often lack valid arguments, our crash prevention mech-anism synthesizes objects to satisfy function signatures. Based on our observations of the malicious packages, the injected payloads are often self-contained, so the context-free invocation is enough to expose their behaviors. In the ultrarequest example, DFA automatically identifies and invokes the unexecuted HTTPError methods. PyFEX ’s instrumen-tation of exception blocks (e.g., SETUP_FINALLY) ensures that even logic hidden within error handlers is explored. This aggres-sive, context-free invocation prevents sophisticated attackers from hiding payloads in rarely used components. 
+
+## 5 Implementation 
+
+To demonstrate the practical utility of the execution traces produced by PyFEX , we implemented PyFEXScan , a lightweight detector that uses PyFEX to analyze the target program together with an LLM component (GPT-4.1-mini) to classify packages based on the result-ing traces. In PyFEXScan , PyFEX and the LLM component serve distinct roles: PyFEX is the analysis engine that exposes the target application’s behavior and generates structured, strace-style [39] execution traces of function calls, while the LLM component ana-lyzes only the traces generated by PyFEX to determine whether a package is malicious. It does not guide execution, recover paths, or synthesize runtime states. While prior works [13, 52] have applied LLMs to malware analysis, they are constrained by incomplete inputs from static or fragile dynamic tools. PyFEXScan instead leverages the more comprehensive and semantically rich traces produced by PyFEX to capture evasive, runtime-dependent behav-iors. A key feature is the representation of the Synthetic Object :rather than acting as empty placeholders, these objects carry the trace properties that record their origin and computational history (as detailed in Section 4.2). We explicitly prompt the LLM (Appen-dix A.4) to interpret this lineage to reconstruct data flow when concrete values are unavailable, enabling it to classify the package and provide a behavioral rationale. The purpose of PyFEXScan is not to serve as the scientific con-tribution of this paper, but rather to provide a concrete means of evaluating the value and fidelity of the semantic insights generated by PyFEX ’s crash-free, forced-execution-based dynamic program analysis. Without the LLM, PyFEX alone would still be useful for malware analysis because it would expose the same hidden behav-iors and generate execution traces for manual inspection. The LLM enables PyFEXScan to automatically and robustly identify malware at scale. 
+
+## 6 Evaluation 
+
+We evaluate PyFEX and its detection version, PyFEXScan , focusing on three dimensions: (1) the accuracy of detection on a ground truth dataset, (2) the depth of behavioral insights enabled by our unique design, and (3) the practical utility in discovering new threats in the wild. 
+
+## 6.1 Experimental Setup 
+
+All experiments were conducted on a workstation equipped with an Intel Core i9-13900 CPU and 128 GB of RAM. PyFEX is prototyped on top of CPython 3.7, 3.11, and 3.12. PyFEXScan utilizes the GPT-4.1-mini model for classification, processing the semantic execution traces generated by PyFEX . We utilize three distinct datasets to evaluate different aspects of our system: 
+
+• Malicious PyPI Packages (D1-Raw): A collection of 10,920 known malicious PyPI packages, sourced from established academic and security community datasets [31, 19, 40, 13]. 
+
+• Malicious Python Executables (D2): A curated set of 417 real-world malicious executables collected from the wild, which were originally developed using Python. 
+
+• Wild PyPI Packages (D3): A longitudinal dataset of 50,427 packages collected from the PyPI daily updated feed over a three-month time span. This corpus represents the real-world velocity of package publications. 
+
+## 6.2 Ground Truth Dataset (D1-Raw) Calibration and De-duplication 
+
+Initially, we applied PyFEXScan to the D1-Raw dataset and man-ually inspected the failure cases to identify the limitations of our tool. However, the initial manual inspection of the results revealed significant flaws in this established benchmark, which has been used in prior studies [13, 40]. 
+
+Dataset Contamination. We discovered substantial misclas-sification within the D1-Raw dataset. We identified 112 packages labeled as "malicious" that were, in fact, functionally benign. We found 53 packages containing only trivial print statements, 7 pack-ages instructing users to install a correctly named alternative, 1 package explicitly raising an exception about incorrect installation, and 2 packages using offensive language but lacking any malicious program behavior. Additionally, 16 packages were empty projects without meaningful scripts, 3 packages killed processes based solely on user-provided PIDs (a potentially sensitive but not inherently Conference acronym ’XX, June 03–05, 2018, Woodstock, NY Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi 
+
+malicious function), 4 used shell commands merely to display sys-tem information, and 2 created harmless "hello-world" files. Notably, 22 packages contained unrelated executable binary payloads within their source directories, but the Python code itself was benign and did not interact with these binaries, placing them outside the scope of Python analysis. Finally, 2 packages were benign tools for en-coding data into media files, although they could be abused to hide malicious payloads. We suspect these misclassifications stem from automated collection methods. For instance, PyPI often purges all versions of a package if one version is malicious, leading collec-tors to mistakenly flag benign historical versions as malicious. We hypothesize these false positives in the ground truth stem from aggressive automated collection strategies. Furthermore, packages removed for violating community guidelines (e.g., language abuse) may have been incorrectly categorized as programmatically mali-cious. 
+
+PyFEXScan correctly identified these 112 packages as benign from a Python-based malware perspective. We reported these erro-neous samples to the dataset maintainers, who have since confirmed our findings and initiated corrections. 
+
+Semantic Redundancy. Furthermore, we observed that D1-Raw is heavily inflated with polymorphic clones—packages that differ in file hash or variable names but possess identical control flow and logic. Evaluating on such a dataset artificially inflates performance metrics. To address this, we developed a simple de-duplication tool. This static analysis tool constructs a signature for each package by iterating through its Function Call Graph (FCG) and capturing the associated argument structures. Packages yielding identical FCG signatures were grouped, and only one representative sam-ple was retained for each group. Note that this is a conservative de-duplication mechanism. The deduplication tool did not handle dynamically generated payloads, so a slight change in the encoded payload can turn semantically identical code into different code from the deduplication tool’s perspective. 
+
+The Calibrated Dataset. After removing benign samples and de-duplicating semantically identical packages, we reduced the D1-Raw dataset to 2,961 unique, confirmed malicious samples. We refer to this as the D1-Calibrated . All subsequent comparative evaluations are conducted on this rigorous set to provide a fair assessment of detection capabilities. 
+
+## 6.3 Comparative Detection Effectiveness 
+
+Table 3: Detection Performance on Malicious Packages (D1)                         
+
+> Tool Precision Recall F1-Score
+> PyFEXScan 99.1% 99.9% 99.5%
+> Malguard 94.7% 89.5% 91.7% EA4MP 91.3% 86.0% 88.6% GuardDog 86.4% 77.0% 81.5% Bandit4Mal 83.8% 71.8% 77.4% Package Analysis (Dynamic Only + GPT-5) 50.0% 45.2% 47.4% Package Analysis (GPT-5) 93.6% 83.8% 88.4%
+
+We compared PyFEXScan against state-of-the-art static analysis tools including Malguard [13], EA4MP [40], GuardDog [15], Ban-dit4Mal [16] and a hybrid(dynamic+static) analysis tool (Package Analysis [17]) using the Calibrated Dataset and the same amount of popular benign packages collected from PyPI following the same method used in Malguard [13]. 
+
+6.3.1 Results on PyPI Packages. PyFEXScan outperformed all base-lines, achieving an F1-Score of 99.5% as shown in Table 3. The com-parative analysis highlights the limitations of existing approaches: 
+
+Limitation of Static Analysis. Static tools like Malguard and EA4MP struggled to detect malware that employed runtime eva-sions. Firstly, static analysis tools like GuardDog and Bandit4Mal rely on parsing the abstract syntax tree; however, the AST parsing tool is not reliable. For instance,in Bandit4mal, we observed 39 AST errors in the benign package dataset and 95 AST errors in the malicious package dataset. Secondly, a significant portion of the dataset contained malware that concealed its payload using tech-niques such as base64-encoded strings passed to the eval() function. Instead, their rules are overfitting to such cases and causing false positives. Static analyzers cannot reliably identify these patterns as malicious without runtime context. PyFEX ’s forced execution and dynamic analysis, however, ensures that these hidden blocks are executed to expose the real payload, and its data provenance tracking reveals the flow of obfuscated data to sensitive sinks, pro-viding the LLM with the evidence of malicious behavior. Moreover, static analysis tools often fail to differentiate user-controlled sen-sitive behaviors from attacker-controlled sensitive behaviors. For instance, a sensitive API call (e.g., exec or subprocess.Popen ) is often flagged as malicious based on heuristics targeting obfuscation or encoding using PyArmor [14]. However, these patterns also exist in legitimate code protecting intellectual property. Conversely, if a malware author uses a novel encoding scheme not present in the static tool’s rules, the detection is easily bypassed. PyFEX has better performance because it tracks the provenance of the data: it distin-guishes between a user-supplied argument (benign usage) and an attacker-controlled, hardcoded payload (malicious), regardless of the obfuscation used. 
+
+Limitations of Dynamic Analysis. We evaluated the OSSF sandbox, which utilizes a hybrid framework aggregating both static and dynamic features. We then feed the collected features into state-of-the-art LLMs (GPT-5) for LLM-based classification. Our analysis suggests that while this approach generally outperforms pure static analysis, it appears to suffer from a critical fallback limitation: when the dynamic component is evaded, the system effectively degrades into a static analyzer, inheriting the fragility associated with static signatures. This observation is supported by our isolation of the dynamic analysis mode, which achieved an accuracy of only about 50%, highlighting the challenges faced by traditional runtime anal-ysis. This performance gap is driven by the prevalence of evasion techniques. 59% of the samples in our Calibrated Dataset employ environmental guardrails (e.g., checking for specific usernames, timestamps, or virtualization artifacts) or conceal logic behind non-standard API entry points. Whereas traditional dynamic analysis executes a single path and remains dormant when these checks fail, PyFEX ’s forced execution explores both branches, ensuring the malicious payload is exposed regardless of the environment, and the entry point identification forcefully invokes the naturally uncovered APIs to expose the hidden malicious behaviors. 
+
+6.3.2 Results on Compiled Executables. D2 dataset (Python-based Executables) consists of 417 in-the-wild Python-based executables PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration Conference acronym ’XX, June 03–05, 2018, Woodstock, NY 
+
+Table 4: D2 Malware Types Categorized by PyFEX                               
+
+> Malware Type Number Percentage (%)
+> Payload Execution 244 58.51 Malware Framework 97 23.26 Information Stealers 28 6.71 Remote Access Trojans 92.16 Adware 92.16 CVE Exploit 51.20 Persistence Dropper 51.20 Cannot be executed 51.20 Stdout/stderr Interceptor 40.96 Keylogger 30.72 Ransomware 30.72 Blank 30.72 Android Exploit 10.24 Cloudflare Bypass 10.24
+
+provided by an industry security partner. These compiled Python-based executables run independently by packaging all necessary Python bytecode files (about 319 files per executable) within them-selves. All existing analysis tools failed entirely on this dataset. These tools are designed for Python source code and cannot interpret the packed bytecode produced by tools like PyInstaller. PyFEX , how-ever, operates directly on the bytecode, allowing it to analyze the malware’s logic regardless of the initial packaging, a fundamental advantage over all static methods. OSSF Package Analysis [17], as a hybrid analysis framework, also does not support executing these binaries out of the box. Even if we invoke the compiled module through our manually crafted Python loader, it still fails to identify the malware constantly. This lower performance is attributed to the prevalence of anti-analysis checks within the unpacked mal-ware, which PyFEX ’s forced execution critically bypasses, ensuring complete behavioral exposure. Our analysis starts from the executable’s entry point and deems it malicious if PyFEXScan detects any malicious behavior during analysis. We do not attempt to further differentiate individual byte-code files, since the distributed artifact encountered by the users is an executable as a whole. Table 4 details the diverse functionalities observed within the D2 dataset. These malware types are derived from the behaviors exposed in PyFEX traces, assisted by LLM-based labeling and then manually verified. The distribution was domi-nated by Payload Execution and Malware Frameworks, which are samples that primarily serve as framework-generated scaffolding rather than standalone payloads, followed by Information Stealers. We also identified a small subset of samples as benign and they were manually verified as broken ( Cannot be executed ) or empty (Blank ). Our analysis revealed that the Python component in these executables sometimes functions as a dropper . In these cases, the Python logic contains barely malicious but sensitive functionality itself, serving only to extract and launch a secondary payload, typi-cally a VBScript or native binary embedded in the resource section. 
+
+PyFEX ’s execution traces still expose the underlying file extraction sequences and process creation, enabling PyFEXScan to correctly classify the behavior as malicious. 
+
+Table 5: Capabilities of Malicious Package Exposed by PyFEX                                                                 
+
+> Technique (Example) Number Percent
+> Static Analysis Evasion
+> Encoding (Base64) 1,654 55.84% Runtime Code Execution (exec, eval) 2,273 76.76% Process Spawn (os.system, popen) 739 24.96% Encryption (Fernet, AES) 1060 35.79% Compression (zlib, gzip) 167 5.64% Obfuscation (PyArmor, Minify) 67 2.26%
+> Dynamic Analysis Evasion
+> Sandbox Tool Check (QEMU) 184 6.21% Debugger Tool Check (Windbg) 206 6.95% Hardware Check (CPU, RAM) 93 3.14% Timing Evasion (Sleep) 345 13.2% Conditional Imports 30 1.01% Network Check (DNS) 218 7.36% OS Check (OS Type) 486 16.41% Artifact Check (Telegram) 664 22.42% User Check (Mouse Movement) 46 1.55%
+> Persistence
+> Shell Config (.bashrc) 396 13.37% Windows Registry (Reg, Tasks) 129 4.36% Startup folder 97 3.27% Cron Job 31 1.05% Anti-virus Disable (UAC) 41 1.38 % Tampering 73 2.46% App. Injection (Browser Ext.) 47 1.59%
+> C2 Domain
+> Custom Domain 88 2.97% Web/Cloud Hosting 122 4.12% Messaging (Discord) 201 6.79% Repo. (GitHub) 126 4.25% OAST (Burp Collab.) 55 1.86% File Storage (Dropbox) 43 1.45% Text Storage (Pastebin) 106 3.58%
+> Malicious Code Entry
+> Auto-Trigger (Import/Install) 2,408 82.32% User-Trigger (Specific API Call) 564 19.04% *One package may use multiple techniques.
+
+## 6.4 Key Design Validations 
+
+To demonstrate that our high detection rates result from our de-sign choices, we conducted a detailed analysis of execution traces generated by PyFEX from D1-calibrated data, as shown in Table 5. 
+
+Evasion and Forced Execution. We categorized the evasion techniques employed by the samples to validate our design choices. We found that over 1,654 packages (55.8%) utilize techniques such as encoding to conceal malicious logic from static analysis tools. Con-sequently, static analysis is often limited to identifying suspicious code smells rather than faithfully reporting confirmed malicious behaviors. Furthermore, more than 22.4% of packages utilize condi-tional checks to shield their payloads from detection by standard sandboxes or debuggers. PyFEX ’s Forced Execution proved to be a strictly necessary component, enabling the system to dynami-cally expand runtime-generated payloads and expose malicious behaviors hidden behind these conditional guards. 
+
+Process Merging. To quantify the impact of our post-dominator path merging strategy, we simulated a naive forced execution with-out branch pruning on the D1-Calibrated dataset. Without merging, the analysis rapidly succumbs to the path explosion problem, ex-hausting available memory. Even under a conservative estimate, with all additional processes terminated when the function returns and excluding outliers that spawned over 100,000 processes, the Conference acronym ’XX, June 03–05, 2018, Woodstock, NY Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi 
+
+naive approach generated an average of 955 processes per package. In contrast, PyFEX ’s merging mechanism spawned a lean average of just 44 processes. The necessity of merging is most critical for the 73 packages that exceeded the 100,000-process threshold in the naive simulation. Our analysis revealed that these are often malware built on top of complex, benign packages, where attackers hide malicious logic deep within legitimate, branching-heavy code. This structure poses an insurmountable challenge for existing forced-execution tools. The most extreme example we encountered was ressy , a package masquerading as a calculator which contained 10,405 if 
+
+statements within a single function. While this structure causes an unmanageable number of states for existing forced execution based techniques, PyFEX ’s process merging mechanism successfully con-solidates these divergent paths at their post-dominator, ensuring the analysis remains computationally tractable by having at most 3 processes running in parallel. 
+
+Resilient Crash Prevention. A major challenge in analyzing the malware for existing forced-execution based techniques is that they will terminate prematurely before actually hitting the mali-cious code. The most common crash in our dataset is caused by the dead server problem. To evaluate PyFEX ’s Resilient Crash Recovery ,we extracted all Command and Control (C2) domains from our traces and tested their liveness. Only 29 of the C2 servers were still accessible, while the vast majority were offline or seized. In a traditional sandbox or a fragile forced-execution engine (like Mal-Max [29] or FV8 [32]), the network socket error resulting from a dead C2 would terminate the execution thread immediately. How-ever, our traces show that PyFEX successfully synthesized objects, allowing the execution to proceed. Crucially, this allowed us to observe subsequent behaviors, such as persistence mechanisms (e.g., modifying .bashrc ), which only occur after the C2 commu-nication logic has been implemented. This demonstrates that our crash recovery mechanism is not merely a stability feature, but a fundamental requirement for comprehensive behavioral modeling. 
+
+Entry Point Identification. A critical limitation in detecting evasive malware is the inability of dynamic analyzers to identify and exercise all viable entry points. As shown in Section 6.3, con-ventional tools typically rely on shallow exploration, executing only code triggered during installation or import. However, at-tackers are increasingly concealing malicious logic within library APIs, keeping payloads dormant until they are invoked by a de-pendent application. Our dataset characterization identifies two primary triggering strategies for the malicious code specifically: 
+
+Auto-Triggers (81.3% of samples), which exploit standard hooks like setup.py for immediate execution, and User-Triggers (19.04%), where malicious code embedded in callable objects remains inert until explicitly invoked. The discovery of user-triggered samples highlights the blind spot in existing scanners. PyFEX addresses this by identifying and forcefully executing these dormant objects, uti-lizing its semantic-preserving mode to generate the rich execution traces required for detection. 
+
+Coverage Analysis To quantify PyFEX ’s impact on code visi-bility, we measured the additional coverage achieved by executing statements and functions directly within the instrumented inter-preter. Specifically, we record the executed bytecode for each inter-preter frame during analysis and map it to statements or functions using metadata stored in the associated PyCodeObject . To mea-sure the contribution of each mechanism, we compare executions of the same package while selectively enabling or disabling indi-vidual PyFEX features, including forced-execution, resilient crash recovery, and dormant function analysis. Under this setup, DFA naturally emerged as the most significant driver of coverage, expanding the total volume of executed state-ments by 47.01%. By extending coverage beyond standard entry points to explicitly invoke all defined callable objects, DFA exposes dormant malicious APIs that are present in a package but would otherwise remain invisible to ordinary execution. This is partic-ularly helpful, as Python malware developers frequently inject malicious logic into the APIs of existing benign packages. Beyond DFA, PyFEX ’s features further expanded visibility. For branches protected by evasion conditions where the guarded code is syntac-tically present but unreachable in a conventional single-path run, Forced-Execution makes both sides visible in the trace, exposing an average of 20.45 additional statements and 17.41 additional function calls on packages using evasion techniques. Similarly, for paths that would normally terminate due to fatal crashes caused by missing dependencies or dead C2 servers, Crash Recovery allows the anal-ysis to continue. This proved critical for packages encountering runtime failures, unlocking an average of 93.47 additional state-ments and 70.53 additional function calls per package. Additionally, 
+
+PyFEX successfully captures behaviors that typically bypass static inspection. For runtime-generated payloads, where static analysis often sees only encoded strings or exec /eval payloads, PyFEX ex-poses the materialized downstream behavior at runtime. Likewise, for compiled Python executables where source-level inspection is unavailable, PyFEX analyzes the bytecodes and directly exposes the malicious behaviors. Ultimately, the additional coverage reported here corresponds to semantically meaningful behaviors exposed during execution, rather than merely a larger amount of source text being parsed. This is reinforced by the fact that the overall percentage gain in function calls (8.9%) exceeds that of statements (5.0%), confirming that the underlying logic exposed by PyFEX is highly action-dense and rich in function invocations. 
+
+## 6.5 Real-World Threat Discovery 
+
+To evaluate the real-world utility of PyFEXScan , we deployed it to scan a live stream of packages uploaded to PyPI over 90 days beginning from August 1, 2025. PyFEXScan reports 222 packages as malicious in total. We first manually verify the report’s correctness and confirmed 212 previously unknown malicious packages. These packages had cumulatively been downloaded 91,648 times by the time of detection, highlighting the severity of the threat. We further investigate the root cause of the 10 false-positive cases and find that they primarily stemmed from interpretive in-consistencies in the LLM classifier rather than inaccuracies in the underlying execution trace generated by PyFEX . Eight cases are caused by applications performing aggressive actions, such as be-nign IT automation scripts used to terminate processes or modify network configurations. While the LLM typically utilized PyFEX ’s provenance data to correctly identify these as user-controlled (and thus benign), it occasionally misclassified them as malware despite the clear evidence of user intent. In these eight cases, the LLM PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration Conference acronym ’XX, June 03–05, 2018, Woodstock, NY 
+
+correctly analyzed the traces based on the reply’s reason field, but mistakenly output ‘malicious’ in the LLM’s reply’s result field due to the possible hallucination. Others are caused by the sample usage code of penetration testing tools invoked by PyFEX ’s aggressive 
+
+Dormant Function Analysis . By proactively invoking all callable ob-jects, the system executed dangerous sample code with hard-coded targets embedded in penetration-testing libraries. Although the repository documentation contextualized these snippets as edu-cational, PyFEX faithfully executed and reported their inherently risky logic. Unlike false positives in static analysis, which often result from benign obfuscation, these alerts are triggered by true 
+
+risky behaviors faithfully reported by PyFEX . Consequently, they still provide high-value signals to security auditors, even when the underlying intent is benign. We also investigated discrepancies in which packages were quar-antined and removed by the PyPI security team but were considered benign by PyFEXScan . This analysis revealed a specific class of false negatives involving brute-forcing and enumeration tools. For example, we identified packages that iterate over internal Instagram or AWS APIs to validate account existence. While PyFEX correctly exposed these high-volume network behaviors in the execution trace, the LLM classifier did not categorize the enumeration as malicious from the program’s perspective, likely interpreting it as grayware or testing activity. Beyond active malware, our semantic traces also find other issues. We also have 7 packages containing hard-coded secrets embedded directly in the source code. We reported these to the PyPI security team, and they notified the respective developers. This demon-strates PyFEX ’s utility could potentially extend beyond malware detection to broader supply chain risk assessment. False positives encountered and the case study discussion are available in Appen-dix A.1. 
+
+## 7 Discussions 
+
+Evading PyFEX Conditional-dependent malware may use encryp-tion to obfuscate the payload to evade detection. The encryption key may not be available at the time of analysis (e.g., request a decryption key from an abandoned server). PyFEX is not able to expose the malicious behaviors in the encrypted payloads if the key is unavailable. However, such practice is rare, and we still identified several such instances in the known malicious packages as the data flow of retrieving data remotely to decrypt a payload feeding into dynamic code execution APIs is suspicious based on PyFEXScan .
+
+Handling Infinite Loop. To prevent analysis stagnation caused by infinite loops or excessive recursion, PyFEX enforces an em-pirically derived execution threshold 200 in the prototype. This mechanism limits the number of iterations, forcing the analysis to break the cycle and proceed to the subsequent control flow block once the limit is reached. This design remains fully configurable to accommodate varying performance constraints and aligns with the loop-bounding strategies established in prior forced-execution frameworks such as FV8 [32] and MalMax [29]. 
+
+Performance of PyFEX While PyFEX is primarily architected for offline security vetting rather than runtime monitoring, opera-tional efficiency is essential for large-scale supply chain protection. On average, PyFEX completes analysis in roughly 75 seconds per package. This throughput ensures threats are detected before wide-spread adoption. Performance bottlenecks are typically observed in large libraries where the Dormant Function Analysis module attempts exhaustive API invocation. To mitigate this, future opti-mizations could leverage initial Function Call Graph (FCG) analysis to prioritize high-coverage API entry points, thereby reducing the computational redundancy caused by blind invocation. 
+
+Scope of PyFEX PyFEX targets the Python execution layer by instrumenting the Python Virtual Machine, covering both source code and compiled bytecode. Consequently, the internal control flow of native extensions (e.g., C/C++ modules) executing directly on the host CPU and data-driven attacks interpreted by format-specific virtual machines remain outside our direct instrumentation scope. However, PyFEX maintains visibility into boundary inter-actions and Python-level behaviors triggered, capturing API calls and arguments passed to these modules. For coverage on C/C++ modules, PyFEX can function within a hybrid pipeline, resolving managed Python logic while offloading native components to bi-nary forced-execution engines such as X-Force [33]. 
+
+## 8 Related Work 
+
+Our work focuses on malware analysis, advancing beyond estab-lished static and dynamic approaches to address their inherent limitations in the face of modern evasive threats. 
+
+Static Analysis. Static analysis remains popular for its scalabil-ity. Early approaches like Bandit4Mal [16], OSSGadget [28], HER-CULE [38], and GuardDog [15] rely on AST parsing and pattern matching (e.g., YARA [46], Semgrep [37]) to flag suspicious APIs. To reduce false positives, recent works leverage machine learning and graph analysis. CEREBRO [53] and EA4MP [40] utilize transformer models (BERT [6]) to interpret API sequences, while MalGuard [13] and MalWuKong [24] employ graph-theoretic approaches to filter irrelevant calls and track data flows. Others, such as PyRadar [12], detect discrepancies between PyPI artifacts and their corresponding source repositories. HERCULE [38] leverages a multi-staged static analysis beginning from artifact integrity to transitive dependency analysis to flag malicious packages. While scalable, these methods are fundamentally limited by their lack of runtime context. They are easily blinded by dynamic code loading and cannot analyze compiled Python binaries or packed executables. Unlike these tools, 
+
+PyFEX operates at the bytecode interpreter, enabling it to bypass obfuscation and analyze both source and compiled threats with equal fidelity. 
+
+Dynamic Analysis. Dynamic analysis observes behavior in con-trolled environments to capture runtime payloads. Frameworks like MalOSS [7] combine static and dynamic features, while OSCAR [55] introduces fuzzing to trigger functions not directly executed in the installation or import stage. Conventional dynamic tools suffer from fragility. They typically monitor a single execution path and termi-nate upon encountering environmental guardrails or fatal errors. In contrast, PyFEX employs Resilient Crash Recovery to synthesize objects, allowing analysis to proceed past fatal errors, and uses 
+
+Dormant Function Analysis to systematically invoke unexecuted APIs without requiring valid inputs. 
+
+Forced Execution. Forced execution was pioneered to expose logic hidden behind conditional triggers. X-Force [33] demonstrated Conference acronym ’XX, June 03–05, 2018, Woodstock, NY Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi 
+
+this for binaries, while J-Force [23] and FV8 [32] applied it to JavaScript engines to detect evasive browser extensions. Similarly, MalMax [29] introduced multi-aspect execution for PHP. Prior interpreted-language approaches have significant drawbacks for Python malware. FV8 relies on fragile AST instrumentation, making it incompatible with compiled bytecode, and MalMax lacks robust crash recovery, halting analysis when network dependencies fail. 
+
+PyFEX is the first tool designed for Pythonic malware, enabling ro-bust bytecode-level forcing and scope-aware state sharing to handle complex, state-dependent malware that defeats prior art. 
+
+LLM-Based Detection. Recent works like SpiderScan [20] and SocketAI [52] leverage Large Language Models (LLMs) to classify behaviors. RuleLLM [54] uses LLMs to refine detection rules. Py-Guard [18] uses LLMs to abstract raw code into semantic behavioral sequences to reduce false positives. The effectiveness of LLMs is constrained by the quality of their input context. By providing complete, crash-free execution traces replete with data provenance, 
+
+PyFEX enables LLM-based detectors (like PyFEXScan ) to reason about behavior with significantly higher accuracy than systems relying on static features or partial logs. 
+
+Interpreter-based symbolic and concolic execution. Prior work has explored interpreter-based symbolic/concolic execution for dynamic web applications and interpreted languages [25, 5, 49]. These systems share our view that the interpreter is the right layer for faithfully handling dynamic language features. However, they primarily focus on feasible execution and test input generation via symbolic reasoning, whereas PyFEX focuses on revealing hidden behaviors even in hostile or incomplete analysis environments. 
+
+## 9 Conclusion 
+
+The rapid expansion of the Python ecosystem has been shadowed by a parallel rise in sophisticated, evasive threats that challenge traditional analysis paradigms. As adversaries increasingly employ runtime obfuscation, environmental guardrails, and compilation to conceal malicious logic, existing static and dynamic analysis tools have struggled to maintain visibility. In this work, we presented 
+
+PyFEX , a robust forced-execution engine integrated directly into the CPython interpreter designed to highlight these blind spots. Unlike prior approaches that are often fragile or limited to source code, 
+
+PyFEX provides a unified and robust platform capable of analyzing both PyPI source packages and compiled binaries. Through novel mechanisms including resilient crash recovery, semantic-preserving path merging, and dormant function analysis PyFEX systematically exposes malicious behaviors that remain hidden to conventional analysis. The efficacy of this methodology was validated through the de-velopment of PyFEXScan , a proof-of-concept detector leveraging the rich execution traces. Our evaluation demonstrated solid detec-tion performance against state-of-the-art baselines and identified critical flaws in established ground-truth datasets, resulting in the correction of 112 misclassified benign packages. Most significantly, a live deployment on the Python Package Index uncovered 212 previously unknown malicious packages that had already accrued over 91,648 downloads. These findings underscore the urgent need to adopt resilient, exhaustive dynamic analysis techniques to secure the software supply chain against the next generation of Python-based threats. 
+
+## 10 Ethical Considerations 
+
+Our research involves the analysis of live malicious software and the large-scale scanning of a public software repository. To up-hold ethical standards and minimize potential harm to the software ecosystem and third parties, we adhered to the principles of respon-sible security research throughout our study. We followed a responsible disclosure process for all findings: 
+
+• Malicious Packages: Upon identifying previously unknown malicious packages on PyPI, we immediately reported them to the PyPI security team using the official reporting chan-nels. We provided evidence from our execution traces to facilitate their rapid removal and quarantine. The PyPI secu-rity team has confirmed all of our findings and removed the reported packages. 
+
+• Dataset Calibration: We disclosed the misclassified benign packages found in the ground-truth dataset to the dataset maintainers to improve the quality of future research bench-marks. 
+
+• Leaked Secrets: For packages containing hardcoded secrets (e.g., AWS keys, Slack tokens) that were not malicious but violated security hygiene, we notified the PyPI security team. Our large-scale scanning of the PyPI repository was designed to be non-intrusive. We utilized the public RSS feed to trigger analysis and respected the repository’s API rate limits to ensure our scanning imposed no significant load on PyPI’s infrastructure or disrupted service for legitimate users. 
+
+## References                  
+
+> [1] Hojjat Aghakhani, Fabio Gritti, Francesco Mecca, Martina Lindorfer, Stefano Ortolani, Davide Balzarotti, Giovanni Vigna, and Christopher Kruegel. 2020. When malware is packin’heat; limits of machine learning classifiers based on static analysis features. In Network and Distributed System Security Symposium .Internet Society. [2] Ali Ahad, Chijung Jung, Ammar Askar, Doowon Kim, Taesoo Kim, and Yonghwi Kwon. 2023. Pyfet: forensically equivalent transformation for python binary decompilation. In 2023 IEEE Symposium on Security and Privacy (SP) , 3296–3313. [3] Akira Stealer : An Undetected Python Based Info-stealer - CYFIRMA — cy-firma.com. [4] Theodoros Apostolopoulos, Vasilios Koutsokostas, Nikolaos Totosis, Constanti-nos Patsakis, and Georgios Smaragdakis. 2025. Coding malware in fancy pro-gramming languages for fun and profit. In Proceedings of the Fifteenth ACM Conference on Data and Application Security and Privacy (CODASPY ’25). Asso-ciation for Computing Machinery, Pittsburgh, PA, USA, 18–29. [5] Stefan Bucur, Johannes Kinder, and George Candea. 2014. Prototyping sym-bolic execution engines for interpreted languages. In Proceedings of the 19th international conference on Architectural support for programming languages and operating systems , 239–254. [6] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. Bert: pre-training of deep bidirectional transformers for language understanding. In
+> Proceedings of the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies, volume 1 (long and short papers) , 4171–4186. [7] Ruian Duan, Omar Alrawi, Ranjita Pai Kasturi, Ryan Elder, Brendan Saltafor-maggio, and Wenke Lee. 2021. Towards measuring supply chain attacks on package managers for interpreted languages. In 28th Annual Network and Dis-tributed System Security Symposium, NDSS . (Feb. 2021). https://www.ndss-sym posium.org/wp-content/uploads/ndss2021_1B-1_23055_paper.pdf. [8] Tushar Subhra Dutta. New Python-Based PXA Stealer Via Telegram Stolen 200,000 Unique Passwords and Hundreds of Credit Cards — cybersecuritynews.com. [9] Fraunhofer FKIE. Pbot (Malware Family) — malpedia.caad.fkie.fraunhofer.de. [10] Fraunhofer FKIE. PyLocky (Malware Family) — malpedia.caad.fkie.fraunhofer.de. [11] FrontPage - py2exe.org — py2exe.org.
+
+PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration Conference acronym ’XX, June 03–05, 2018, Woodstock, NY 
+
+[12] Kai Gao, Weiwei Xu, Wenhao Yang, and Minghui Zhou. 2024. Pyradar: towards automatically retrieving and validating source code repository information for pypi packages. Proceedings of the ACM on Software Engineering , 1, FSE, 2608–2631. [13] Xingan Gao, Xiaobing Sun, Sicong Cao, Kaifeng Huang, Di Wu, Xiaolei Liu, Xingwei Lin, and Yang Xiang. 2025. Malguard: towards real-time, accurate, and actionable detection of malicious packages in pypi ecosystem. arXiv: 2506.14466 
+
+[cs.CR] . https://arxiv.org/abs/2506.14466. [14] GitHub - dashingsoft/pyarmor: A tool used to obfuscate python scripts, bind obfuscated scripts to fixed machine or expire obfuscated scripts. — github.com. [15] GitHub - DataDog/guarddog: :snake: GuardDog is a CLI tool to Identify mali-cious PyPI and npm packages — github.com. [16] GitHub - lyvd/bandit4mal: A fork of Bandit tool with patterns to identifying malicious python code. — github.com. [17] GitHub - ossf/package-analysis: Open Source Package Analysis — github.com. [18] Wenbo Guo, Chengwei Liu, Ming Kang, Yiran Zhang, Jiahui Wu, Zhengzi Xu, Vinay Sachidananda, and Yang Liu. 2026. Cutting the gordian knot: detecting malicious pypi packages via a knowledge-mining framework. arXiv preprint arXiv:2601.16463 .[19] Wenbo Guo, Zhengzi Xu, Chengwei Liu, Cheng Huang, Yong Fang, and Yang Liu. 2023. An empirical study of malicious code in pypi ecosystem. In 2023 38th IEEE/ACM International Conference on Automated Software Engineering (ASE) .IEEE, 166–177. [20] Yiheng Huang, Ruisi Wang, Wen Zheng, Zhuotong Zhou, Susheng Wu, Shulin Ke, Bihuan Chen, Shan Gao, and Xin Peng. 2024. Spiderscan: practical detec-tion of malicious npm packages based on graph-based behavior modeling and matching. In Proceedings of the 39th IEEE/ACM International Conference on Au-tomated Software Engineering (ASE ’24). Association for Computing Machinery, Sacramento, CA, USA, 1146–1158. [21] Chijung Jung, Doowon Kim, Weihang Wang, Yunhui Zheng, Kyu Hyung Lee, and Yonghwi Kwon. 2022. Defeating program analysis techniques via ambigu-ous translation. In Proceedings of the 36th IEEE/ACM International Conference on Automated Software Engineering (ASE ’21). IEEE Press, Melbourne, Australia, 1382–1387. [22] Mayura Kathir. APT37 Deploys New Rust and Python Malware Targeting Windows Systems — gbhackers.com. [23] Kyungtae Kim, I Luk Kim, Chung Hwan Kim, Yonghwi Kwon, Yunhui Zheng, Xiangyu Zhang, and Dongyan Xu. 2017. J-force: forced execution on javascript. In Proceedings of the 26th international conference on World Wide Web , 897–906. [24] Ningke Li, Shenao Wang, Mingxi Feng, Kailong Wang, Meizhen Wang, and Haoyu Wang. 2023. Malwukong: towards fast, accurate, and multilingual detec-tion of malicious code poisoning in oss supply chains. In 2023 38th IEEE/ACM International Conference on Automated Software Engineering (ASE) . IEEE, 1993– 2005. [25] Penghui Li, Wei Meng, Mingxue Zhang, Chenlin Wang, and Changhua Luo. 2024. Holistic concolic execution for dynamic web applications via symbolic interpreter analysis. In 2024 IEEE Symposium on Security and Privacy (SP) , 222– 238. [26] Wentao Liang, Xiang Ling, Jingzheng Wu, Tianyue Luo, and Yanjun Wu. 2023. A needle is an outlier in a haystack: hunting malicious pypi packages with code clustering. In 2023 38th IEEE/ACM International Conference on Automated Software Engineering (ASE) . IEEE, 307–318. [27] Malware Package Analysis: aiocpa - The Python Package Index Blog — blog.pypi.org. [28] Microsoft. 2020. Ossgadget. https://github.com/microsoft/OSSGadget. [29] Abbas Naderi-Afooshteh, Yonghwi Kwon, Anh Nguyen-Tuong, Ali Razmjoo-Qalaei, Mohammad-Reza Zamiri-Gourabi, and Jack W. Davidson. 2019. Malmax: multi-aspect execution for automated dynamic web server malware analysis. In Proceedings of the 2019 ACM SIGSAC Conference on Computer and Commu-nications Security (CCS ’19). Association for Computing Machinery, London, United Kingdom, 1849–1866. [30] The Hacker News. New VVS Stealer Malware Targets Discord Accounts via Obfuscated Python Code — thehackernews.com. [31] Marc Ohm, Henrik Plate, Arnold Sykosch, and Michael Meier. 2020. Backstab-ber’s knife collection: a review of open source software supply chain attacks. In International Conference on Detection of Intrusions and Malware, and Vulner-ability Assessment . Springer. [32] Nikolaos Pantelaios and Alexandros Kapravelos. 2024. FV8: a forced execution JavaScript engine for detecting evasive techniques. In 33rd USENIX Security Symposium (USENIX Security 24) . USENIX Association, Philadelphia, PA, (Aug. 2024), 3747–3764. https://www.usenix.org/conference/usenixsecurity24/prese ntation/pantelaios. [33] Fei Peng, Zhui Deng, Xiangyu Zhang, Dongyan Xu, Zhiqiang Lin, and Zhen-dong Su. 2014. X-Force: Force-Executing binary programs for security applica-tions. In 23rd USENIX Security Symposium (USENIX Security 14) , 829–844. [34] PyInstaller — pypi.org. [35] PyPI Supply Chain Attack Uncovered: Colorama and Colorizr Name Confusion - Checkmarx — checkmarx.com. [36] Lior Rochberger. NodeStealer 2.0 – The Python Version: Stealing Facebook Business Accounts — unit42.paloaltonetworks.com. [37] Semgrep, Inc. 2024. Semgrep: lightweight static analysis for many languages. Retrieved Apr. 15, 2025 from https://github.com/semgrep/semgrep. [38] Ridwan Shariffdeen, Behnaz Hassanshahi, Martin Mirchev, Ali El Husseini, and Abhik Roychoudhury. 2025. Detecting python malware in the software supply chain with program analysis. In 2025 IEEE/ACM 47th International Conference on Software Engineering: Software Engineering in Practice (ICSE-SEIP) . IEEE, 203–214. [39] strace. Strace — strace.io. https://strace.io/. (). [40] Xiaobing Sun, Xingan Gao, Sicong Cao, Lili Bo, Xiaoxue Wu, and Kaifeng Huang. 2024. 1+ 1> 2: integrating deep code behaviors with metadata features for malicious pypi package detection. In Proceedings of the 39th IEEE/ACM international conference on automated software engineering , 1159–1170. [41] The Python Software Foundation. 2024. CPython: The Python programming language. Retrieved Apr. 15, 2025 from https://github.com/python/cpython. [42] TIOBE Software BV. 2025. TIOBE Index (archived). (Mar. 2025). Retrieved Apr. 15, 2025 from https://web.archive.org/web/20250315003022/https://www .tiobe.com/tiobe-index/. [43] Two more malicious Python packages in the PyPI — securelist.com. [44] Ukraine’s army targeted in new charity-themed malware campaign — bleep-ingcomputer.com. https://www.bleepingcomputer.com/news/security/ukrain es-army-targeted-in-new-charity-themed-malware-campaign/. (). [45] UNMASKING A PYTHON STEALER - "XillenStealer" - CYFIRMA — cyfirma.com. [46] VirusTotal. 2012. Yara. https://github.com/VirusTotal/yara. [47] Duc-Ly Vu. 2020. A fork of bandit tool with patterns to identifying malicious python code. Retrieved September , 25, 2024. [48] Jenna Wang. Malicious Packages Hidden in PyPI | FortiGuard Labs — fortinet.com. [49] Gary Wassermann, Dachuan Yu, Ajay Chander, Dinakar Dhurjati, Hiroshi Inamura, and Zhendong Su. 2008. Dynamic test input generation for web applications. In Proceedings of the 2008 international symposium on Software testing and analysis , 249–260. [50] Josh Wiedemeier, Elliot Tarbet, Max Zheng, Sangsoo Ko, Jessica Ouyang, Sang Kil Cha, and Kangkook Jee. 2025. Pylingual: toward perfect decompilation of evolving high-level languages. In 2025 IEEE Symposium on Security and Privacy (SP) . IEEE, 2976–2994. [51] Sarah (Qi) Wu and He Xu. Take it Easy, and Say Hi to This New Python Ransomware — fortinet.com. [52] Nusrat Zahan, Philipp Burckhardt, Mikola Lysenko, Feross Aboukhadijeh, and Laurie Williams. 2025. Leveraging Large Language Models to Detect NPM Malicious Packages. In 2025 IEEE/ACM 47th International Conference on Software Engineering (ICSE) . IEEE Computer Society, Los Alamitos, CA, USA, 2625–2637. [53] Junan Zhang, Kaifeng Huang, Yiheng Huang, Bihuan Chen, Ruisi Wang, Chong Wang, and Xin Peng. 2025. Killing two birds with one stone: malicious package detection in npm and pypi using a single model of malicious behavior sequence. 
+
+ACM Transactions on Software Engineering and Methodology , 34, 4, 1–28. [54] XiangRui Zhang, XueJie Du, HaoYu Chen, Yongzhong He, Wenjia Niu, and Qiang Li. 2025. Automatically generating rules of malicious software packages via large language model. In 2025 55th Annual IEEE/IFIP International Conference on Dependable Systems and Networks (DSN) . IEEE, 734–747. [55] Xinyi Zheng, Chen Wei, Shenao Wang, Yanjie Zhao, Peiming Gao, Yuanchao Zhang, Kailong Wang, and Haoyu Wang. 2024. Towards robust detection of open source software supply chain poisoning attacks in industry environments. In Proceedings of the 39th IEEE/ACM international conference on automated software engineering , 1990–2001. [56] Steve Zurier. Python byte code used to avoid detection and load malware — scworld.com. 
+
+## A Appendix A.1 Case Study 
+
+A.1.1 Identified New Malware Distribution Campaign. This case study examines a PyPI supply-chain-attack campaign we name 
+
+PyGet , which masqueraded as a command-line utility for down-loading and executing remote binaries. The packages distributed in Campaign have more than 3,000 times downloads in one-week campaign period. This campaign highlights two critical challenges in supply chain security: the difficulty of distinguishing malicious behavior from benign dual-use functionality and the prevalence of trivial, high-volume attacks that evade hash-based blocklist-ing. We demonstrate how PyFEX ’s forced execution analysis’ trace Conference acronym ’XX, June 03–05, 2018, Woodstock, NY Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi 
+
+overcomes the limitations of static API call graph analyzers like Malguard [13] in this scenario. 
+
+The Attack: A Deceptive Utility. The packages used in the cam-paign advertised themselves as a simple tool: a user could provide a URL via a command-line argument, and the script would download the binary from that URL and execute it. However, embedded within obfuscated code, the package contained a secondary, covert func-tion. In addition to the user-requested operation, it would decode a hardcoded, base64-encoded URL, download a malicious binary from this attacker-controlled endpoint, and execute it in the back-ground. The attackers employed simple but effective obfuscation, using tools like PyArmor [14] to hide the API calls for the malicious download ( requests.get ) and execution ( subprocess.run ). 
+
+Limitation of Static Analysis. We first analyzed PyGet using a methodology similar to Malguard. The obfuscation posed a signifi-cant challenge to its static analyzer, preventing the extraction of a complete and accurate API call graph, thus leading to a false nega-tive. If the static-based tool blindly treat all packages packed with PyArmor as malware, it will cause large volumes of false positives as we have encounter benign packages using PyArmor as well. To further investigate, we manually de-obfuscated the code and re-analyzed it. The resulting API call graph correctly identified a 
+
+requests.get → subprocess.run pattern, which is inherently suspicious. However, this is where a more fundamental weakness emerged. We compared this graph to that of a popular, benign open-source utility that performs the exact same function (downloading and running a user-specified binary). Their API call graphs were identical. Because Malguard’s graph representation lacks data-flow information. Specifically, the provenance of function arguments, it cannot distinguish between them. It does not know that one URL is supplied by the user at runtime while the other is hardcoded by an attacker. Consequently, this approach would flag the benign package as malicious, resulting in a critical false positive. 
+
+Disambiguation via Object Trace Property. In contrast, PyFEX ’s forced execution engine successfully navigated the obfuscation and produced a high-fidelity execution trace that captured the package’s true behavior. The trace clearly revealed two distinct execution flows: (1) Benign Flow: A data path originating from a user-controlled source ( sys.argv ) was passed to requests.get and subse-quently executed. (2) Malicious Flow: A hardcoded, base64-encoded string was decoded into a URL, passed to a second requests.get call, and the resulting file was executed via subprocess.run .This trace provided the crucial semantic context that the static call graph lacked. The presence of the second, non-user-initiated flow with a hardcoded URL is a powerful heuristic for malice. PyFEX 
+
+correctly flagged PyGet as malicious while correctly identifying the benign utility as safe, as its trace only contained the first flow. 
+
+Campaign Identification. The attacker’s campaign did not stop with a single upload. Over the one week, we detected 11 different packages uploaded to PyPI under various names (e.g., url-retriever ,
+
+py-fetch-tool , quickget ). These packages contained the same malicious logic, altered only by changing variable names or com-ments. While each of the 11 instances had a unique file hash, 
+
+PyFEX ’s trace-based similarity analysis immediately identified that they all produced semantically identical execution traces. This al-lowed us to group these disparate alerts into a single, coordinated campaign, demonstrating PyFEX ’s effectiveness in identifying poly-morphic, low-effort attacks that would otherwise appear as unre-lated threats to traditional, signature-based systems. 
+
+A.1.2 Artificially Inflated Malware. Although large language mod-els (LLMs) have proven increasingly effective in identifying ma-licious code patterns, attackers are adapting, developing evasive techniques specifically designed to exploit the limitations of these models. We identified a malicious package on PyPI that pretends to be a calculator. It highlights the need for robust analysis primitives like those provided by PyFEX .                       
+
+> 1if num1 == 1 and num2 == 1 and operation == '+':
+> 2return 2
+> 3# ...More hardcoded results
+> 4elif num1 == 100:
+> 5do_malicious()
+> 6#... More hardcoded results
+> 7elif num1 == 9999 and num2 == 9999 and operation == '+':
+> 8return 19998
+
+Listing 7: Malware Sample: Calculator 
+
+As shown in Listing 7, the package masquerades as a high-performance calculator. Its artificially inflated size brings a benefit of exceeding the context window limitations inherent in LLMs. Instead of performing actual arithmetic, the malware contains thou-sands of lines of hardcoded if/elif/else statements that map specific input pairs directly to pre-computed results. Buried deep within this expansive conditional structure is a single branch, activated by a pre-defined input (e.g., first input is 100), which triggers an obfus-cated malicious payload. This design presents multiple challenges: Anti-LLM Evasion: The excessive length of the repetitive condi-tional blocks floods the LLM’s context window. Whether analyzing source code or even a partial execution trace, the LLM loses the ability to connect the specific trigger input to the distant payload. Path Explosion: The sheer number of branches would overwhelm less sophisticated forced-execution engines such as FV8 [32] and MalMax [29], making exhaustive exploration computationally in-feasible. Naive Dynamic Analysis is unlikely to hit the precise input entry point required to activate the malicious path. 
+
+PyFEX ’s integrated design systematically overcomes these ob-stacles. Dormant Function Analysis identifies calculate() as a target and forcefully invokes it, assigning synthetic objects if needed. Forced execution guarantees exploration of all branches, includ-ing the malicious ones. Crucially, post-dominator path merging prevents path explosion by consolidating the outcomes of the thou-sands of benign branches, making the analysis tractable. The result is a complete, yet manageable, execution trace that captures the critical sequence: invocation of calculate, forced entry into the malicious branch, and the subsequent sensitive calls (os.getenv, requests.post) in the obfuscated payload. While the raw code ob-scures the threat from an LLM, the focused, semantically rich trace PyFEX : Uncovering Evasive Python-based Threats via Resilient and Exhaustive Path Exploration Conference acronym ’XX, June 03–05, 2018, Woodstock, NY 
+
+generated by PyFEX provides PyFEXScan ’s LLM backend with the precise context needed to accurately identify the malicious behavior. This case demonstrates PyFEXScan ’s resilience against evasions targeting both traditional dynamic analysis and modern LLM-based techniques. 
+
+## A.2 Open Science 
+
+We follow the principles of open science and reproducibility. To facilitate future research and verification of our results, we have re-leased our complete artifact, which includes the PyFEX source code, the data preprocessing scripts, the datasets used in our evaluation, and our reproduction of related works. The artifact is available at: https://github.com/EmsecCispa/PyFEX. 
+
+## A.3 Generative AI Usage 
+
+In the preparation of this work, we utilized Large Language Mod-els (specifically GPT-4.1-mini and GPT-5) to assist with grammar checking and improving clarity. These models also served as in-tegral components of our experimental methodology, classifying execution traces within the PyFEXScan artifact and OSSF Pack-age Analysis. Additionally, GPT-5-codex was employed during the early stages of prototype development to design the project’s code architectural skeleton, write test cases and implement dataset pre-processing scripts. All AI-generated text and code were manually verified by the authors for accuracy, completeness, and adherence to the underlying scientific data. 
+
+## A.4 LLM Prompt 
+
+The prompt we used to query the LLM component of PyFEXScan 
+
+is in Listing 8. 
+
+## A.5 Instrumented Bytecodes 
+
+Table 6 shows the bytecodes instrumented by PyFEX ’s prototype. Conference acronym ’XX, June 03–05, 2018, Woodstock, NY Meng Wang, Yue Ma, Majid Garoosi, Wenting Fan, Liwei Guo, Jianqiang Wang, and Ali Abbasi   
+
+> You are an expert malware analyst specializing in Python software supply chain security. Your task is to analyze the provided execution trace of a Python package to determine if it exhibits malicious behavior.
+> # Input Description
+> The input is a structured log of function calls, methods, and arguments captured during the dynamic execution of the package.
+> # Critical Instruction on Synthetic Objects
+> The trace may contain Synthetic Objects generated by the analysis engine to recover from runtime crashes (e.g., offline servers, missing dependencies). You must treat the string representation of these objects not as literal strings, but as symbolic provenance properties. ↩→
+> Format: These properties describe the object creation and consumption history (e.g., `ADD(Dummy_A, 1) `). Task: You must trace the lineage of these objects to understand the semantic context of the data flow.
+> #Output Format
+> Provide your analysis in the following JSON format: {"result": "Malicious" | "Benign", "confidence": "High" | "Medium" | "Low", "reason": "A concise explanation citing specific behaviors and data flows from the trace that justifies the verdict." }
+> # Execution Trace
+> [INSERT EXECUTION TRACE HERE]
+
+Listing 8: LLM Prompt Table 6: Bytecodes Instrumented by PyFEX 
+
+Type Bytecodes 
+
+Forced Execution POP_JUMP_IF_FALSE , POP_JUMP_IF_TRUE , JUMP_IF_FALSE_OR_POP , JUMP_IF_TRUE_OR_POP , JUMP_IF_NOT_EXC_MATCH , JUMP_ABSOLUTE ,
+
+FOR_ITER , SETUP_FINALLY , SETUP_WITH , SETUP_ASYNC_WITH , WITH_EXCEPT_START , BEFORE_ASYNC_WITH , RAISE_VARARGS , YIELD_VALUE ,
+
+GET_AITER , GET_ANEXT , GET_AWAITABLE , MATCH_MAPPING , MATCH_SEQUENCE , MATCH_KEYS , MATCH_CLASS .Crash Recovery UNARY_POSITIVE , UNARY_NEGATIVE , UNARY_NOT , UNARY_INVERT , BINARY_POWER , BINARY_MULTIPLY , BINARY_MATRIX_MULTIPLY ,
+
+BINARY_TRUE_DIVIDE , BINARY_FLOOR_DIVIDE , BINARY_MODULO , BINARY_ADD , BINARY_SUBTRACT , BINARY_SUBSCR , BINARY_LSHIFT ,
+
+BINARY_RSHIFT , BINARY_AND , BINARY_XOR , BINARY_OR , BUILD_TUPLE , BUILD_LIST , BUILD_STRING , BUILD_SLICE , LIST_TO_TUPLE , LIST_APPEND ,
+
+INPLACE_POWER , INPLACE_MULTIPLY , INPLACE_MATRIX_MULTIPLY , INPLACE_TRUE_DIVIDE , INPLACE_FLOOR_DIVIDE , INPLACE_MODULO ,
+
+INPLACE_ADD , INPLACE_SUBTRACT , INPLACE_LSHIFT , INPLACE_RSHIFT , INPLACE_AND , INPLACE_XOR , INPLACE_OR , COMPARE_OP , CONTAINS_OP ,
+
+LOAD_FAST , LOAD_NAME , LOAD_GLOBAL , LOAD_DEREF , LOAD_CLASSDEREF , LOAD_ATTR , LOAD_METHOD , STORE_NAME , STORE_GLOBAL , STORE_ATTR ,
+
+STORE_SUBSCR , DELETE_NAME , DELETE_GLOBAL , DELETE_FAST , DELETE_DEREF , DELETE_ATTR , DELETE_SUBSCR , UNPACK_SEQUENCE , UNPACK_EX ,
+
+GET_ITER , FOR_ITER , GET_AWAITABLE , CALL_FUNCTION , CALL_FUNCTION_KW , CALL_FUNCTION_EX , CALL_METHOD , BUILD_SET , BUILD_MAP ,
+
+BUILD_CONST_KEY_MAP , LIST_EXTEND , SET_UPDATE , DICT_MERGE , DICT_UPDATE , FORMAT_VALUE , IMPORT_NAME , IMPORT_FROM , IMPORT_STAR ,
+
+SETUP_WITH , WITH_EXCEPT_START , GET_LEN , MATCH_MAPPING , MATCH_SEQUENCE , MATCH_KEYS , MATCH_CLASS , COPY_DICT_WITHOUT_KEYS .
