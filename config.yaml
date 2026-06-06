@@ -87,6 +87,27 @@ subscriptions:
             updated_at: '2026-06-06T02:35:18.854499+00:00'
       updated_at: '2026-06-06T02:24:36.422Z'
       paused: false
+    - tag: code-vuln
+      description: 查找代码漏洞检测相关的论文
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: code vulnerability detection
+          keyword_cn: 代码漏洞检测
+          query: code vulnerability detection techniques
+      intent_queries:
+        - query: recent research on code vulnerability detection using machine learning
+          query_cn: 使用机器学习进行代码漏洞检测的最新研究
+          enabled: true
+          source: manual
+          note: ''
+        - query: deep learning approaches for vulnerability detection in source code
+          query_cn: 深度学习在源代码漏洞检测中的应用
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-06-06T03:21:54.782Z'
 source_backends:
   arxiv:
     papers_table: arxiv_papers
