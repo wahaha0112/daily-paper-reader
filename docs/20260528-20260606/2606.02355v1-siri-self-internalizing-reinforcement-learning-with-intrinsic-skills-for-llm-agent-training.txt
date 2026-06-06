@@ -1,0 +1,1007 @@
+Title: SIRI: Self-Internalizing Reinforcement Learning with Intrinsic Skills for LLM Agent Training
+
+URL Source: https://arxiv.org/pdf/2606.02355v1
+
+Published Time: Tue, 02 Jun 2026 03:12:55 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# SIRI : Self-Internalizing Reinforcement Learning with Intrinsic Skills for LLM Agent Training 
+
+Zhongyu He 1,2,* , Yuanfan Li 2,* , Fei Huang 2, Tianyu Chen 2, Siyuan Chen 2,† , Xingyang Li 2,† ,Meng Hsuan Yu 2, Xiangrong Liu 1, Leyi Wei 3, Lu Pan 2, Ke Zeng 2, Xunliang Cai 2
+
+> 1
+
+Xiamen University, 2Meituan, 3Macao Polytechnic University, 
+
+Correspondence: hezhongyu@stu.xmu.edu.cn 
+
+Abstract 
+
+Long-horizon LLM agents can benefit from reusable skills, yet existing skill-based meth-ods often rely on external skill generators dur-ing training or persistent skill retrieval at infer-ence, increasing engineering complexity, con-text length, and deployment latency. We pro-pose Self-Internalizing Reinforcement learn-ing with Intrinsic skills (S IRI ), a three-phase framework that enables agents to discover, val-idate, and internalize skills without external skill generators or inference-time skill banks. SIRI first warms up the policy with GiGPO to acquire basic interaction ability and collect successful skill-free trajectories. It then per-forms self-skill mining, where the current pol-icy summarizes compact skills from its own successful plain rollouts and validates them through paired skill-augmented and skill-free rollouts. Finally, S IRI distills only beneficial skill-guided action tokens into the plain policy using trajectory-level utility and action-level advantage. At inference, the agent runs with the original prompt only. On ALFWorld and WebShop with Qwen2.5-7B-Instruct, S IRI im-proves GiGPO from 0.908 to 0.930 on ALF-World and from 0.728 to 0.813 on WebShop, outperforming prompt-based, RL-based, and memory-augmented baselines. Further anal-ysis shows that our self-mining strategy can achieve performance comparable to distilla-tion with closed-source large model. Our code is available at https://github.com/ kirito618/SIRI .
+
+1 Introduction 
+
+Large language models (LLMs) have rapidly evolved from text generators into autonomous agents capable of interacting with external envi-ronments, using tools, and making long-horizon decisions (Brown et al., 2020; Bai et al., 2022; Yao 
+
+> *
+
+These authors contributed equally to this work. 
+
+> †
+
+Corresponding author. Env Agent SkillBank       
+
+> External LLM
+> Env Agent
+> SKILL Env
+> SKILL
+> SkillBank
+> (b) Self -Evolving Skill Internalization (Ours SIRI)
+> (a) Skill Augmentation -based Methods (e.g. SkillRL )
+> 1
+> 2
+> Training
+> Training Inference
+> Inference
+> SKILL
+> SKILL Env
+> 0
+
+Figure 1: Conceptual comparison between (a) tradi-tional skill-augmentation frameworks and (b) our S IRI .
+
+et al., 2023). Unlike standard single-turn genera-tion tasks, agentic LLMs must execute sequences of environment-dependent actions, recover from intermediate mistakes, and optimize for delayed task success. This setting has motivated a growing body of reinforcement learning (RL) research for LLM agents in embodied household environments, web navigation, and application-centered tool ex-ecution (Shridhar et al., 2021; Yao et al., 2022; Trivedi et al., 2024). However, long-horizon agent learning remains challenging: sparse terminal re-wards provide limited supervision for intermediate decisions, while repeatedly exploring large action spaces can be inefficient and unstable. A promising direction is to equip agents with reusable skills . Skills compress successful expe-rience into high-level behavioral abstractions, en-abling agents to reuse prior knowledge instead of rediscovering similar strategies from scratch. Early language agents store verbal reflections or episodic memories for later retrieval (Shinn et al., 2023; Zhao et al., 2024), and recent skill-based RL meth-ods further integrate skill banks into agent train-ing (Xia et al., 2026; Tu et al., 2026; Wang et al., 2026). In long-horizon environments, such skills can provide useful guidance: for instance, a house-1
+
+> arXiv:2606.02355v1 [cs.AI] 1 Jun 2026
+
+hold agent may learn that when a target object is visible and reachable, it should pick it up before continuing exploration; a web-shopping agent may learn to first filter candidates by hard constraints before comparing soft preferences. These abstrac-tions can reduce exploration burden and improve policy learning. Despite their effectiveness, existing skill-based agent methods expose two important limitations, as illustrated in Figure 1. First, trajectory-to-skill conversion is often delegated to external or sepa-rately maintained skill-construction modules, such as trajectory distillers, skill-conditioned teachers, or hierarchical skill managers (Xia et al., 2026; Tu et al., 2026; Wang et al., 2026; Li et al., 2026). This introduces additional engineering complex-ity, increases training cost, and makes the agent’s improvement partially dependent on auxiliary mod-els or modules rather than its own policy learning. Second, many skill-memory methods treat skills as persistent runtime context: the agent must re-trieve relevant skills from a skill bank and insert them into the prompt during inference (Shinn et al., 2023; Zhao et al., 2024; Wang et al., 2023; Xia et al., 2026; Tu et al., 2026). Although such re-trieval can improve decision quality, it increases context length, retrieval latency, and deployment complexity, especially in long-horizon tasks where the agent repeatedly interacts with the environment. These limitations raise a natural question: Can an agent discover useful skills by itself during RL training, and then absorb those skills into its own parameters so that no skill bank is needed at infer-ence time? A positive answer requires solving two coupled problems. The first is skill discovery : since the model is trained to act rather than to summarize, self-generated skills may be noisy or spurious if extracted from low-quality trajectories. The second is skill internalization : even if retrieved skills im-prove skill-conditioned rollouts, directly imitating all skill-augmented responses may distill irrelevant language patterns rather than useful actions. A re-liable framework must therefore determine both 
+
+which skills are useful and which skill-guided ac-tions should be absorbed .To this end, we propose Self-Internalizing 
+
+Reinforcement learning with Intrinsic skills ( SIRI ), a three-phase curriculum framework for au-tonomous skill discovery and skill-free policy learn-ing in long-horizon agentic RL. S IRI is designed around a central principle: RL credit should not only optimize actions, but also determine which skills are useful and which skill-guided behaviors should be absorbed into the policy. In the first phase, S IRI performs policy warmup to bootstrap basic interaction ability and collect successful tra-jectories from the skill-free policy. This phase pro-vides high-quality behavioral evidence for subse-quent skill extraction and avoids mining spurious skills from an undertrained agent. In the second phase, S IRI conducts Self-Skill Mining and Utiliza-tion , where the current policy itself summarizes compact skills from its own successful plain roll-outs. These self-generated skills are treated as can-didates rather than trusted supervision: they are validated through paired skill-augmented and skill-free rollouts, and are promoted only when they yield positive online utility over the plain baseline. This design enables skill discovery without relying on external skill generators. In the third phase, S IRI 
+
+performs Advantage-Weighted Skill Internalization ,which transfers useful skill-guided behaviors into the skill-free policy. Specifically, trajectory-level treatment effects estimate whether retrieved skills improve the whole rollout, while action-level ad-vantages identify which skill-guided action tokens are worth distilling. Only action tokens from ben-eficial skill-conditioned trajectories contribute to the internalization loss. As a result, skills serve as temporary training-time signals rather than perma-nent inference-time dependencies. At deployment, the final policy uses the original prompt only, with-out any skill bank, retrieval service, or external memory. We evaluate S IRI on ALFWorld (Shridhar et al., 2021) and WebShop (Yao et al., 2022) with Qwen2.5-7B-Instruct. S IRI achieves the best over-all performance among prompt-based agents, stan-dard RL baselines, and memory-augmented RL methods. It improves GiGPO from 0.908 to 0.930 
+
+on ALFWorld, and from 0.728 to 0.813 success rate on WebShop, with the WebShop score increas-ing from 0.844 to 0.899 . Compared with SkillRL, SIRI improves ALFWorld success from 0.899 to 
+
+0.930 and WebShop success from 0.727 to 0.813 .We further replace the self-mining skill generator with stronger external LLM, and observe that the performance gap consistently narrows during train-ing. This suggests that self-mined skills become increasingly effective through online utility valida-tion and skill internalization. Our contributions are summarized as follows: • Self-mining skill learning framework. We 2introduce a self-mining training framework that enables the agent to discover reusable skills from its own successful plain rollouts during reinforcement learning, without rely-ing on external skill generators. • Retrieval-Free Inference via Advantage-weighted skill internalization. We pro-pose an advantage-weighted internalization mechanism that uses skills only as tempo-rary training-time guidance and absorbs useful skill-guided actions into the policy, removing the need for an external skill bank at inference time. • Strong long-horizon agent performance. 
+
+Experiments on ALFWorld and WebShop show that S IRI achieves the best overall re-sults, improving ALFWorld success from 0.908 to 0.930 and WebShop success from 0.728 to 0.813 over GiGPO, demonstrating ef-fective skill internalization without inference-time retrieval. 
+
+2 Related Work 
+
+Skills in reinforcement learning for LLM agents. 
+
+Skills offer a compact abstraction for reusing ex-perience in long-horizon agent learning. Early lan-guage agents store verbal reflections, episodic sum-maries, or non-parametric memories for later re-trieval (Shinn et al., 2023; Zhao et al., 2024; Mallen et al., 2023), while tool- and web-augmented agents further exploit external knowledge or executable behaviors to improve decision making (Nakano et al., 2021; Schick et al., 2023; Wang et al., 2023). Recent reinforcement learning methods move skill acquisition into training. SkillRL distills trajec-tories into a hierarchical skill bank (Xia et al., 2026), while D2Skill organizes experience into task-level and step-level skills with utility-aware retrieval and pruning (Tu et al., 2026). Skill-SD uses skill-conditioned contexts as privileged guid-ance for self-distilling a plain-prompt policy (Wang et al., 2026), and ARISE explores intrinsic skill evolution in hierarchical reinforcement learning for reasoning tasks (Li et al., 2026). Despite their effec-tiveness, these methods typically rely on skills as persistent memory, external guidance, or runtime context. In contrast, S IRI treats skills as temporary training-time signals: it self-generates skills from successful plain rollouts, validates them through online utility, and internalizes useful skill-guided actions into a policy that requires no skill bank or retrieval at inference time. 
+
+Reinforcement learning for LLM agents. Re-inforcement learning has become a standard ap-proach for training LLM agents in interactive environments, from text games and language-action spaces to ALFWorld, WebShop, and App-World (Mnih et al., 2015; Narasimhan et al., 2015; He et al., 2016; Hausknecht et al., 2020; Shrid-har et al., 2021; Yao et al., 2022; Trivedi et al., 2024). While prompt-based agents such as Re-Act interleave reasoning and acting (Yao et al., 2023), they do not directly learn from environ-ment feedback. Recent methods therefore focus on long-horizon policy optimization and credit as-signment (Sutton et al., 1998; Pignatelli et al., 2023; Dulac-Arnold et al., 2015; Zhang, 2026): RA-GEN studies self-evolution in multi-turn reinforce-ment learning (Wang et al., 2025), Tree-GRPO derives process signals from tree-structured roll-outs (Ji et al., 2025), and GiGPO estimates both episode-level and anchor-state step-level advan-tages from grouped rollouts (Feng et al., 2025b). Other work explores hierarchical training, online tuning, end-to-end web-agent RL, hindsight credit, and retrieval-augmented exploration (Zhou et al., 2024; Putta et al., 2024; Feng et al., 2025a; Chen et al., 2025; Wei et al., 2025; Tan et al., 2026; Zhang et al., 2026b). Different from methods that only use credit for policy optimization, S IRI reuses GiGPO’s two-level credit to validate generated skills and se-lectively internalize useful skill-guided actions into a no-skill inference policy. 
+
+3 Preliminaries 
+
+3.1 History-Augmented Decision Process 
+
+We formulate the agent’s long-horizon interac-tion as a Markov Decision Process (MDP) M =(S, A, P, r, γ ). However, unlike classical reinforce-ment learning, LLM policies do not directly ob-serve the underlying environment state st ∈ S .Instead, they interact via a textual interface. For a given task g, let Itask denote the base task in-struction, ot the textual observation at step t, and 
+
+Ht = {(o1, a 1), . . . , (ot−1, a t−1)} the accumu-lated interaction history. The policy generates ac-tions at ∼ πθ(· | xt) conditioned on the effective context xt = ( Itask , Ht, o t). Because xt is merely a summary of past interactions and generally not a sufficient statistic of the latent state, this process is fundamentally a history-augmented partially ob-3servable decision process. 
+
+3.2 Skills for LLM Agents 
+
+In agentic reinforcement learning, a skill m ∈ B 
+
+consists of a natural-language strategy m. strategy that describes how to act and a scenario description 
+
+m. condition that characterizes when the skill ap-plies. The agent maintains the dynamic skill library 
+
+B = {m1, m 2, . . . } as it continuously explores the environment. To reuse a skill, the agent retrieves relevant skills based on the current context and generates its action conditioned on both the task observation and the skill strategy: 
+
+at ∼ πθ(· | xt, m. strategy ) (1) This formulation effectively utilizes prior knowl-edge to guide exploration and decision-making in complex environments without requiring dense step-by-step external supervision. 
+
+3.3 Group-in-Group Policy Optimization (GiGPO) 
+
+GiGPO (Feng et al., 2025b) enables fine-grained credit assignment in long-horizon agent training without an external critic. Given a group G of N
+
+trajectories sampled from the same task, it com-putes advantages at two granularities. 
+
+Episode-Level Advantage. The return R(τi) of each trajectory is normalized within G:
+
+AE (τi) = R(τi) − μG
+
+σG
+
+(2) 
+
+Step-Level Advantage. GiGPO identifies anchor states , environment states revisited across trajec-tories, and groups the actions taken from each an-chor state ˜s into a step-level group GS (˜ s). The discounted future return R(i) 
+
+> t
+
+= PHk=t γk−tr(i) 
+
+> k
+
+is then normalized within this group: 
+
+AS (a(i) 
+
+> t
+
+) = R(i) 
+
+> t
+
+− μGS
+
+σGS
+
+(3) The composite advantage A(a(i) 
+
+> t
+
+) = AE (τi) + 
+
+ω·AS (a(i) 
+
+> t
+
+) fuses trajectory-level and step-level sig-nals, and is used in the standard clipped surrogate objective: 
+
+LGiGPO (θ) = − 1
+
+N
+
+X
+
+> i,t
+
+min 
+
+
+
+ρ(i) 
+
+> t
+
+A(a(i) 
+
+> t
+
+),
+
+clip (ρ(i) 
+
+> t
+
+, 1 ± ϵ)A(a(i) 
+
+> t
+
+)
+
+ (4) where ρ(i) 
+
+> t
+
+= πθ(a(i) 
+
+> t
+
+| x(i) 
+
+> t
+
+)/π old (a(i) 
+
+> t
+
+| x(i) 
+
+> t
+
+) and ω
+
+balances the two advantage terms. 
+
+4 Methodology 
+
+We present S IRI (Figure 2), a three-phase curricu-lum framework that turns skills from external run-time memories into temporary training-time sig-nals. As motivated in Section 1, S IRI aims to an-swer two questions: how to discover useful skills without external skill generators, and how to absorb these skills into a policy that no longer requires re-trieval at inference time. The framework proceeds through: (1) policy warmup, (2) self-skill mining and utilization, and (3) advantage-weighted skill internalization. For a task group g, we sample a group of trajec-tories Gg = {τi}Ni=1 . Each trajectory is assigned an arm indicator zi ∈ { 0, 1}, where zi = 1 de-notes the skill-augmented arm and zi = 0 denotes the skill-free baseline arm. Let B denote the skill bank, and let Mg = R(B, q g) be the retrieved skill set for task query qg. We define the skill-free and skill-augmented contexts as 
+
+x(i, −) 
+
+> t
+
+= [ Itask ; H(i) 
+
+> t
+
+; o(i) 
+
+> t
+
+], (5) and 
+
+x(i, +)  
+
+> t
+
+= [ Itask ; Mg; H(i) 
+
+> t
+
+; o(i) 
+
+> t
+
+], (6) where Itask is the task instruction, o(i) 
+
+> t
+
+is the current observation, and H(i) 
+
+> t
+
+is the interaction history. The policy acts under x(i, +)  
+
+> t
+
+when zi = 1 and under 
+
+x(i, −) 
+
+> t
+
+when zi = 0 .
+
+4.1 Phase 0: Policy Warmup 
+
+Phase 0 bootstraps the agent’s basic interaction abil-ity and collects successful skill-free trajectories for later skill extraction. Directly mining skills from an untrained policy can introduce spurious heuristics, since low-quality trajectories may contain acciden-tal or invalid behaviors. We therefore first train the policy with GiGPO (Feng et al., 2025b), which pro-vides both episode-level and anchor-state step-level advantages without using an external critic. Let AE (τi) and AS (a(i) 
+
+> t
+
+) denote the episode-level and step-level advantages computed by GiGPO. The composite advantage used during warmup is 
+
+A(a(i) 
+
+> t
+
+) = AE (τi) + ωA S (a(i) 
+
+> t
+
+), (7) where ω balances trajectory-level and step-level credit. The policy is optimized with the standard GiGPO objective LGiGPO .4Env Agent 
+
+> Rollout
+
+(a) Phase 0: Warmup 
+
+(b) Phase 1: Self -Skill Mining & Utilization 
+
+(c) Phase 2: Skill Internalization        
+
+> S0
+> 0A0
+> 0r0
+> 0R0
+> 0
+> R0r0
+> K
+> A0
+> K
+> S0
+> KA1
+> K
+> S1
+> KK
+> S1
+> 0A1
+> 0
+
+…
+
+…
+
+> …
+
+R0r0
+
+> N/2
+
+A0
+
+> N/2
+
+S0 
+
+> N/2
+
+A1
+
+> N/2
+
+S1 
+
+> N/2 N/2
+
+…
+
+> …With Skill
+> Without Skill
+> …
+> x N/2
+> x N/2
+
+SkillBank 
+
+R0r0
+
+> 0
+
+A0
+
+> 0
+
+S0 
+
+> 0
+
+A1 
+
+> 00
+
+S1 
+
+> 0
+
+…
+
+Strategy ?
+
+Key steps? 
+
+When to apply? 
+
+> Rollout
+> g
+
+# … Utility 
+
+> Evaluation
+
+Candidate Skills     
+
+> Active
+> Retired
+> Teacher
+> Student
+> Shared Parameter
+> take apple desk
+
+## .…   
+
+> take apple desk
+
+… .
+
+> Forward
+> log probs
+> Forward
+> log probs
+
+## 𝓛 𝑖𝑛𝑡 1 Δ!
+
+> " > 0
+> Skills act as privileged info
+> for Teacher.
+
+Reward 
+
+r1
+
+> N/2
+
+r1
+
+> 0
+
+Figure 2: Overview of S IRI . (a) Phase 0: The agent interacts with the environment to collect initial trajectory data for cold-start policy initialization. (b) Phase 1: Candidate skills are extracted into a structured SkillBank , followed by parallel rollouts with and without skills to compute the hindsight macro utility ∆g for dynamic skill evaluation. 
+
+(c) Phase 2: The shared policy parameterizes validated skills via cross-context self-distillation under asymmetric inputs, optimized by an advantage-weighted loss Lint gated by the macro performance indicator 1[∆ (i) 
+
+> g
+
+> 0] .
+
+Phase transition. Let k be the current training iteration, and let Nsucc count trajectories whose re-turn exceeds a success threshold ϵsucc . The warmup phase terminates once sufficient successful expe-rience has been collected, or when a maximum warmup budget is reached: 
+
+Iwarmup = I(k ≥ Kwarm ∧ Nsucc ≥ Nreq )
+
+∨ k ≥ Kmax 
+
+. (8) This adaptive transition ensures that skill mining starts only after the policy has produced enough reliable behavioral evidence, while preventing in-definite warmup in difficult environments. 
+
+4.2 Phase 1: Self-Skill Mining and Utilization 
+
+Phase 1 builds and validates a dynamic skill bank without relying on external skill generators. The key principle is that skills should be mined only from the agent’s own successful skill-free behavior, and should be treated as candidate hypotheses until they are empirically verified. 
+
+Self-skill mining. At the beginning of Phase 1, and then every Imine training iterations, the agent mines skills from successful trajectories in the skill-free arm. Specifically, only trajectories satisfying 
+
+zi = 0 and R(τi) ≥ ϵsucc are used as evidence. A frozen snapshot of the current policy summarizes these trajectories into compact natural-language skills. Each skill is represented as a condition– strategy pair 
+
+mj = ( cj , s j , u j , n j , state j ), (9) where cj describes when the skill applies, sj de-scribes the reusable strategy, uj is its online util-ity estimate, nj is its retrieval count, and state j ∈{candidate , active , retired }. Newly mined skills are inserted into B as candidate skills. 
+
+Paired skill validation. For each task group g,we perform paired rollouts with both skill-free and skill-augmented arms. The utility of retrieved skills is estimated by the treatment effect between the two arms: 
+
+∆g = Rskill  
+
+> g
+
+− Rbase  
+
+> g
+
+. (10) 5Here, 
+
+Rskill  
+
+> g
+
+= 1
+
+|G skill  
+
+> g
+
+|
+
+X
+
+> τi∈G skill
+> g
+
+R(τi),Rbase  
+
+> g
+
+= 1
+
+|G base  
+
+> g
+
+|
+
+X
+
+> τi∈G base
+> g
+
+R(τi).
+
+(11) where Gskill  
+
+> g
+
+= {τi : zi = 1 } and Gbase  
+
+> g
+
+= {τi :
+
+zi = 0 }. For every retrieved skill mj , its utility is updated by an exponential moving average: 
+
+uj ← αu j + (1 − α)∆ g, (12) where α is the EMA coefficient. After nj ≥ Neval 
+
+retrievals, a candidate skill is promoted to active 
+
+if uj > ϵ u; skills with persistently negative utility are retired. This lifecycle prevents self-generated skills from being trusted by default and keeps the skill bank grounded in online performance. 
+
+Phase transition. The system enters Phase 2 once the skill bank becomes sufficiently mature: 
+
+I |B active | ≥ Kmat ∧ ¯h ≥ ρhit ∧ ¯ζ ≥ ρpos 
+
+ ,
+
+(13) where Kmat is the minimum number of active skills, 
+
+¯h is the recent retrieval hit rate, and ¯ζ is the recent proportion of task groups with ∆g > 0. This en-sures that internalization begins only after retrieved skills have demonstrated consistent positive utility. 
+
+4.3 Phase 2: Advantage-Weighted Skill Internalization 
+
+Phase 2 removes the dependency on the skill bank by transferring useful skill-guided behaviors into the skill-free policy. The policy acts as both teacher and student under asymmetric contexts. The teacher trajectory is generated under the skill-augmented context x(i, +)  
+
+> t
+
+, while the student is opti-mized to reproduce selected teacher action tokens under the skill-free context x(i, −) 
+
+> t
+
+.Let a(i, +)  
+
+> t
+
+be the teacher action from a skill-augmented trajectory, and let {y(i, +)  
+
+> t,ℓ
+
+}Lt 
+
+> ℓ=1
+
+be its action tokens. The student log-probability of the 
+
+ℓ-th teacher action token is 
+
+log pstu  
+
+> i,t,ℓ
+
+= log πθ
+
+
+
+y(i, +)  
+
+> t,ℓ
+
+x(i, −) 
+
+> t
+
+, sg (y(i, +)  
+
+> t,<ℓ
+
+)
+
+
+
+,
+
+(14) where sg (·) denotes the stop-gradient operator. 
+
+Composite utility gate. To avoid internalizing noisy or unhelpful skill-guided behaviors, we only distill action tokens from skill-augmented trajecto-ries whose retrieved skills improve the task-level return: 
+
+Gi,t,ℓ = 1[zi = 1] · 1[∆ g > 0] · 1[is _action( t, ℓ )] .
+
+(15) Here is _action( t, ℓ ) selects tokens inside the exe-cutable action span, excluding reasoning traces or other natural-language text. 
+
+Advantage-weighted internalization. Among beneficial skill-augmented trajectories, not every action contributes equally to task success. We there-fore reuse GiGPO’s hierarchical credit A(a(i) 
+
+> t
+
+) = 
+
+AE (τi) + ωA S (a(i) 
+
+> t
+
+) to weight the distillation sig-nal. The token-level weight is 
+
+κi,t,ℓ = Gi,t,ℓ · max( A(a(i) 
+
+> t
+
+), 0) 
+
+A+ + ϵ , (16) where A+ is the mean positive advantage of the selected tokens within the current batch and ϵ is a small constant. This weighting gives higher pri-ority to skill-guided actions that receive stronger RL credit, while suppressing non-action tokens and low-utility trajectories. 
+
+Joint objective. The internalization loss is 
+
+Lint (θ) = − 1
+
+Z
+
+X
+
+> i,t,ℓ
+
+κi,t,ℓ log pstu 
+
+> i,t,ℓ
+
+, (17) where Z = max 
+
+
+
+1, P 
+
+> i,t,ℓ
+
+1[κi,t,ℓ > 0] 
+
+
+
+normal-izes over selected action tokens to prevent division by zero. The final objective combines GiGPO opti-mization, KL regularization, and skill internaliza-tion: 
+
+Ltotal (θ) = LGiGPO (θ) + βLKL (θ) + λ(k)Lint (θ),
+
+(18) where LGiGPO (θ) is defined in Section 3, β controls policy deviation from the reference model, and 
+
+λ(k) is linearly warmed up after Phase 2 starts. After training, the skill bank is discarded. At inference time, the policy runs only with the origi-nal skill-free context x(i, −) 
+
+> t
+
+, requiring no retrieval service, external memory, or skill prompt. 
+
+5 Experimental Results 
+
+5.1 Performance on Agentic Tasks Experimental setup. We evaluate S IRI on two rep-resentative long-horizon agentic benchmarks: ALF-World (Shridhar et al., 2021) and WebShop (Yao 6Table 1: Performance on ALFWorld and WebShop. For ALFWorld, we report the success rate on each subtask and the overall average. For WebShop, we report both the average score and the success rate. The best and second-best results among all listed methods are highlighted in bold and underline, respectively. 
+
+Method ALFWorld WebShop 
+
+Pick Look Clean Heat Cool Pick2 All Score Succ. 
+
+Closed-source LLMs 
+
+Gemini-3-Flash 0.964 0.857 0.571 0.722 0.962 0.953 0.852 0.141 0.165 GLM-5.1 0.913 0.818 0.852 0.938 0.667 0.667 0.797 0.156 0.125 
+
+Base Model: Qwen2.5-7B-Instruct 
+
+Origin 0.179 0.643 0.048 0.000 0.038 0.053 0.125 0.166 0.039 
+
+Prompt-based Agentic or Memory-based Methods 
+
+ReAct 0.485 0.354 0.343 0.132 0.182 0.176 0.312 0.462 0.195 Reflexion 0.620 0.416 0.449 0.309 0.363 0.238 0.427 0.581 0.288 
+
+RL-based Methods 
+
+PPO 0.923 0.640 0.925 0.895 0.803 0.688 0.804 0.814 0.687 RLOO 0.876 0.782 0.873 0.813 0.719 0.489 0.755 0.803 0.657 GRPO 0.908 0.661 0.893 0.747 0.725 0.647 0.776 0.793 0.661 GiGPO 0.977 0.827 0.988 0.837 0.893 0.792 0.908 0.844 0.728 
+
+Memory-Augmented RL-based Methods 
+
+MemRL 0.628 0.385 0.222 0.125 0.080 0.000 0.214 0.295 0.092 Evolver 0.649 0.333 0.464 0.133 0.333 0.333 0.438 0.425 0.176 Mem0+GRPO 0.781 0.548 0.561 0.310 0.650 0.269 0.547 0.581 0.375 SimpleMem+GRPO 0.895 0.363 0.600 0.500 0.649 0.263 0.625 0.678 0.469 SkillRL 0.979 0.714 0.900 0.900 0.955 0.875 0.899 0.852 0.727 
+
+SIRI 0.975 0.875 1.000 0.857 0.850 0.895 0.930 0.899 0.813  
+
+> Table 2: Ablation study of our S IRI on WebShop.
+
+Method Score Success 
+
+w/o Phase 0 0.850 0.711 w/o Phase 2 (w/ Skill) 0.898 0.805 w/o Phase 2 (w/o Skill) 0.852 0.719 w/o Phase 1 and 2 (GiGPO) 0.844 0.728 
+
+SIRI 0.899 0.813 
+
+et al., 2022). ALFWorld requires agents to com-plete embodied household tasks across six sub-tasks, including Pick, Look, Clean, Heat, Cool, and Pick2. WebShop evaluates web-based prod-uct search and purchase behavior, where we re-port both the average score and the success rate. We use Qwen2.5-7B-Instruct as the base model and compare S IRI with four groups of baselines. First, we include closed-source LLMs, including Gemini-3-Flash and GLM-5.1. Second, we com-pare with prompt-based or memory-based agentic methods, including ReAct (Yao et al., 2023) and Reflexion (Shinn et al., 2023). Third, we include standard RL-based methods, including PPO (Schul-man et al., 2017), RLOO (Ahmadian et al., 2024), GRPO (Shao et al., 2024), and GiGPO (Feng et al., 2025b). Finally, we compare with memory-augmented RL-based methods, includ-ing MemRL (Zhang et al., 2026a), EvolveR (Wu et al., 2025), Mem0+GRPO (Chhikara et al., 2025), SimpleMem+GRPO (Liu et al., 2026), and SkillRL (Xia et al., 2026). All results are reported in Table 1. 
+
+Experimental results. Table 1 reports the main results. We summarize three findings. 1) Best over-all performance. SIRI achieves the best overall results on both benchmarks. On ALFWorld, it im-proves GiGPO from 0.908 to 0.930 and SkillRL from 0.899 to 0.930 . On WebShop, it improves GiGPO from 0.728 to 0.813 in success rate and from 0.844 to 0.899 in score. As shown in Fig-ure 3, S IRI also maintains a stronger training trajec-tory than GiGPO, indicating that self-mined skills 7ALFWORLD          
+
+> 020 40 60 80 100 120 140
+> Training Steps
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> 0.9
+> 1.0
+> Success Rate
+> Phase 0 Phase 1 Phase 2
+
+WEBSHOP           
+
+> 020 40 60 80 100 120 140
+> Training Steps
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> Success Rate
+> Phase 0 Phase 1 Phase 2
+> GIGPO SIRI
+
+Figure 3: Training curves on ALFWorld and WebShop, showing that S IRI consistently improves over GiGPO throughout training. 30 40 50 60 70 80 90 100 110 120 130 140 150  
+
+> Training Steps
+> 0.45
+> 0.50
+> 0.55
+> 0.60
+> 0.65
+> 0.70
+> 0.75
+> 0.80
+> 0.85
+> Success Rate
+> Phase 1 Phase 2
+> SIRI (Gemini-3-Flash)
+> SIRI
+
+Figure 4: Training success rate trajectories on WebShop, comparing the standard S IRI against a variant utilizing Gemini-3-Flash for skill mining. 
+
+provide useful guidance during learning. 2) Ef-fective skill-free internalization. Compared with memory-augmented RL methods, S IRI achieves stronger final performance without relying on a runtime skill bank. For example, SkillRL obtains 0.899 on ALFWorld and 0.727 on WebShop suc-cess, while S IRI reaches 0.930 and 0.813 . This supports the central design of Advantage-Weighted Skill Internalization: useful skill-guided actions can be transferred into the model parameters, allow-ing the final policy to run with the original prompt only. 3) Robust gains across tasks. SIRI achieves the best result on Look, Clean, ALFWorld over-all, WebShop score, and WebShop success, and obtains the second-best result on Pick2. These gains suggest that Self-Skill Mining and Utiliza-tion extracts reusable strategies from successful plain rollouts, while Advantage-Weighted Skill In-ternalization selectively absorbs high-utility action tokens. Together, the two phases improve both embodied household interaction and web-based de-cision making under a unified skill-free inference framework. Our method remains highly effective on the 1.5B model (see Appendix B.1). 
+
+5.2 Ablation Study 
+
+Table 2 presents the ablation study of the S IRI 
+
+framework on the WebShop benchmark. Remov-ing the Phase 0 warmup (w/o Phase 0) incurs a substantial performance drop ( −10 .2% ), empiri-cally demonstrating that initiating skill mining on a naïve policy inevitably injects severe noise into the skill repository. Furthermore, evaluating the Phase 1 checkpoint without retrieved skills (w/o Phase 2 (w/o Skill)) leads to a drastic degradation in success rate to 0.719 , revealing the agent’s critical over-reliance on explicit privileged information. Con-versely, evaluating this checkpoint with retrieved skills but without internalization (w/o Phase 2 (w/ Skill)) boosts performance to 0.805 , corroborating the efficacy and high quality of the mined skill bank. Crucially, by adopting an advantage-weighted skill internalization mechanism, the full S IRI framework effectively filters out irrelevant tokens and subopti-mal trajectories, successfully distilling a highly re-fined and pure policy. Consequently, S IRI achieves a peak success rate of 0.813 while completely elim-inating retrieval dependency, thereby maximizing task performance and unlocking the computational efficiency inherent in retrieval-free generation. Fur-thermore, our approach remains robust with GRPO (comparisons in Appendix B.2). 
+
+5.3 Impact of External LLM Skill Mining 
+
+To investigate the impact of external LLM skill extraction on training dynamics and analyze the evolution of endogenous self-mined skills, we uti-lize Gemini-3-Flash for skill mining in Phase 1. Figure 4 plots the training success rates of the stan-dard S IRI alongside this Gemini-augmented variant. Initially, the variant exhibits a significantly steeper learning curve, rapidly establishing a performance advantage over the self-mining baseline. This high-lights the initial quality gap between self-mined and oracle-level skills; by leveraging high-quality external skills, the policy effectively bypasses early exploration bottlenecks. However, as training pro-gresses, this gap narrows substantially. While exter-nal skills accelerate early exploration, the quality of SIRI ’s self-mined skills organically improves along-side its advancing capabilities. By increasingly leveraging experiences summarized from its own historical trajectories, the model gradually closes the performance gap. Ultimately, after Phase 2 in-ternalization, the variant utilizing self-mined skills successfully achieves comparable performance to 8the one utilizing external LLM extraction. 
+
+6 Conclusion 
+
+We presented S IRI , a self-internalizing reinforce-ment learning framework for long-horizon LLM agents. SIRI mines skills from the agent’s own successful plain rollouts, validates them through online paired-rollout utility, and internalizes useful skill-guided actions via advantage-weighted distil-lation. As a result, skills serve only as temporary training-time guidance, while the final policy re-quires no skill bank or retrieval service at inference time. Experiments on ALFWorld and WebShop show that S IRI consistently outperforms standard RL baselines and memory-augmented agent meth-ods, demonstrating that self-generated skills can be effectively absorbed into a retrieval-free policy. 
+
+Limitations 
+
+Although SIRI establishes an effective self-evolving loop of skill discovery, utilization, and internalization, the agent’s capability to mine high-quality skills currently scales implicitly with its overall proficiency. In the current framework, while the skill mining quality naturally advances along-side policy improvement, we do not introduce an explicit, dedicated training signal specifically tai-lored to optimize the self-mining process itself. For future work, we plan to explore the integration of explicit learning signals to further strengthen and systematically enhance the model’s capacity for autonomous skill summarization. 
+
+References 
+
+Arash Ahmadian, Chris Cremer, Matthias Gallé, Marzieh Fadaee, Julia Kreutzer, Olivier Pietquin, and Ahmet Üstün. 2024. Back to basics: Revisiting re-inforce style optimization for learning from human feedback in llms. arXiv preprint arXiv:2402.14740 .Yuntao Bai, Andy Jones, Kamal Ndousse, Amanda Askell, Anna Chen, Nova DasSarma, Dawn Drain, Stanislav Fort, Deep Ganguli, Tom Henighan, and 1 others. 2022. Training a helpful and harmless assis-tant with reinforcement learning from human feed-back. arXiv preprint arXiv:2204.05862 .Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, and 1 others. 2020. Language models are few-shot learners. Advances in neural information processing systems , 33:1877–1901. Kevin Chen, Marco Cusumano-Towner, Brody Hu-val, Aleksei Petrenko, Jackson Hamburger, Vladlen Koltun, and Philipp Krähenbühl. 2025. Reinforce-ment learning for long-horizon interactive llm agents. 
+
+arXiv preprint arXiv:2502.01600 .Prateek Chhikara, Dev Khant, Saket Aryan, Taranjeet Singh, and Deshraj Yadav. 2025. Mem0: Building production-ready ai agents with scalable long-term memory. arXiv preprint arXiv:2504.19413 .Gabriel Dulac-Arnold, Richard Evans, Hado van Has-selt, Peter Sunehag, Timothy Lillicrap, Jonathan Hunt, Timothy Mann, Theophane Weber, Thomas Degris, and Ben Coppin. 2015. Deep reinforce-ment learning in large discrete action spaces. arXiv preprint arXiv:1512.07679 .Lang Feng, Weihao Tan, Zhiyi Lyu, Longtao Zheng, Haiyang Xu, Ming Yan, Fei Huang, and Bo An. 2025a. Towards efficient online tuning of vlm agents via counterfactual soft reinforcement learning. arXiv preprint arXiv:2505.03792 .Lang Feng, Zhenghai Xue, Tingcong Liu, and Bo An. 2025b. Group-in-group policy optimization for llm agent training. arXiv preprint arXiv:2505.10978 .Matthew Hausknecht, Prithviraj Ammanabrolu, Marc-Alexandre Côté, and Xingdi Yuan. 2020. Interactive fiction games: A colossal adventure. In Proceedings of the AAAI Conference on Artificial Intelligence ,volume 34, pages 7903–7910. Ji He, Jianshu Chen, Xiaodong He, Jianfeng Gao, Li-hong Li, Li Deng, and Mari Ostendorf. 2016. Deep reinforcement learning with a natural language action space. In Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics (Vol-ume 1: Long Papers) , pages 1621–1630. Yuxiang Ji, Ziyu Ma, Yong Wang, Guanhua Chen, Xi-angxiang Chu, and Liaoni Wu. 2025. Tree search for llm agent reinforcement learning. arXiv preprint arXiv:2509.21240 .Yu Li, Rui Miao, Zhengling Qi, and Tian Lan. 2026. Arise: Agent reasoning with intrinsic skill evolu-tion in hierarchical reinforcement learning. arXiv preprint arXiv:2603.16060 .Jiaqi Liu, Yaofeng Su, Peng Xia, Siwei Han, Zeyu Zheng, Cihang Xie, Mingyu Ding, and Huaxiu Yao. 2026. Simplemem: Efficient lifelong memory for llm agents. arXiv preprint arXiv:2601.02553 .Alex Mallen, Akari Asai, Victor Zhong, Rajarshi Das, Daniel Khashabi, and Hannaneh Hajishirzi. 2023. When not to trust language models: Investigating effectiveness of parametric and non-parametric mem-ories. In Proceedings of the 61st annual meeting of the association for computational linguistics (volume 1: Long papers) , pages 9802–9822. 
+
+9Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A Rusu, Joel Veness, Marc G Bellemare, Alex Graves, Martin Riedmiller, Andreas K Fidje-land, Georg Ostrovski, and 1 others. 2015. Human-level control through deep reinforcement learning. 
+
+nature , 518(7540):529–533. Reiichiro Nakano, Jacob Hilton, Suchir Balaji, Jeff Wu, Long Ouyang, Christina Kim, Christopher Hesse, Shantanu Jain, Vineet Kosaraju, William Saunders, and 1 others. 2021. Webgpt: Browser-assisted question-answering with human feedback. arXiv preprint arXiv:2112.09332 .Karthik Narasimhan, Tejas Kulkarni, and Regina Barzi-lay. 2015. Language understanding for text-based games using deep reinforcement learning. In Pro-ceedings of the 2015 Conference on Empirical Meth-ods in Natural Language Processing , pages 1–11. Eduardo Pignatelli, Johan Ferret, Matthieu Geist, Thomas Mesnard, Hado van Hasselt, Olivier Pietquin, and Laura Toni. 2023. A survey of temporal credit assignment in deep reinforcement learning. arXiv preprint arXiv:2312.01072 .Pranav Putta, Edmund Mills, Naman Garg, Sumeet Motwani, Chelsea Finn, Divyansh Garg, and Rafael Rafailov. 2024. Agent q: Advanced reasoning and learning for autonomous ai agents. arXiv preprint arXiv:2408.07199 .Timo Schick, Jane Dwivedi-Yu, Roberto Dessì, Roberta Raileanu, Maria Lomeli, Eric Hambro, Luke Zettle-moyer, Nicola Cancedda, and Thomas Scialom. 2023. Toolformer: Language models can teach themselves to use tools. Advances in neural information process-ing systems , 36:68539–68551. John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. Proxi-mal policy optimization algorithms. arXiv preprint arXiv:1707.06347 .Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, YK Li, Yang Wu, and 1 others. 2024. Deepseekmath: Pushing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 .Noah Shinn, Federico Cassano, Edward Berman, Ash-win Gopinath, Karthik Narasimhan, and Shunyu Yao. 2023. Reflexion: Language agents with verbal rein-forcement learning. In Advances in Neural Informa-tion Processing Systems .Mohit Shridhar, Xingdi Yuan, Marc-Alexandre Côté, Yonatan Bisk, Adam Trischler, and Matthew Hausknecht. 2021. Alfworld: Aligning text and em-bodied environments for interactive learning. In In-ternational Conference on Learning Representations .Richard S Sutton, Andrew G Barto, and 1 others. 1998. 
+
+Reinforcement learning: An introduction , volume 1. MIT press Cambridge. Hui-Ze Tan, Xiao-Wen Yang, Hao Chen, Jie-Jing Shao, Yi Wen, Yuteng Shen, Weihong Luo, Xiku Du, Lan-Zhe Guo, and Yu-Feng Li. 2026. Hindsight credit as-signment for long-horizon llm agents. arXiv preprint arXiv:2603.08754 .Harsh Trivedi, Tushar Khot, Mareike Hartmann, Ruskin Manku, Vinty Dong, Edward Li, Shashank Gupta, Ashish Sabharwal, and Niranjan Balasubramanian. 2024. Appworld: A controllable world of apps and people for benchmarking interactive coding agents. 
+
+arXiv preprint arXiv:2407.18901 .Songjun Tu, Chengdong Xu, Qichao Zhang, Yaocheng Zhang, Xiangyuan Lan, Linjing Li, and Dongbin Zhao. 2026. Dynamic dual-granularity skill bank for agentic rl. arXiv preprint arXiv:2603.28716 .Guanzhi Wang, Yuqi Xie, Yunfan Jiang, Ajay Man-dlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anandkumar. 2023. Voyager: An open-ended embodied agent with large language models. arXiv preprint arXiv:2305.16291 .Hao Wang, Guozhi Wang, Han Xiao, Yufeng Zhou, Yue Pan, Jichao Wang, Ke Xu, Yafei Wen, Xiaohu Ruan, Xiaoxin Chen, and Honggang Qi. 2026. Skill-sd: Skill-conditioned self-distillation for multi-turn llm agents. arXiv preprint arXiv:2604.10674 .Zihan Wang, Kangrui Wang, Qineng Wang, Pingyue Zhang, Linjie Li, Zhengyuan Yang, Kefan Yu, Minh Nhat Nguyen, Licheng Liu, Eli Gottlieb, Mon-ica Lam, Yiping Lu, Kyunghyun Cho, Jiajun Wu, Li Fei-Fei, Lijuan Wang, Yejin Choi, and Manling Li. 2025. Ragen: Understanding self-evolution in llm agents via multi-turn reinforcement learning. arXiv preprint arXiv:2504.20073 .Zhepei Wei, Wenlin Yao, Yao Liu, Weizhi Zhang, Qin Lu, Liang Qiu, Changlong Yu, Puyang Xu, Chao Zhang, Bing Yin, and 1 others. 2025. Webagent-r1: Training web agents via end-to-end multi-turn reinforcement learning. In Proceedings of the 2025 Conference on Empirical Methods in Natural Lan-guage Processing , pages 7920–7939. Rong Wu, Xiaoman Wang, Jianbiao Mei, Pinlong Cai, Daocheng Fu, Cheng Yang, Licheng Wen, Xue-meng Yang, Yufan Shen, Yuxin Wang, and 1 others. 2025. Evolver: Self-evolving llm agents through an experience-driven lifecycle. arXiv preprint arXiv:2510.16079 .Peng Xia, Jianwen Chen, Hanyang Wang, Jiaqi Liu, Kaide Zeng, Yu Wang, Siwei Han, Yiyang Zhou, Xujiang Zhao, Haifeng Chen, Zeyu Zheng, Cihang Xie, and Huaxiu Yao. 2026. Skillrl: Evolving agents via recursive skill-augmented reinforcement learning. 
+
+arXiv preprint arXiv:2602.08234 .Shunyu Yao, Howard Chen, John Yang, and Karthik Narasimhan. 2022. Webshop: Towards scalable real-world web interaction with grounded language agents. In Advances in Neural Information Processing Sys-tems .
+
+10 Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. React: Synergizing reasoning and acting in language models. In International Conference on Learning Representations .Chenchen Zhang. 2026. From reasoning to agentic: Credit assignment in reinforcement learning for large language models. arXiv preprint arXiv:2604.09459 .Shengtao Zhang, Jiaqian Wang, Ruiwen Zhou, Jun-wei Liao, Yuchen Feng, Zhuo Li, Yujie Zheng, Weinan Zhang, Ying Wen, Zhiyu Li, Feiyu Xiong, Yutao Qi, Bo Tang, and Muning Wen. 2026a. Memrl: Self-evolving agents via runtime reinforce-ment learning on episodic memory. arXiv preprint arXiv:2601.03192 .Siwei Zhang, Yun Xiong, Xi Chen, Zi’an Jia, Renhong Huang, Jiarong Xu, and Jiawei Zhang. 2026b. Rapo: Expanding exploration for llm agents via retrieval-augmented policy optimization. arXiv preprint arXiv:2603.03078 .Andrew Zhao, Daniel Huang, Quentin Xu, Matthieu Lin, Yong-Jin Liu, and Gao Huang. 2024. Expel: Llm agents are experiential learners. In Proceedings of the AAAI Conference on Artificial Intelligence .Yifei Zhou, Andrea Zanette, Jiayi Pan, Sergey Levine, and Aviral Kumar. 2024. Archer: Training language model agents via hierarchical multi-turn rl. arXiv preprint arXiv:2402.19446 .
+
+A Implementation Details 
+
+We conduct our experiments on 8 A100 (80G) GPUs with the random seed set to 0. For the re-trieval module, we utilize Qwen3-0.6B-Embedding as the embedding model, specifically targeting the 
+
+when_to_apply field for skill matching. During training, each batch samples 16 tasks with a group size of 8, while a validation subset of 128 tasks is maintained. To stabilize the initial optimization, we incorporate a warm-up schedule with the minimum and maximum warm-up steps set to 30 and 50, re-spectively. Both skill mining and model validation are executed every 10 steps, with the generation temperature set to 0.4 during validation. Further-more, the context limits and training duration are tailored to each environment: for ALFWorld, train-ing spans a maximum of 50 steps with a prompt length limit of 3,072 tokens; for WebShop, we train for up to 15 steps with a maximum prompt length of 4,096 tokens. In terms of computational over-head, training a 7B model requires approximately 39 hours on ALFWorld and 18 hours on WebShop, while training a 1.5B model takes about 11 hours and 9.5 hours, respectively. Across all tasks, the 30 40 50 60 70 80 90 100 110 120 130 140 150 
+
+> Training Steps
+> 4.0
+> 4.5
+> 5.0
+> 5.5
+> 6.0
+> 6.5
+> 7.0
+> Score
+
+ALFWORLD             
+
+> 30 40 50 60 70 80 90 100 110 120 130 140 150
+> Training Steps
+> 4.0
+> 4.5
+> 5.0
+> 5.5
+> 6.0
+> 6.5
+> 7.0
+> Score
+
+WEBSHOP    
+
+> Average GLM-5.1 Gemini-3-Flash DeepSeek-V4-Pro
+
+Figure 5: LLM-as-a-Judge quality scores for skills stored during training on ALFWorld and WebShop. The solid black line highlights the aggregated mean score across all evaluators, indicating continuous skill im-provement. 
+
+maximum response length is strictly constrained to 512 tokens. 
+
+B Additional Experimental Results 
+
+B.1 More Comparisons 
+
+To investigate whether our proposed approach re-mains effective on models with smaller parameter scales, we conduct additional evaluations using a 1.5B language model ( Qwen2.5-1.5B-Instruct ) as the base policy. The experimental results are re-ported in Table 3. As shown in the table, despite the significantly reduced model capacity, S IRI still achieves objec-tive and consistent performance gains across both benchmarks, outperforming all strong baselines. Specifically, on ALFWorld, S IRI improves the over-all success rate of GiGPO from 0.867 to 0.875 . On WebShop, it improves GiGPO from 0.650 to 0.727 
+
+in success rate and from 0.831 to 0.853 in score. These quantitative results demonstrate that the ef-fectiveness of our approach is not restricted to large-scale models. Instead, S IRI exhibits high robust-ness, successfully guiding and improving policy learning even under constrained model capacities. 
+
+B.2 Impact of Base Optimization Algorithms 
+
+To further investigate the impact of the base rein-forcement learning algorithm on the quality of skill mining and internalization, Table 4 compares the performance of S IRI built upon GRPO and GiGPO. Utilizing pure GRPO yields a significantly lower baseline success rate ( 0.568 ) compared to GiGPO (0.650 ), empirically demonstrating that the sparse reward mechanism of GRPO struggles to provide adequate credit assignment for an effective policy warm-up in long-horizon tasks. Remarkably, de-spite this suboptimal starting point, integrating the 11 Table 3: Performance comparison of different models and methods on ALFWorld and WebShop benchmarks. 
+
+Method ALFWorld WebShop 
+
+Pick Clean Cool Look Heat Pick2 All Score Success Base Model: Qwen2.5-1.5B-Instruct 
+
+Origin 0.059 0.033 0.042 0.055 0.097 0.000 0.041 0.231 0.052 ReAct 0.174 0.157 0.077 0.205 0.062 0.020 0.128 0.401 0.113 Reflexion 0.353 0.217 0.194 0.222 0.136 0.037 0.218 0.558 0.219 PPO 0.648 0.571 0.464 0.405 0.606 0.474 0.544 0.738 0.515 RLOO 0.883 0.710 0.664 0.528 0.628 0.569 0.697 0.739 0.521 GRPO 0.853 0.845 0.597 0.537 0.782 0.535 0.728 0.758 0.568 GiGPO 0.944 0.948 0.798 0.675 0.944 0.764 0.867 0.831 0.650 
+
+SIRI 0.897 1.000 0.870 0.833 0.947 0.600 0.875 0.853 0.727  
+
+> Table 4: Impact of different base optimization algo-rithms (GRPO vs. GiGPO) on the performance of S IRI .
+
+Method Score Success 
+
+GRPO 0.758 0.568 
+
+SIRI (GRPO) 0.779 ↑0.021 0.648 ↑0.080 
+
+GiGPO 0.831 0.650 
+
+SIRI (GiGPO) 0.853 ↑0.022 0.727 ↑0.077 
+
+SIRI framework onto GRPO still triggers a substan-tial performance leap, boosting the success rate by 0.080 to reach 0.648 . This robust improve-ment corroborates the strong generalizability of our Phase 1 self-skill mining, proving its ability to efficiently capture and solidify beneficial heuristics even within a noisy, sparsely-rewarded environ-ment. However, the absolute peak performance of SIRI (GRPO) fundamentally falls short of the 0.727 
+
+success rate achieved by S IRI (GiGPO). Crucially, this performance gap validates our core architec-tural choice: the denser, fine-grained credit assign-ment of GiGPO expedites a high-quality warm-up phase, thereby supplying Phase 1 with a larger, purer set of successful trajectories. Consequently, this superior behavioral evidence yields a highly refined skill repository, ultimately maximizing the upper bound of the finalized retrieval-free policy. 
+
+B.3 Evaluating the Intrinsic Quality of Skills 
+
+To evaluate the intrinsic quality of the skills gen-erated during Phase 1, we employ a multi-model LLM-as-a-Judge framework (comprising Gemini-3-Flash, GLM-5.1, and DeepSeek-V4-Pro) to dy-namically score the skills extracted throughout the training process, as illustrated in Figure 5. Across both the ALFWorld and WebShop benchmarks, while individual evaluator models exhibit local scoring variances, the aggregated mean score estab-lishes a clear and sustained upward trend. This strong multi-model consensus indicates that as training progresses, the strategic skills mined by SIRI undergo substantial optimization in logical rigor and generalizability. Crucially, this steady enhancement in skill quality tightly correlates with the climbing task success rates observed in our main experiments. This alignment provides com-pelling evidence that the performance leaps of S IRI 
+
+stem from the construction of a high-quality skill repository, rather than mere overfitting to specific environmental trajectories. 
+
+C Examples of Extracted Skills 
+
+To provide a clearer understanding of the skills gen-erated by our framework, we showcase concrete examples of extracted skills from both the ALF-World and WebShop environments. Each skill ab-stracts a successful trajectory into a highly reusable heuristic, encompassing applicability conditions, a high-level strategy, and actionable key steps. 
+
+ALFWorld. The following skill demonstrates how the agent learns to overcome exploration bottle-necks when a target object is absent from its initial expected location.   
+
+> Skill Example
+> When to apply: When the required object is not found at the initial search location and must be located to proceed with the task.
+> Strategy: Evaluate the current observation to confirm
+
+12 the object’s absence, then systematically navigate to the next most logical storage receptacle based on the object’s typical context. 
+
+Key steps: Observe the current location | Verify the tar-get object is absent | Identify the next probable storage receptacle | Navigate to the new location 
+
+WebShop. The following skill illustrates how the agent systematically configures product attributes and verifies task constraints prior to executing a purchase. 
+
+Skill Example 
+
+When to apply: When a product page is open and spe-cific attribute variations must be chosen to match task requirements. 
+
+Strategy: Configure the product by selecting all required options, confirm that constraints like price remain satis-fied, and finalize the transaction. 
+
+Key steps: Select required item attributes | Verify con-straints are met | Execute the purchase action 
+
+D Prompt Templates 
+
+ALFWorld prompt. For ALFWorld, we use the following prompt template with skill memory aug-mentation. 
+
+ALFWorld Prompt Template (with Skill Memory) 
+
+You are an expert decision-making agent operating in the ALFRED embodied environment. Your goal is to complete the following task: {task_description} 
+
+Current Progress 
+
+You have already taken {step_count} step(s). Recent interaction history (observation → action): {ac-tion_history} Current step: {current_step} Current observation: {current_observation} Admissible actions at this step: [{admissible_actions}] 
+
+Relevant Experience 
+
+Below are past experiences retrieved from memory. Each experience is formatted as: • When to apply : the condition under which this skill is relevant. • Strategy : the overall approach that worked for this kind of task. • Key steps : a concrete sequence of actions to follow, separated by “|”. When reasoning, you may: • Check the bold condition first — only use an experi-ence if your current situation matches it. • Use the strategy to guide your overall plan and avoid known pitfalls. • Use the steps as a reference action sequence when the task situation is similar. • Adapt the steps to your current observation rather than following them blindly. 
+
+Warning: These lessons may be outdated. Use them only if they align with your current observation. 
+
+Retrieved experiences: {retrieved_memories} 
+
+Instructions 
+
+For the current step, you should follow this process: 1. Analyze the current observation. 2. Review the retrieved experiences and think about whether any past experience applies. 3. Reason step-by-step and choose the best admissible action. Now it’s your turn to take an action. You should first rea-son step-by-step about the current situation. This reason-ing process MUST be enclosed within <think> </think> 
+
+tags. Once you’ve finished your reasoning, you should choose an admissible action for current step and present it within 
+
+<action> </action> tags. 
+
+WebShop prompt. For WebShop, we use the fol-lowing prompt template with skill memory aug-mentation. 
+
+WebShop Prompt Template (with Skill Memory) 
+
+You are an expert autonomous agent operating in the Web-Shop e-commerce environment. Your goal is to complete the following task: {task_description} 
+
+Current Progress 
+
+You have already taken {step_count} step(s). Recent interaction history (observation → action): {ac-tion_history} Current step: {current_step} Current observation: {current_observation} Admissible actions at this step: [{available_actions}] 
+
+Relevant Experience 
+
+Below are past experiences retrieved from memory. Each experience is formatted as: • When to apply : the condition under which this skill is relevant. • Strategy : the overall approach that worked for this kind of task. • Key steps : a concrete sequence of actions to follow, separated by “|”. When reasoning, you may: • Check the bold condition first — only use an experi-ence if your current situation matches it. • Use the strategy to guide your overall plan and avoid known pitfalls. • Use the steps as a reference action sequence when the task situation is similar. • Adapt the steps to your current observation rather than following them blindly. 
+
+Warning: These lessons may be outdated. Use them only if they align with your current observation. 
+
+Retrieved experiences: {retrieved_memories} 
+
+Instructions 
+
+For the current step, you should follow this process: 1. Analyze the current observation. 2. Review the retrieved experiences and think about whether any past experience applies. 3. Reason step-by-step and choose the best admissible action. 
+
+13 Now it’s your turn to take an action. You should first rea-son step-by-step about the current situation. This reason-ing process MUST be enclosed within <think> </think> 
+
+tags. Once you’ve finished your reasoning, you should choose an admissible action for current step and present it within 
+
+<action> </action> tags. 
+
+Skill mining prompt. To extract reusable strate-gies from successful trajectories, we use the fol-lowing template to summarize behavioral patterns into structured skill representations. The model is required to output exactly three labeled fields in plain text. 
+
+Skill Mining Prompt Template 
+
+You are extracting a reusable task strategy from a success-ful agent trajectory. Output EXACTLY three labeled lines. No markdown. No bullets. No extra text. 
+
+=== FORMAT EXAMPLE 1 === 
+
+Task: [example task A] Action sequence: Step 1: locate the target object Step 2: verify it matches the required attributes Step 3: execute the required action on it Step 4: confirm the result When to apply: When the task requires locating a specific object and performing a targeted action on it. Strategy: First verify the object matches all required at-tributes before acting, to avoid wasted steps. Key steps: Locate the target object | Verify it matches all required attributes | Execute the action | Confirm the result 
+
+=== FORMAT EXAMPLE 2 === 
+
+Task: [example task B] Action sequence: Step 1: attempt action with initial parameters Step 2: observe the outcome Step 3: adjust parameters based on outcome Step 4: retry and complete When to apply: When an initial attempt fails and the task requires iterative refinement to succeed. Strategy: After a failed attempt, diagnose the mismatch and adjust the key parameter before retrying. Key steps: Attempt with initial parameters | Observe the outcome | Adjust the parameter causing failure | Retry until success 
+
+=== YOUR TASK === 
+
+Task: {task} Action sequence (completed successfully): {actions} 
+
+Rules: 
+
+• Output EXACTLY three lines with these labels: “When to apply:”, “Strategy:”, “Key steps:”. • Key steps: 2–4 steps separated by “|” (pipe with spaces). No numbers, no bullets. • Do NOT mention specific object names, locations, product IDs, or step numbers. • Focus on generalizable patterns applicable to similar tasks. • Keep each field under 2 sentences. When to apply: 
+
+E Pseudo Code of S IRI 
+
+Algorithm 1 presents the training procedure of SIRI .14 Algorithm 1 SIRI Training Procedure 
+
+1: Input: training task set D, policy πθ , reference policy πref , environment E, group size N , maximum iterations K, warmup thresholds Kwarm , K max , N req , success threshold ϵsucc , mining interval Imine , skill maturity thresholds Kmat , ρ hit , ρ pos ,step-credit weight ω, KL coefficient β, internalization schedule λ(k).2: Initialize: skill bank B ← ∅ , phase indicator p ← 0, success counter Nsucc ← 0.3: *** SIRI training begins *** 
+
+4: for k = 1 to K do 
+
+5: Set old policy πθold ← πθ .6: for each task group g ∈ D do 
+
+7: *** Step A: Phase-aware rollout collection. *** 
+
+8: if p = 0 then 
+
+9: Sample N skill-free trajectories under x(i, −) 
+
+> t
+
+in Eq. (5). 10: else 
+
+11: Retrieve skills Mg = R(B, q g ) and sample paired skill-free / skill-augmented trajectories under Eqs. (5)–(6). 12: end if 
+
+13: Compute trajectory returns {R(τi)}Ni=1 and update Nsucc .14: *** Step B: GiGPO credit computation. *** 
+
+15: Compute episode-level advantages AE (τi) and step-level advantages AS (a(i) 
+
+> t
+
+) using GiGPO. 16: Compute composite action advantages A(a(i) 
+
+> t
+
+) = AE (τi) + ωA S (a(i) 
+
+> t
+
+).17: *** Step C: Self-skill mining and validation. *** 
+
+18: if p ≥ 1 then 
+
+19: if k mod Imine = 0 then 
+
+20: Mine candidate skills from successful skill-free trajectories with R(τi) ≥ ϵsucc .21: Insert mined skills mj = ( cj , s j , u j , n j , state j ) into B as candidate .22: end if 
+
+23: Compute paired-rollout utility ∆g by Eqs. (10)–(11). 24: Update retrieved skill utilities by Eq. (12). 25: Promote positive-utility candidate skills to active and retire persistently negative skills. 26: end if 
+
+27: *** Step D: Advantage-weighted internalization. *** 
+
+28: if p = 2 then 
+
+29: Compute student log-probabilities under skill-free contexts by Eq. (14). 30: Construct utility gates Gi,t,ℓ by Eq. (15). 31: Compute token weights κi,t,ℓ by Eq. (16). 32: Compute internalization loss Lint by Eq. (17). 33: Optimize πθ with the joint objective in Eq. (18). 34: else 
+
+35: Optimize πθ with LGiGPO + βLKL .36: end if 
+
+37: end for 
+
+38: *** Step E: Phase transition. *** 
+
+39: if p = 0 and Eq. (8) is satisfied then 
+
+40: Set p ← 1.41: end if 
+
+42: if p = 1 and Eq. (13) is satisfied then 
+
+43: Set p ← 2.44: end if 
+
+45: end for 
+
+46: Discard skill bank B.47: Output: retrieval-free policy πθ using only the skill-free context x(i, −) 
+
+> t
+
+.
+
+15

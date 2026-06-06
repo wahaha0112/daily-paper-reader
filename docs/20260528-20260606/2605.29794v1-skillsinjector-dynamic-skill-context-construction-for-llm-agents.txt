@@ -1,0 +1,691 @@
+Title: SkillsInjector: Dynamic Skill Context Construction for LLM Agents
+
+URL Source: https://arxiv.org/pdf/2605.29794v1
+
+Published Time: Fri, 29 May 2026 01:10:18 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# SkillsInjector: Dynamic Skill Context Construction for LLM Agents 
+
+Yanchao Li 1,2 , Wanhao Liu 2, Ben Gao 2, Jiaqing Xie 2,Zhehong Ai 2 †, Na Zou 2, Yuqiang Li 2, Tianfan Fu 1,2 †
+
+> 1
+
+Nanjing University 2Shanghai AI Lab 
+
+Abstract 
+
+LLM agents now draw on growing skill li-braries to handle complex tasks. However, in-jecting more skills does not always improve task completion and can even degrade it. Ex-isting methods still treat skill injection as a static step, selecting skills with fixed criteria, fixing the budget in advance, and leaving de-scriptions unchanged. We argue that this static treatment can undermine the utility of skills, be-cause which skills are exposed, how many are included, and how they are presented all affect downstream performance. We propose SkillsIn-jector, a two-stage adaptive method that jointly addresses these decisions. First, a context plan-ner learns execution-grounded skill preferences and admits an adaptive number of skills for each task. A set-aware renderer then tailors how selected descriptions are presented rela-tive to their co-injected neighbors. Across tau2-bench, SkillsBench, and ALFWorld, SkillsIn-jector achieves the highest score, improving over the strongest baseline by 3.9, 6.1, and 7.3 percentage points, respectively. Ablation stud-ies show that skill selection, adaptive budgeting, and set-aware rendering each contribute to the gain. These results show that skill-augmented agents benefit from optimizing the injected con-text itself. Code will be released upon publica-tion 
+
+1 Introduction 
+
+Large Language Model (LLM) agents increasingly rely on skill injection to extend their capabilities across complex and open-ended tasks (Li et al., 2026; Zhou et al., 2026; Jiang et al., 2026). In-tuitively, exposing a larger library of specialized skills should empower an agent to handle more so-phisticated scenarios. However, recent empirical evidence points to a scaling bottleneck (Liu et al., 2024; Gao et al., 2026; Liu et al., 2026b). Packing more skills can degrade downstream performance rather than improving it (Figure 1). As the injected skill set grows, agents can suffer from attention dis-persion and competition among similar skills (Li et al., 2026; Li, 2026). While the intrinsic qual-ity of underlying skills remains fundamental, the suboptimal process of skill injection itself emerges as a primary bottleneck restricting advanced agent systems. Existing methods address this bottleneck by op-timizing isolated pipeline stages. Retrieval and routing methods rank candidate skills and expose a fixed-size shortlist (Zheng et al., 2026; Molfetta et al., 2025). A separate line evolves or curates the skill library itself (Zhou et al., 2026; Xia et al., 2026). These directions are useful, but they still treat skill context generation as a static step. The budget is fixed in advance, and each skill descrip-tion is passed to the agent unchanged. We argue that the missing layer is task-adaptive skill context construction, which jointly decides which skills to expose, how many to include, and how to present them together for the current task. To bridge this gap, we view skill injection as dynamic, task-adaptive construction of the skill context rather than static retrieval. We propose SkillsInjector, a framework that jointly addresses skill selection, budgeting, and presentation through two coordinated components: a context planner and a set-aware renderer. The context planner estimates the execution-grounded utility of each candidate skill and admits an adaptive set of high-benefit skills for the current task, rather than relying only on semantic similarity or a fixed rule. The selected set is then passed to the renderer, which adapts each skill description in relation to its co-injected neighbors, clarifying role boundaries and reducing overlap. This design provides the agent with a more focused skill context at low inference cost. Across tau2-bench, SkillsBench, and ALFWorld, SkillsInjector achieves the strongest results, and ablations show that selection, budgeting, and ren-dering each contribute. Further diagnostics charac-1                                
+
+> arXiv:2605.29794v1 [cs.AI] 28 May 2026 0124816 32 64 82
+> candidate pool size K
+> 20
+> 30
+> 40
+> 50
+> 60
+> pass rate (%)
+> tau2-airline
+> 0124816 32 64 128
+> candidate pool size K
+> 35
+> 40
+> 45
+> 50
+> 55
+> 60
+> 65 tau2-retail
+> 0124816 32 64 128
+> candidate pool size K
+> 20
+> 30
+> 40
+> 50
+> 60
+> 70
+> tau2-telecom
+> All-inject SkillsInjector No-skill baseline Figure 1: Scaling the candidate skill pool on tau2-bench. Static all-injection (red) collapses as the candidate skill pool grows, while our method (blue) remains stable.
+
+terize the structure behind the skill-injection bottle-neck. Skill effects are heterogeneous across both quality and cost, and tasks differ in how much skill context they can exploit. These findings motivates task-specific context allocation that selects compat-ible skills and makes their roles explicit. Our contributions are as follows. • We reframe skill injection as a per-task context construction problem, shifting the focus from skill matching alone to constructing the context the agent should read. • We introduce SkillsInjector, which couples an execution-grounded planner for adaptive selec-tion and budgeting with a set-aware renderer for description contextualization. • We evaluate SkillsInjector across tau2-bench, SkillsBench, and ALFWorld, where it consis-tently surpasses classical retrieval and recent skill-routing methods. Our diagnostics further show why skill selection, adaptive budgeting, and description presentation are all necessary. 
+
+2 Related Work 
+
+Skill libraries for LLM agents. Skill libraries are now a standard layer in LLM agent sys-tems (Jiang et al., 2026; Li et al., 2026). One line of work evolves the library itself, distilling new skills from execution traces or co-evolving them with the agent policy (Zhou et al., 2026; Xia et al., 2026; Yang et al., 2026). A closely related line keeps the executor frozen and trains a separate module to curate which skills are applied (Ouyang et al., 2026). These directions all change the library itself. We instead take the library as fixed, as in most real deployments. Our focus is how to assemble its skill context for each task. 
+
+Retrieval over tools and skills. Most existing work treats skill injection as a retrieval problem. Classical tool-augmented agents rank skills by doc-umentation similarity (Patil et al., 2024; Qin et al., 2024), and skill-oriented retrievers extend this with listwise reranking or dependency-aware graph structure (Zheng et al., 2026; Liu et al., 2026a). A separate thread lets the model emit tool identifiers directly (Hao et al., 2023; Wang et al., 2025). All these methods fix the budget in advance and pass each description unchanged. We let the budget vary with the task, and the renderer refines each description against its co-injected neighbors. 
+
+Improving skill descriptions. What an agent sees of each skill shapes which one it picks. Em-pirical audits show catalog descriptions are system-atically defective and lose much of their benefit under realistic noise (Hasan et al., 2026; Liu et al., 2026b). One line of work rewrites descriptions offline through task-agnostic prompting or trial-and-error refinement (Yuan et al., 2025; Fang et al., 2025). A complementary line updates descriptions after agent failures (Zhou et al., 2026; Ghoshal et al., 2026). All these methods produce a static description per skill. Our renderer instead adapts at injection time. It conditions each description on the specific set of co-injected skills. 2Task  𝑡 47 
+
+(a) Inputs    
+
+> User request : Cancel flight, because
+> date conflicts with a friend’s birthday…
+> Policy constraint : Insurance covers
+> only health / weather…
+> Skill Library 𝑆 =82
+> 1. Cancellation eligibility criteria
+> Check cancellation eligibility rules.
+> 2. Cancellation eligibility policy
+> Cancellation policy and conditions.
+> 3. Refund policy reference
+> Refund eligibility and amounts.
+> 4. Insurance coverage reference
+> Insurance coverage and exceptions.
+> 5. Modify flight insurance policy
+> Change insurance options.
+
+… … 
+
+(b) Context Planner      
+
+> Utility Scores 𝑓 𝜃 (𝑡 47 ,𝑠 𝑖 )
+> τ=0.80
+> 5. Modify flight insurance policy
+> 0.39
+> 1. Cancellation eligibility criteria
+> 0.94
+> 2. Cancellation eligibility policy
+> 0.92
+> 3. Refund policy reference
+> 0.86
+> 4. Insurance coverage reference
+> 0.81
+
+Admitted  (𝑠𝑜𝑟𝑒  ≥ τ)
+
+Rejected  (𝑠𝑜𝑟𝑒 < τ)
+
+… … 
+
+Adaptive Budget  𝐵 𝑡 47 = 4
+
+Execution -grounded Preferences 
+
+𝐿 𝑝𝑙𝑎𝑛𝑛𝑒𝑟 = 𝐿 𝑎𝑙𝑖𝑔𝑛 + 𝜆 𝐿 𝑝𝑟𝑒𝑓 
+
+Curriculum SFT 
+
+From Trace -rich to Trace -free 
+
+Training 
+
+(d) Execution 
+
+> Adapted Skill 1
+> Adapted Skill 2
+> Adapted Skill 3
+> Adapted Skill 4
+> Rendered Context
+
+… … 
+
+Agent  𝜋 𝜃 
+
+Environment  𝜀 
+
+Outcome( 𝒕 𝟒𝟕 , 𝟓 𝒕𝒓𝒊𝒂𝒍 s)    
+
+> 𝑈 𝑡𝑖𝑙𝑖𝑡𝑦 𝑡 47 :0.6→1.0
+
+(c) Set -aware Renderer           
+
+> Example description adaptation
+> Skill 1: Cancellation eligibility criteria
+> Adapted description Original description
+> Whenever a
+> user requests
+> cancellation,
+> before making
+> any decision
+> … …
+> Scope :Based on
+> booking rules, …
+> Not for :Refund
+> policy, …
+> Whenever a
+> user requests
+> cancellation,
+> before making
+> any decision
+> … …
+> Neighbors
+
+Skill 2 
+
+Skill 3 
+
+Skill 4 
+
+> New
+
+Figure 2: SkillsInjector pipeline. The planner learns execution-grounded skill utility, while the renderer adapts selected descriptions with awareness of co-injected skills. At inference, the trained components select an adaptive skill set and inject the rendered context into a frozen agent. 
+
+3 Problem Formulation 
+
+We consider skill injection for a frozen agent op-erating over a fixed skill library. A task t ∼ D is executed in environment E by policy πθ, producing a trajectory τ with success indicator r(τ ) ∈ { 0, 1}.The library is S = {s1, . . . , s N }, and each skill 
+
+si = ( di, b i) pairs an agent-visible description di
+
+with full procedural content bi. At inference the pol-icy and library are fixed, and the controlled object is the skill context supplied to the agent. To make these objects concrete, we use one tau2-airline task 
+
+t47 as a running example throughout the paper. In 
+
+t47 , the user asks the agent to cancel a flight be-cause the date conflicts with a friend’s birthday, while the airline’s insurance covers only health or weather reasons. The relevant library has |S| = 82 
+
+airline policy-reference skills. For a task t and an injected skill context ˜C, we measure the value of ˜C by the expected task com-pletion of the frozen agent, 
+
+U(t, ˜C) = Eτ ∼πθ (·| t, ˜C,E)[r(τ )] . (1) This utility evaluates a context by execution out-come rather than by surface signals such as se-mantic similarity. The execution-grounded bene-fit of skill s for task t is ∆( t, s ) = U(t, {s}) −U(t, ∅), the gain over a no-skill baseline. For t47 ,
+
+U(t47 , ∅) = 0 .60 over five seeds, and ∆( t47 , s )
+
+ranges from −0.20 to +0 .40 across the 82 candi-date skills. Skill context construction is a mapping 
+
+A(t, S) = ( Ct, ρ t), the context-construction op-erator, producing a selected subset Ct ⊆ S and a rendering function ρt that adapts each descrip-tion while leaving each body bi unchanged. The induced budget is Bt = |C t| and the rendered con-text is ˜Ct = ρt(Ct). We seek A that maximizes expected execution utility Et∼D [U(t, ˜Ct)] over the task distribution. For t47 , A returns Bt47 = 4 skills with rendered descriptions. Standard retrieval is the special case of this mapping. Our formulation generalizes retrieval in that (i) Bt varies with t, (ii) 
+
+ρt depends on the selected set Ct, and (iii) selection targets ∆( t, s ) directly. 
+
+4 Method 
+
+We instantiate the context-construction operator 
+
+A(t, S) as SkillsInjector. The first component is a context planner. It handles selection and budget, because tasks differ in how many useful skills they need and skills with similar descriptions can behave differently. The second component is a set-aware renderer. It handles the presentation decision, since descriptions can overlap or shadow each other un-der co-injection. Both components are trained on a training task pool. Figure 2 summarizes the de-sign, and Algorithm ?? in Appendix B gives the full training and inference pipeline. 
+
+4.1 Context Planner 
+
+The planner ranks candidate skills for a task and decides how many enter the context. Seman-tic similarity alone is not enough, because sur-3face relevance does not predict whether a skill helps the agent. For example, for t47 , the candi-date modify_flight_insurance_policy shares the insurance keyword with the user’s request yet has ∆ = −0.20 , while four policy-reference skills yield ∆ = +0 .40 . We therefore treat planning as a preference learning problem, using the execution-grounded benefit ∆( t, s ) from Section 3 as the su-pervision signal. A scorer fθ(t, s ) is trained to predict ∆( t, s ) from the task and description. For generality we let fθ act on a per-task candidate set 
+
+Sc(t) ⊆ S . See Appendix B for more details. 
+
+Scoring. The supervision from ∆( t, s ) has two useful structures. It forms a soft distribution over relative benefit, and within that distribution it pro-vides pairwise orderings between skills. We bound 
+
+∆( t, s ) to a label y(t, s ) ∈ [0 , 1] and turn it into a benefit distribution over Sc(t) with temperature β,
+
+q∆(s | t) = exp( y(t, s )/β )
+
+P 
+
+> s′∈S c(t)
+
+exp( y(t, s ′)/β ) . (2) The scorer induces a predicted distribution pθ(s | t)
+
+by an analogous softmax with temperature γ, and the first training term aligns it with q∆,
+
+Lalign (t) = KL( q∆(· | t) ∥ pθ(· | t)) . (3) Distribution alignment alone can blur fine-grained orderings among close skills, so we add apairwise preference term over pairs ordered by 
+
+y (Burges et al., 2005). We use an odds-ratio form (Hong et al., 2024), with oθ(s | t) =log( pθ(s | t)/(1 − pθ(s | t))) , and define 
+
+Lpref (t) = E(s+,s −)
+
+log  1 + eoθ (s−|t)−oθ (s+|t) ,
+
+(4) where (s+, s −) ranges over pairs with y(t, s +) >y(t, s −). Negatives are drawn from the most se-mantically similar candidates in Sc(t) that the la-bels do not prefer, so the scorer learns to sep-arate functionally close skills rather than topi-cally unrelated ones. The full planner objective is Lplan = Et[Lalign (t) + λLpref (t)] , with λ cho-sen on a held-out dev set. After training, fθ(t, s )
+
+supplies a per-task score for every candidate skill. 
+
+Budget. Scores from fθ must be converted into a set rather than a ranking, but a fixed top-K rule forces every task into the same size. We first nor-malize scores within each task to the unit interval, which makes a single threshold comparable across tasks. The selected set then contains every candi-date whose normalized score exceeds a per-domain threshold, 
+
+C∗ 
+
+> t
+
+=
+
+n
+
+s ∈ S c(t) : ˜fθ(t, s ) ≥ τ ⋆d
+
+o
+
+, Bt = |C ∗ 
+
+> t
+
+|.
+
+(5) The threshold τ ⋆d is chosen per domain on a held-out dev set to maximize execution utility. When no skill clears the threshold, we inject none. The bud-get Bt thus emerges from the task rather than being fixed in advance. For example, for t47 , fθ scores the four useful skills between 0.81 and 0.94 and the insurance distractor at 0.39 , and the threshold 
+
+τ ⋆d admits the four while rejecting the distractor. 
+
+4.2 Set-Aware Renderer 
+
+The renderer handles the presentation decision af-ter the planner produces a selected set C∗ 
+
+> t
+
+. We distill set-aware adaptation into a small renderer 
+
+Rϕ called once before each agent invocation, avoid-ing online inference of a large model (Hinton et al., 2015). When |C ∗ 
+
+> t
+
+| ≤ 1 the renderer is bypassed, since a single injected skill has no neighbors to disambiguate against. 
+
+Conditioning. For |C ∗ 
+
+> t
+
+| ≥ 2, the renderer reads each selected description di, the task t, and the neighbor descriptions {dj : j̸ = i}, and produces an adapted ˜di. Only di is adapted while the skill body bi passes through unchanged. For t47 , Rϕ
+
+adapts cancellation_eligibility_criteria 
+
+by appending a scope clause referenc-ing the co-selected neighbors, such as 
+
+Not for: refund_policy_reference, compensation_eligibility_criteria .
+
+Curriculum. Training Rϕ requires set-aware adaptation supervision that the small renderer can-not produce on its own. We construct it with a stronger teacher Qwen3-235B-A22B-Instruct-2507. Starting from each original description 
+
+D0 = di, the teacher first produces a task-agnostic cleanup D1 that sharpens wording without consid-ering co-injection, then a set-aware target D2 con-ditioned on the task, the selected neighbors, and a trace summary from a training rollout of si, which serves as the SFT target for the student. Because trace summaries are unavailable at inference, we mix trace-rich and trace-free inputs via a curricu-lum (Bengio et al., 2009). The student is trained to predict D2 from the mixed input, 
+
+Lrend (ϕ) = E(t,s i,C∗ 
+
+> t)
+
+− log pϕ(D2 | xt,i ), (6) 4where xt,i is the trace-rich or trace-free input. At inference Rϕ reads only the task and the selected descriptions, and ˜C∗ 
+
+> t
+
+is injected once into the frozen agent. 
+
+5 Experiment 
+
+5.1 Experimental Setup 
+
+To cover different skill regimes, we evaluate SkillsInjector on tau2-bench (three customer-service domains), SkillsBench (packaged vari-ous skills), and ALFWorld (interactive decision-making). Within each benchmark, the agent policy 
+
+πθ and the harness are held fixed across compared methods, and the only controlled variable is the injected skill context. 
+
+Benchmarks. tau2-bench (Barres et al., 2025) contains three customer-service domains (airline, retail, telecom) with 50, 114, and 114 tasks respec-tively. Because the three domains differ substan-tially, we report results per-domain throughout the paper. The skill pool is distilled from training-phase trajectories(Appendix F). SkillsBench (Li et al., 2026) releases 87 agent tasks across 11 do-mains with human-curated skills. As in prior work that uses SkillsBench, we restrict evaluation to the 69 self-contained subset whose tasks can build and run offline on our cluster. The remaining 18 tasks are listed by category in Appendix G. The 11 do-mains are uneven in size and individually small, so we report a single aggregate score on SkillsBench. 
+
+ALFWorld (Shridhar et al., 2021) is a text-based decision-making benchmark across six household categories. We host the environment via Agent-Gym (Xi et al., 2025). The skill pool is distilled like tau2-bench(Appendix F). 
+
+Implementation. The agent model is Qwen3-235B-A22B-Instruct-2507 in tau2-bench and SkillsBench; ALFWorld uses Qwen3-8B, held uni-form across compared methods (Yang et al., 2025). Our planner fθ is a simple MLP over a frozen Qwen3-Embedding-0.6B encoder (Zhang et al., 2025), and the renderer Rϕ is Qwen3-8B fine-tuned from a Qwen3-235B-A22B-Instruct-2507 teacher under the curriculum. Each (method, task) con-figuration is run five times with distinct seeds, on NVIDIA H200 GPU nodes. Full hyperparameters are in Appendix C. 
+
+Baselines. We compare SkillsInjector against baselines drawn from four families, all sharing the same frozen agent and skill pool. Boundary conditions include a no-skill lower bound, random single-skill injection that measures the harmful-injection effect, and full-library injection where pool size permits. Classical retrieval covers BM25 as a sparse retriever and a Dense Cosine retriever that ranks skills by cosine similarity between task and skill embeddings (Robertson and Zaragoza, 2009). SkillRouter (Zheng et al., 2026) reranks the candidate listwise over the skill body, and Graph of Skills (Liu et al., 2026a) retrieves via traversal over a skill-similarity graph. The generative selec-tor is an LLM-as-selector that lets the frozen agent backbone emit skill identifiers. Our SkillsInjector combines the planner with the renderer resolving selection, budget, and presentation jointly. Per-baseline implementation details are in Appendix E. 
+
+Evaluation. The primary metric is task pass rate. We use agent-level binary success on tau2-bench, the pytest verifier result on SkillsBench, and per-category episode success on ALFWorld. For abla-tions where the harness records interaction traces, we additionally report the average number of agent messages per task, denoted ¯M , where lower values indicate lower cost at comparable task completion. We report the mean across the five seeds in all main-text tables. During test evaluation, methods do not update thresholds, receive execution feedback, per-form online search, or re-rank skills after observing test outcomes. 
+
+5.2 Main Results 
+
+Table 1 reports task pass rate of SkillsInjector against all baselines on the three benchmarks. SkillsInjector attains the best score in every col-umn, with an average pass rate of 58.7%, 5.1 points above the strongest baseline. The consistent gap across benchmarks supports the claim that jointly optimizing selection, budget, and rendering outper-forms optimizing selection alone, which is what every compared baseline does. 
+
+5.3 Component ablation 
+
+We isolate the contribution of each part of the SkillsInjector pipeline. w/o renderer reverts de-scriptions to their original form before injection; 
+
+w/o adaptive budget replaces the per-task budget with the best fixed top-K; w/o planner injects the top-K skills judged globally most useful on dev rollouts. The no-skill condition serves as the lower bound. Table 2 reports pass rate and average agent 5Method tau2-airline tau2-retail tau2-telecom SkillsBench ALFWorld Avg No-skill 37.6 51.2 40.0 5.2 67.1 40.2 Random-skill 42.4 53.0 41.9 6.7 69.0 42.6 Full-library 24.4 40.5 24.6 3.2 31.5 24.8 BM25 43.6 54.9 51.2 12.8 71.2 46.7 Dense Cosine 45.2 55.3 54.7 14.2 72.9 48.5 LLM-as-selector 49.6 55.1 55.8 14.2 73.8 49.7 SkillRouter (Zheng et al., 2026) 54.0 59.8 62.8 16.5 74.4 53.5 Graph of Skills (Liu et al., 2026a) 56.1 60.0 60.4 15.9 75.4 53.6 SkillsInjector (Ours) 60.0 61.4 67.0 22.6 82.7 58.7 
+
+Table 1: Main results. Task pass rate (%, ↑) is reported across tau2-bench, SkillsBench, and ALFWorld. SkillsIn-jector achieves the best score on every benchmark. The best and second-best results are highlighted, respectively. 0 4 8 12 16 
+
+Bt
+
+> 0
+> 10
+> 20
+> 30
+> 40
+> Test tasks
+> 34%
+> 12%
+
+Airline (n = 50 )    
+
+> 04812 16
+
+Bt
+
+> 26%
+> 21%
+
+Retail (n = 114 )    
+
+> 04812 16
+
+Bt
+
+> 24%
+> 16%
+
+Telecom (n = 114 )
+
+Figure 3: Adaptive budget distribution. Each panel shows the histogram of per-task selected budget Bt in one tau2-bench domain, under the dev-calibrated τ ⋆d and cap Bmax = 16 .
+
+messages per task ( ¯M ).                                             
+
+> airline retail telecom Variant pass ↑¯M↓pass ↑¯M↓pass ↑¯M↓
+> Full SkillsInjector 60.0 28.5 61.4 25.7 67.0 61.5 w/o renderer 55.2 36.7 59.6 33.2 65.8 67.6 w/o planner 47.2 26.0 51.4 24.5 52.5 57.1 w/o adaptive budget 51.6 29.7 56.5 25.4 56.1 56.0 No-skill 37.6 25.4 51.2 24.7 40.0 55.4
+
+Table 2: Component ablation. The renderer prevents much of the extra interaction cost. Arrows indicate the preferred direction. 
+
+The planner is the dominant lever. Removing the planner produces the largest pass-rate drop on every domain. The renderer pays back on both metrics. Removing the renderer inflates ¯M by 6.1 to 8.2 messages on every domain. Every other ab-lation either keeps ¯M roughly flat or compresses it alongside pass rate. Much of the overhead is re-covered by the renderer. Full SkillsInjector raises 
+
+¯M above no-skill on every domain. Crucially, the 
+
+w/o renderer row pushes ¯M a further 6 to 8 mes-sages higher while losing pass rate. 
+
+5.4 Adaptive budget analysis 
+
+We sweep nine admission thresholds from permis-sive to strict(Figure 4). Both extremes collapse to the no-skill baseline. Accept-all ( τ =0 ) inher-its the full-library degradation, and accept-none (τ =1 ) returns to no-skill. The gain from skill in-jection comes entirely from operating in between. 
+
+The plateau between the extremes is wide. Pass rate stays close to its peak across a broad range of intermediate thresholds, so τ ⋆d does not need fine-grained tuning to recover most of the gain. We then turn to the distribution of per-task bud-gets Bt chosen by the adaptive rule (Figure 3). The selected budget genuinely varies across tasks. 
+
+The histogram shows a three-part distribution on every domain: a left mode that rejects nearly all skills, a broad middle band that selects a moderate number, and an at-cap spike for a minority of tasks. 
+
+The cap binds occasionally rather than inertly. 
+
+A small fraction of tasks lands at Bmax , so the cap is a real upper bound. The running example t47 
+
+(Section 3) lands at Bt47 = 4 in the middle band. 630                         
+
+> 50
+> 70
+> airline peak 60.0% @ ¿¤=0 :9|no-skill 37.6%
+> 30
+> 50
+> 70
+> pass rate (%)
+> retail peak 61.4% @ ¿¤=0 :98 |no-skill 51.2%
+> 00.5 0.7 0.8 0.85 0.9 0.95 0.98 1
+> admission threshold ¿¤
+> 30
+> 50
+> 70
+> telecom peak 67.0% @ ¿¤=0 :95 |no-skill 40.0%
+
+Figure 4: Admission-threshold sweep. Whiskers show 
+
+±1σ over five seeds, the dashed line is the no-skill base-line, hollow markers denote means at or below the base-line, and the highlighted marker gives the dev-selected 
+
+τ ⋆d .
+
+5.5 Planner ablation 
+
+Within the planner we ablate the two loss com-ponents and the encoder backbone. w/o Lalign 
+
+keeps only the pairwise preference signal; w/o 
+
+Lpref keeps only the soft alignment to the benefit distribution. We additionally swap the 0.6B en-coder for Qwen3-Embedding-4B and 8B variants to test whether further gains come from the super-vision or from representation capacity. Table 3 reports pass rate and ¯M for each variant. 
+
+Both loss terms matter. Removing either term lowers pass rate on every domain. Align-ment shapes the global ranking across the candi-date set while preference sharpens local pairwise contrasts among close skills. Encoder scaling yields no significant gain. Replacing the 0.6B encoder with a 4B or 8B variant only slightly affects pass rate on every domain. The planner is therefore more supervision-bottlenecked rather than representation-bottlenecked. Interaction cost is insensitive to planner choices. ¯M stays within roughly ±2 messages of Full across the four ab-lations on airline and retail. The planner controls which skills are chosen, not how the agent then exercises them.                                                   
+
+> airline retail telecom Variant pass ↑¯M↓pass ↑¯M↓pass ↑¯M↓
+> Full 60.0 28.5 61.4 25.7 67.0 61.5 w/o Lalign 53.2 28.6 57.7 24.8 62.3 56.7
+> w/o Lpref 54.4 29.3 56.1 25.2 64.6 58.7 encoder →4B 58.0 27.0 58.9 26.7 65.1 61.3 encoder →8B 58.8 27.5 59.5 24.9 64.0 67.6
+
+Table 3: Planner ablation. Both alignment and pref-erence losses are needed, and larger encoders yield no meaningful gain. 
+
+5.6 Renderer ablation 
+
+We contrast our curriculum against simpler ren-derer training regimes and against the 235B teacher used during distillation. 8B prompt only runs the same 8B base model without any fine-tuning; 8B trace-rich only and 8B trace-free only keep the cur-riculum’s data sources but apply only one of the two regimes. The 235B teacher provides a soft up-per bound, and the no-render condition is the lower bound on rendering quality. 
+
+The small renderer requires training, not just prompting. Prompt-only 8B drops below the no-render baseline on all three domains, showing that set-aware adaptation must be learned rather than prompted only. Single-regime distillation helps but is insufficient. The trace-rich and trace-free solo variants both recover the gap. The curricu-lum schedule itself contributes to the final ren-derer. For example, for t47 the trace-rich variant of cancellation_eligibility_criteria adds trace-conditional gates like Do NOT call if the user has already been informed of the policy , while the trace-free variant pro-duces generic guards like Do NOT call if the reservation ID is missing . The curriculum-trained renderer instead names sibling skills di-rectly, for instance Do NOT call if the user is asking about a change, refund . The curriculum-trained 8B tracks the 235B teacher at a fraction of the cost. The 8B curriculum ap-proaches the teacher’s pass rate, and it also reduces a little agent interaction cost beyond the inference savings. 
+
+5.7 Additional Results 
+
+We further analyze two diagnostic views behind the macro results. Figure 5 resolves the macro pass rate into per-skill effects on both quality and cost. Skills are heterogeneous in utility. It shows that a sub-set of skills actively lowers pass rate even though they look topically relevant, and many useful skills 7¢ pass rate 
+
+> ¢ ¹M
+
+22 
+
+46 
+
+3
+
+11    
+
+> ← lose win →
+> pricy → ← cheap
+> Airline N=82 · helpful 83% · cost up 70%
+> ¢pass rate
+
+38 
+
+84 
+
+3
+
+3   
+
+> ← lose win →
+> Retail N=128 · helpful 95% · cost up 68%
+> ¢pass rate
+
+7
+
+70 
+
+15 
+
+36   
+
+> ← lose win →
+> Telecom N=128 · helpful 60% · cost up 83%
+
+Figure 5: Per-skill effects. Each point is one skill, plotted by its change in pass rate and in agent messages per task against the no-skill baseline. One panel per tau2-bench domain. Most skills are helpful but raise interaction cost, while a long tail actively reduces pass rate. This motivates selecting skills by predicted utility rather than injecting a domain-level shortlist. 0 1 2 4 8 16 32 64 
+
+> 0
+> 25
+> 50
+> 75
+> 100
+> Pass rate (%)
+
+airline         
+
+> 0124816 32 64 128
+> Number of injected skills
+
+retail         
+
+> 0124816 32 64 128
+
+telecom   
+
+> no-skill baseline improving tasks degrading tasks
+
+Figure 6: Per-task responses to larger skill sets. Each panel shows the average pass-rate trajectory of two task groups within one tau2-bench domain. Tasks are grouped by the Spearman correlation between N and reward into improving ( ρ > 0.3) and degrading ( ρ < −0.3). The two groups diverge as N grows, showing why a fixed large skill budget fails at the aggregate level.                                                   
+
+> airline retail telecom Renderer variant pass ↑¯M↓pass ↑¯M↓pass ↑¯M↓
+> No render 55.2 36.7 59.6 33.2 65.8 67.6 8B prompt only 49.6 28.5 52.1 25.6 47.4 62.1 8B trace-rich only 53.6 33.9 57.4 26.1 64.7 84.4 8B trace-free only 52.4 36.5 56.8 27.3 63.2 58.7
+> 235B teacher 62.4 29.3 60.5 39.9 70.7 61.3 8B curriculum(Ours) 60.0 28.5 61.4 25.7 67.0 61.5
+
+Table 4: Renderer ablation. The curriculum-trained 8B renderer approaches teacher-level pass rate. 
+
+also raise the message budget. The planner must therefore select on predicted utility along both axes, not on surface similarity. Figure 6 traces per-task pass-rate trajectories as the injected skill budget grows. Tasks are heterogeneous in skill demand. 
+
+As more skills are injected (Figure 6), task groups with different sensitivities to skills diverge, with the gap widening to tens of percentage points. This is what task-adaptive budgeting must serve. See Appendix A for more details about case study. 
+
+6 Conclusion 
+
+This paper shows that skill injection is not only a retrieval problem, but a question of constructing the skill context a frozen agent can read. SkillsInjector implements this view in two ways. First, it uses utility signal to plan the exposed skill set. Second, it renders selected descriptions in a set-aware form. Across tau2-bench, SkillsBench, and ALFWorld, it improves task completion over many retrieval base-lines. The ablations show that selection, budget, and presentation each affect downstream perfor-mance. These results indicate that a skill’s value is conditional on the task and other skills sharing the context. The primary object to optimise is the con-text the agent actually consumes. A natural next 8step is to co-train the skill library and the injection layer under a shared task-utility objective. 
+
+Limitations 
+
+SkillsInjector is evaluated as an inference-time layer for frozen agents on tau2-bench, SkillsBench, and ALFWorld. These benchmarks already span dialogue-driven tool use, packaged coding skills, and text-based interactive decision-making, but additional task families such as GUI automation, open-web agents, and very long-horizon embod-ied tasks remain untested (Xie et al., 2024; Zhou et al., 2024). Within each benchmark we use a sin-gle source of skills, either human-curated or LLM-generated, and do not study mixed pools. Cost con-siderations restrict our agent backbones to the open Qwen series, so our results do not characterize per-formance under proprietary closed-source models. The frozen-agent assumption matches most current deployments where the policy is held fixed at infer-ence, and we leave the interaction with co-trained or RL-finetuned agents to follow-up work. 
+
+Ethical Considerations 
+
+SkillsInjector runs at inference time on a frozen LLM agent. We do not release a new dataset or change the agent’s policy. The risks we describe are inherited from the components we build on. 
+
+References 
+
+Victor Barres, Honghua Dong, Soham Ray, Xujie Si, and Karthik Narasimhan. 2025. τ 2-bench: Evaluat-ing conversational agents in a dual-control environ-ment. Preprint , arXiv:2506.07982. Yoshua Bengio, Jérôme Louradour, Ronan Collobert, and Jason Weston. 2009. Curriculum learning. In 
+
+Proceedings of the 26th Annual International Confer-ence on Machine Learning , ICML ’09, page 41–48, New York, NY, USA. Association for Computing Machinery. Chris Burges, Tal Shaked, Erin Renshaw, Ari Lazier, Matt Deeds, Nicole Hamilton, and Greg Hullender. 2005. Learning to rank using gradient descent. In 
+
+Proceedings of the 22nd International Conference on Machine Learning , ICML ’05, page 89–96, New York, NY, USA. Association for Computing Machin-ery. Wei Fang, Yang Zhang, Kaizhi Qian, James R. Glass, and Yada Zhu. 2025. PLAY2PROMPT: Zero-shot tool instruction optimization for LLM agents via tool play. In Findings of the Association for Computa-tional Linguistics: ACL 2025 , pages 26274–26290, Vienna, Austria. Association for Computational Lin-guistics. Yudong Gao, Zongjie Li, Yuanyuanyuan, Zimo Ji, Pingchuan Ma, and Shuai Wang. 2026. Skillre-ducer: Optimizing llm agent skills for token effi-ciency. Preprint , arXiv:2603.29919. Sandip Ghoshal, Anshul Mittal, Jyotika Singh, Miguel Ballesteros, Weiyi Sun, Fang Tu, Shailender Singh, Yassine Benajiba, Fahad Shah, Sujeeth Bharadwaj, Sujith Ravi, and Dan Roth. 2026. Jtpro: A joint tool-prompt reflective optimization framework for language agents. Preprint , arXiv:2604.19821. Shibo Hao, Tianyang Liu, Zhen Wang, and Zhiting Hu. 2023. Toolkengpt: Augmenting frozen language models with massive tools via tool embeddings. In 
+
+Advances in Neural Information Processing Systems ,volume 36, pages 45870–45894. Curran Associates, Inc. Mohammed Mehedi Hasan, Hao Li, Gopi Krishnan Rajbahadur, Bram Adams, and Ahmed E. Has-san. 2026. Model context protocol (mcp) tool de-scriptions are smelly! towards improving ai agent efficiency with augmented mcp tool descriptions. 
+
+Preprint , arXiv:2602.14878. Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. 2015. Distilling the knowledge in a neural network. 
+
+Preprint , arXiv:1503.02531. Jiwoo Hong, Noah Lee, and James Thorne. 2024. ORPO: Monolithic preference optimization without reference model. In Proceedings of the 2024 Confer-ence on Empirical Methods in Natural Language Pro-cessing , pages 11170–11189, Miami, Florida, USA. Association for Computational Linguistics. Yanna Jiang, Delong Li, Haiyu Deng, Baihe Ma, Xu Wang, Qin Wang, and Guangsheng Yu. 2026. Sok: Agentic skills – beyond tool use in llm agents. 
+
+Preprint , arXiv:2602.20867. Xiangyi Li, Wenbo Chen, Yimin Liu, Shenghan Zheng, Xiaokun Chen, Yifeng He, Yubo Li, Bingran You, Haotian Shen, Jiankai Sun, Shuyi Wang, Binxu Li, Qunhong Zeng, Di Wang, Xuandong Zhao, Yuanli Wang, Roey Ben Chaim, Zonglin Di, Yipeng Gao, and 22 others. 2026. Skillsbench: Benchmarking how well agent skills work across diverse tasks. 
+
+Preprint , arXiv:2602.12670. Xiaoxiao Li. 2026. When single-agent with skills replace multi-agent systems and when they fail. 
+
+Preprint , arXiv:2601.04748. Dawei Liu, Zongxia Li, Hongyang Du, Xiyang Wu, Shihang Gui, Yongbei Kuang, and Lichao Sun. 2026a. Graph of skills: Dependency-aware struc-tural retrieval for massive agent skills. Preprint ,arXiv:2604.05333. 
+
+9Nelson F. Liu, Kevin Lin, John Hewitt, Ashwin Paran-jape, Michele Bevilacqua, Fabio Petroni, and Percy Liang. 2024. Lost in the middle: How language mod-els use long contexts. Transactions of the Association for Computational Linguistics , 12:157–173. Yujian Liu, Jiabao Ji, Li An, Tommi Jaakkola, Yang Zhang, and Shiyu Chang. 2026b. How well do agen-tic skills work in the wild: Benchmarking llm skill us-age in realistic settings. Preprint , arXiv:2604.04323. Lorenzo Molfetta, Giacomo Frisoni, Nicolò Monal-dini, and Gianluca Moro. 2025. PORTS: Preference-optimized retrievers for tool selection with large lan-guage models. In Proceedings of the 2025 Confer-ence on Empirical Methods in Natural Language Processing , pages 10007–10030, Suzhou, China. As-sociation for Computational Linguistics. Siru Ouyang, Jun Yan, Yanfei Chen, Rujun Han, Zifeng Wang, Bhavana Dalvi Mishra, Rui Meng, Chun-Liang Li, Yizhu Jiao, Kaiwen Zha, Maohao Shen, Vishy Tirumalashetty, George Lee, Jiawei Han, Tomas Pfister, and Chen-Yu Lee. 2026. Skil-los: Learning skill curation for self-evolving agents. 
+
+Preprint , arXiv:2605.06614. Shishir G. Patil, Tianjun Zhang, Xin Wang, and Joseph E. Gonzalez. 2024. Gorilla: Large language model connected with massive apis. In Advances in Neural Information Processing Systems , volume 37, pages 126544–126565. Curran Associates, Inc. Yujia Qin, Shihao Liang, Yining Ye, Kunlun Zhu, Lan Yan, Yaxi Lu, Yankai Lin, Xin Cong, Xiangru Tang, Bill Qian, Sihan Zhao, Lauren Hong, Runchu Tian, Ruobing Xie, Jie Zhou, Mark Gerstein, dahai li, Zhiyuan Liu, and Maosong Sun. 2024. Toolllm: Fa-cilitating large language models to master 16000+ real-world apis. In International Conference on Learning Representations , volume 2024, pages 9695– 9717. Stephen Robertson and Hugo Zaragoza. 2009. The probabilistic relevance framework: Bm25 and be-yond. Found. Trends Inf. Retr. , 3(4):333–389. Mohit Shridhar, Xingdi Yuan, Marc-Alexandre Cote, Yonatan Bisk, Adam Trischler, and Matthew Hausknecht. 2021. {ALFW}orld: Aligning text and embodied environments for interactive learning. In 
+
+International Conference on Learning Representa-tions .Renxi Wang, Xudong Han, Lei Ji, Shu Wang, Timothy Baldwin, and Haonan Li. 2025. Toolgen: Unified tool retrieval and calling via generation. In Inter-national Conference on Learning Representations ,volume 2025, pages 73473–73498. Zhiheng Xi, Yiwen Ding, Wenxiang Chen, Boyang Hong, Honglin Guo, Junzhe Wang, Xin Guo, Ding-wen Yang, Chenyang Liao, Wei He, Songyang Gao, Lu Chen, Rui Zheng, Yicheng Zou, Tao Gui, Qi Zhang, Xipeng Qiu, Xuanjing Huang, Zuxuan Wu, and Yu-Gang Jiang. 2025. AgentGym: Evaluat-ing and training large language model-based agents across diverse environments. In Proceedings of the 63rd Annual Meeting of the Association for Compu-tational Linguistics (Volume 1: Long Papers) , pages 27914–27961, Vienna, Austria. Association for Com-putational Linguistics. Peng Xia, Jianwen Chen, Hanyang Wang, Jiaqi Liu, Kaide Zeng, Yu Wang, Siwei Han, Yiyang Zhou, Xujiang Zhao, Haifeng Chen, Zeyu Zheng, Cihang Xie, and Huaxiu Yao. 2026. Skillrl: Evolving agents via recursive skill-augmented reinforcement learning. 
+
+Preprint , arXiv:2602.08234. Tianbao Xie, Danyang Zhang, Jixuan Chen, Xiaochuan Li, Siheng Zhao, Ruisheng Cao, Toh Jing Hua, Zhou-jun Cheng, Dongchan Shin, Fangyu Lei, Yitao Liu, Yiheng Xu, Shuyan Zhou, Silvio Savarese, Caiming Xiong, Victor Zhong, and Tao Yu. 2024. Osworld: Benchmarking multimodal agents for open-ended tasks in real computer environments. In Advances in Neural Information Processing Systems , volume 37, pages 52040–52094. Curran Associates, Inc. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Day-iheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, and 41 others. 2025. Qwen3 technical report. Preprint ,arXiv:2505.09388. Yutao Yang, Junsong Li, Qianjun Pan, Bihao Zhan, Yux-uan Cai, Lin Du, Jie Zhou, Kai Chen, Qin Chen, Xin Li, Bo Zhang, and Liang He. 2026. Autoskill: Experience-driven lifelong learning via skill self-evolution. Preprint , arXiv:2603.01145. Siyu Yuan, Kaitao Song, Jiangjie Chen, Xu Tan, Yongliang Shen, Kan Ren, Dongsheng Li, and De-qing Yang. 2025. EASYTOOL: Enhancing LLM-based agents with concise tool instruction. In Pro-ceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Com-putational Linguistics: Human Language Technolo-gies (Volume 1: Long Papers) , pages 951–972, Al-buquerque, New Mexico. Association for Computa-tional Linguistics. Yanzhao Zhang, Mingxin Li, Dingkun Long, Xin Zhang, Huan Lin, Baosong Yang, Pengjun Xie, An Yang, Dayiheng Liu, Junyang Lin, Fei Huang, and Jingren Zhou. 2025. Qwen3 embedding: Advancing text embedding and reranking through foundation models. 
+
+Preprint , arXiv:2506.05176. YanZhao Zheng, ZhenTao Zhang, Chao Ma, YuanQiang Yu, JiHuai Zhu, Yong Wu, Tianze Xu, Baohua Dong, Hangcheng Zhu, Ruohui Huang, and Gang Yu. 2026. Skillrouter: Skill routing for llm agents at scale. 
+
+Preprint , arXiv:2603.22455. Huichi Zhou, Siyuan Guo, Anjie Liu, Zhongwei Yu, Ziqin Gong, Bowen Zhao, Zhixun Chen, Menglong 
+
+10 Zhang, Yihang Chen, Jinsong Li, Runyu Yang, Qiang-bin Liu, Xinlei Yu, Jianmin Zhou, Na Wang, Chun-yang Sun, and Jun Wang. 2026. Memento-skills: Let agents design agents. Preprint , arXiv:2603.18743. Shuyan Zhou, Frank F Xu, Hao Zhu, Xuhui Zhou, Robert Lo, Abishek Sridhar, Xianyi Cheng, Tianyue Ou, Yonatan Bisk, Daniel Fried, Uri Alon, and Gra-ham Neubig. 2024. Webarena: A realistic web en-vironment for building autonomous agents. In Inter-national Conference on Learning Representations ,volume 2024, pages 15585–15606. 
+
+A Case Study 
+
+This appendix collects the reference data for t47 ,the airline cancellation task used as the running example throughout this paper. All numbers and rewrites are drawn from the same experimental runs as Table 1. 
+
+A.1 Task and library 
+
+The task asks the agent to refuse a flight-cancellation request because the user’s stated rea-son (a friend’s birthday) is not covered by the air-line’s insurance policy. It is drawn verbatim from tau2-airline (task id 47).   
+
+> purpose: Check that the agent understands that insurance only covers health or weather reasons for cancellation. reason_for_call: You want to cancel your flight because the flight coincides with your best friend 's birthday. baseline pass: 0.60 (3/5 trials with no skill injected)
+
+The skill library S contains 82 airline policy-reference skills, detailed in Appendix F. 
+
+A.2 Planner scores 
+
+For illustration, we present five representative can-didates from the 82 -skill airline library and adopt an admission threshold of τ = 0 .80 for this case study. Table 5 reports the trained planner fθ scores and the resulting admission decisions. Four skills are admitted to C∗ 
+
+> t
+
+, and one is rejected. 
+
+A.3 Adapted descriptions 
+
+For each admitted skill, Table ?? reports the orig-inal description di and the scope clause that the trained renderer appends to produce ˜di. Each ap-pended clause names at least one of the three co-selected skills. Although the two cancellation_* 
+
+skills share a near-identical name, the renderer-added scopes carve out non-overlapping functions, with _criteria covering cancellation eligibility itself and _policy restricted to refund-eligible can-cellation.              
+
+> Skill fθscore Decision
+> cancellation_eligibility_criteria 0.94 admit
+> cancellation_eligibility_policy 0.92 admit
+> refund_policy_reference 0.86 admit
+> insurance_coverage_reference 0.81 admit
+> modify_flight_insurance_policy 0.39 reject
+
+Table 5: Candidate skills for t47 . Trained planner scores and admission decisions. 
+
+modify_flight_insurance_policy shares the “insurance” keyword with the user’s wording, but its body returns post-booking insurance guidance rather than cancellation coverage. 
+
+A.4 Renderer variants 
+
+For cancellation_eligibility_criteria , the four renderer variants of Table 4 produce differ-ent prompt-guidance strings on this task. The full strings are reproduced below verbatim. 
+
+B Method Details 
+
+This appendix expands on the design choices be-hind the two trained components in Section 4. Al-gorithm ?? gives the full offline training and test-time injection pipeline. We then discuss why the planner uses a two-term loss and how its candidate set yields informative negatives. Then we will de-scribe how the set-aware renderer encodes neighbor context through supervision. 
+
+B.1 Planner Why two loss terms. The alignment term Lalign 
+
+pulls pθ(· | t) toward the full benefit distribution 
+
+q∆(· | t). Because KL is averaged over the sim-plex, two skills that the data ranks in opposite di-rections but with nearby benefit scores receive little corrective signal from this term alone. The pref-erence term Lpref acts on per-pair odds ratios, so the local contrasts that Lalign averages out remain in the gradient. We adopt the odds-ratio because it does not require a reference policy and com-poses additively with Lalign in the same probability space (Hong et al., 2024; Molfetta et al., 2025). With λ = 0 .3, the two terms cooperate rather than compete. Lalign governs the distributional shape, whereas Lpref encourages separation among the top contenders. 
+
+Candidate set and hard negatives. The formal-ism in Section 4.1 writes Sc(t) ⊆ S to leave room for a coarse pre-filter when the pool is large. In the libraries used here |S| is at most a few hun-dred skills per domain (Appendix F), and scor-ing a single (t, s ) pair through the frozen Qwen3-11 Embedding-0.6B encoder and a small MLP head is inexpensive (Zhang et al., 2025). So we set 
+
+Sc(t) = S throughout this paper and let the plan-ner rank the full per-domain pool for every task. This choice avoids a recall ceiling imposed by an upstream retriever and keeps the hard-negative pool global. Within S, skills that are semantically close to a preferred candidate but receive a lower ∆ are treated as hard negatives for Lpref . This encour-ages the gradient to separate functionally similar skills, rather than spending capacity on topically unrelated pairs. For label sharpness and predicted softmax we use β = 0 .5 and γ = 0 .5, both chosen by validation utility (Appendix C). 
+
+B.2 Renderer Where the set context lives. The renderer reads, at both training and inference, the target description 
+
+di, the task t, and the set of co-selected neighbor descriptions N = {dj : sj ∈ C ∗ 
+
+> t
+
+\ { si}} . Therefore the rewrite of di can disambiguate against the spe-cific neighbors it will be co-injected with. During training the teacher additionally consumes a trace summary hi collected from a training rollout of si,which exposes behavioral evidence about why di
+
+should be changed. This trace block is also present in the student’s trace-rich input but is dropped from the trace-free input. The student therefore inherits trace-grounded supervision while learning to pro-duce the same set-aware target from descriptions alone at inference. Table ?? summarises the design axes. 
+
+Curriculum schedule. The student is trained over two consecutive epochs that share optimizer state and a single cosine schedule. At each step we mix trace-rich and trace-free inputs by a per-sample Bernoulli draw. Each skill’s record is in-dependently replaced by its trace-free counterpart with probability ρk, where ρ1 = 0 .1 in the first epoch and ρ2 = 0 .9 in the second. Stage one there-fore exposes Rϕ mostly to trajectory-grounded rewrites, anchoring the rewrite policy on behavioral evidence, while stage two shifts the distribution to-ward the trace-free input that the renderer will face at inference. Because the mix is a Bernoulli draw rather than a hard switch, no epoch contains only one regime, and the cross-stage transition does not require a learning-rate reset. At inference Rϕ reads only the skill description fields with the trace block omitted. The set-awareness it produces in ˜di is the structure it learned to predict from D2.
+
+C Implementation Details 
+
+C.1 Planner and Renderer Training 
+
+We describe the training settings of the two com-ponents on tau2-bench, then note how ALFWorld and SkillsBench reuse the same pipeline. 
+
+Planner fθ. The encoder Qwen3-Embedding-0.6B is kept frozen. Only a three-layer MLP head with hidden width 128 and dropout 0.1 consumes the concatenated (t, s ) embedding and outputs a logit. We optimize the head with Adam at learn-ing rate 10 −3, no weight decay, and no warmup. Updates are taken on single-step batches that pack all in-batch pairs through a dedicated pair builder. Mixed precision is disabled and the head trains in fp32. The dual loss uses β = 0 .5 on the ∆ la-bels, γ = 0 .5 on the predicted softmax, and weight 
+
+λ = 0 .3 on the preference term (Eq. 3 for Lalign ;
+
+Lpref is given inline in Section 4.1). After training, the per-domain threshold τ ⋆d is calibrated on a held-out dev set under per-task min–max normalization, yielding τ ⋆ = 0 .90 /0.98 /0.95 for airline / retail / telecom. At evaluation each task is run with five seeds ( 300 , 301 , 302 , 303 , 304 ). 
+
+Renderer Rϕ. SFT runs through Hugging Face Trainer with AdamW at learning rate 5×10 −5, co-sine schedule with warmup ratio 0.10 , per-device batch size 1, gradient accumulation 8 (effective batch 8), bf16, gradient checkpointing, and the SDPA attention kernel. The maximum combined input–output length is 8,192 tokens. Training spans two epochs that share optimizer state. The trace-rich / trace-free mix uses ρ1 = 0 .1 in epoch one and ρ2 = 0 .9 in epoch two (Appendix B.2). The teacher Qwen3-235B-A22B-Instruct-2507 used to produce D2 is served through the same SGLang stack at supervision time. 
+
+Cross-benchmark settings. ALFWorld and SkillsBench reuse the same planner and renderer pipelines as tau2-bench. The only nominal dif-ferences are the choice of training task pool (Ap-pendix F) and per-domain τ ⋆ recalibrated on each benchmark’s held-out dev set. Decoding and cur-riculum settings stay at the values reported above. 
+
+Compute. We train and evaluate on NVIDIA H200 GPUs. The aggregate compute reported be-low is dominated by benchmark inference, which is shared across all compared methods rather than at-tributable to SkillsInjector. Across the three bench-marks, all K compared methods are run with 5
+
+12 seeds each, totaling approximately 240 H200 GPU-hours. Qwen3-235B-A22B-Instruct-2507 (tau2-bench, SkillsBench) and Qwen3-8B (ALFWorld) are served as the frozen agent backbones for ev-ery method, and this cost would arise under any retrieval or skill-routing baseline evaluated on the same protocol. Training the planner head (a 3-layer MLP over a frozen Qwen3-Embedding-0.6B encoder) and distilling the 8B renderer from the Qwen3-235B-A22B-Instruct-2507 teacher together add approximately 24 H200 GPU-hours, domi-nated by the one-off teacher generation of D2. At inference, SkillsInjector adds only the MLP plan-ner and a single 8B renderer call on one H200 on top of the shared agent backbone; the 235B model is used only once, offline, to produce the renderer’s supervision targets. 
+
+C.2 Per-benchmark Evaluation Protocol tau2-bench. We use Qwen3-235B-A22B-Instruct-2507 as the frozen agent backbone, served through SGLang. Generation runs with temper-ature 0.3, max_tokens =4096, and no-thinking mode. Each rollout is capped at 50 environment steps; trajectories that exceed this limit are recorded as max-step terminations. We run five trials per (task, method) pair. 
+
+SkillsBench. The agent backbone, generation pa-rameters, step limit, trial count, and seed protocol are identical to tau2-bench. Each trial is executed inside an isolated Docker container, and the up-stream pytest verifier is invoked at the end of the trial to produce a binary reward. 
+
+ALFWorld. The environment is hosted on AgentGym through the AgentGym EnvServer with HTTP endpoints /create , /reset , and 
+
+/step . The evaluation split covers item ids 2420–2619 (200 episodes total), distributed across six task families: pick_and_place_simple 
+
+(46), pick_two_obj_and_place (45), 
+
+pick_clean_then_place_in_recep (37), 
+
+pick_cool_then_place_in_recep (28), 
+
+pick_heat_then_place_in_recep (25), and 
+
+look_at_obj_in_light (19). The agent back-bone is Qwen3-8B, supervised-fine-tuned on AgentGym’s public AgentTraj-L Round-0 expert traces (14,485 examples; learning rate 10 −5,one epoch) to ensure basic environment com-petence. We serve it on a single H200 GPU through SGLang 0.5.9 with context length 32,768, 
+
+mem_fraction_static =0.85, and tensor-parallel size 1, again in no-thinking mode. Each task is al-lowed up to 30 interaction rounds ( MAX_ROUND =30). We run five trials per task, all sampled at temper-ature 0.7 and seeded from a fixed base seed of 42. 
+
+D Prompts 
+
+This appendix lists the three prompts that ma-terially shape the SkillsInjector pipeline: the teacher prompt used by the strong distiller to pro-duce set-aware rewrite targets D2 for the renderer (Prompt 1), the SFT input template used by the student renderer at training time (Prompt 2), and the prompt used by the LLM-as-selector baseline (Prompt 3). The LLM-as-selector baseline is served by Qwen3-235B-A22B-Instruct-2507 with temperature 0,
+
+max_tokens = 64 , and a single user message; 
+
+skill_list is the newline-joined list of - <name>: <short description> entries truncated to 300 characters per skill. 
+
+E Baselines 
+
+All baselines share the same frozen agent, candi-date skill pool, and evaluation harness on every benchmark. Only the skill-selection rule changes between rows of Table 1. 
+
+Boundary conditions. The no-skill baseline in-jects no skill context and serves as the lower bound. The random-skill baseline samples one skill uni-formly at random from the candidate pool per task, measuring whether arbitrary skill context is prefer-able to none. The full-library baseline injects every skill in the candidate pool and measures the cost of saturation. 
+
+Similarity-based retrievers. BM25 is imple-mented with the rank_bm25 library using each task instruction as query and the textual skill content (one document per skill) as corpus (Robertson and Zaragoza, 2009). Dense Cosine encodes both the task instruction and each skill text with a frozen Qwen3-Embedding-0.6B encoder (Zhang et al., 2025), applies L2 normalisation, and ranks skills by inner product. Both retrievers score every can-didate independently and share the same top-K
+
+budget as the other retrieval baselines. 
+
+Structure-aware retrievers. SkillRouter (Zheng et al., 2026) is a listwise reranker that scores the full candidate set jointly conditioned on the task. Graph of Skills (Liu et al., 2026a) pre-builds a similarity 13 graph over the skills and retrieves through graph traversal seeded by the task representation. We re-implement both methods locally; training data, scorer architecture, and remaining hyperparameters follow the originals’ published recipes. 
+
+Generative selector. The LLM-as-selector base-line prompts the frozen agent backbone with the task instruction and a structured list of available skills (identifier plus short description) and asks it to emit the identifier of the skill it would in-voke. We use few-shot prompting and apply no fine-tuning to the backbone. The prompt template is in Appendix D. 
+
+F Skill Library Construction 
+
+tau2-bench. The skill library for each tau2-bench domain is distilled from baseline rollouts of the un-augmented agent in four steps. First, we collect three-trial baseline rollouts (seeds 300 , 301 , 302 ). For each task we format the three trajectories into a single transcript with PASS / FAIL mark-ers and label the task ALL_PASS, ALL_FAIL, or MIXED based on the reward vector. Second, we prompt the teacher Qwen3-235B-A22B-Instruct-2507 once per task with the domain policy, the tool list, the task description and evaluation criteria, the formatted trajectories, one positive seed example (cancellation_guard ), one negative seed exam-ple ( action_executor ), and a type-specific anal-ysis instruction. The teacher emits 1–3 candidate skill modules per call, each carrying a name, de-scription, prompt guidance, target pattern, and a reference-style function body. Each task is sam-pled at five temperatures {0.0, 0.3, 0.5, 0.7, 1.0},yielding 250 /570 /570 raw generations for airline / retail / telecom respectively. Third, we em-bed every generated skill with Qwen3-Embedding-8B over the concatenated name, description, and docstring, cluster by cosine threshold 0.90 , and rank within each cluster by within-cluster fre-quency, task-coverage breadth, and MMR diver-sity, leaving 86 /154 /140 candidates per domain. Fourth, light human curation rejects only mod-ules that fail to load, use action-semantic names (executor , router , handler , processor ), or copy policy.md verbatim. Semantically near-duplicate skills are intentionally retained so that collision density emerges naturally at evaluation time. The libraries used in the scaling experiments are then capped at 82 /128 /128 skills per domain by MMR rank, matching the largest K explored in Figure 1. 
+
+SkillsBench. SkillsBench ships with a curated skill folder per task, originally intended for an oracle-injection evaluation that grants each task privileged access to its own paired skills. We con-vert this to an open-pool retrieval setting by aggre-gating across tasks. After the 87 → 69 task filter described in Appendix G, we walk each surviving task’s environment/skills/ directory and unify entries by the sha8 hash of their canonicalized body. Identical bodies appearing under multiple tasks are merged into a single pool entry that records all source-task IDs. Near-identical content variants under the same display name are kept as separate entries so that the pool reflects authoring drift rather than name collisions. The aggregated open pool contains 150 unique skill bodies across 142 dis-play names ( 8 names carry more than one content variant), drawn from 176 SKILL.md occurrences in total. All retrieval-based methods, including our planner, query this global pool with only the task instruction. No method receives privileged access to its own training-paired skills. 
+
+ALFWorld. The skill pool is distilled from the ALFWorld subset of AgentGym’s AgentTraj-L cor-pus (Xi et al., 2025), which contains 2,420 ex-pert trajectories spanning the six task families. A Qwen3-235B-A22B-Instruct-2507 distiller con-verts these trajectories into 1,920 raw candidate skills, following the same procedure used for tau2-bench. Then we compress the candidate set with a three-stage filter. First, we remove exact dupli-cates using the sha8 hash of the canonicalized skill body. Second, we perform semantic clustering with Qwen3-Embedding-8B. We use the threshold lad-der 0.90 → 0.85 → 0.80 and retain the cluster medoid at each step. Third, we apply a budget gate based on the Qwen3-8B tokenizer and the ac-tual injection template. This gate enforces a hard 
+
+24 ,000 -token context budget while keeping at least two skills per task family. The pipeline therefore mirrors the tau2-bench construction protocol in steps and tooling. It differs only in the source corpus and in the budget-gate stage, which is adapted to ALFWorld’s longer in-context demands. 
+
+G SkillsBench Task Selection 
+
+SkillsBench (Li et al., 2026) contains 87 self-rated tasks. We found that 18 of these tasks could not 14 be reproduced offline within our containerised in-frastructure. These tasks were excluded from the evaluation. Table ?? reports the 18 excluded tasks, grouped by failure mode. The first two categories are Docker build failures and pre-build failures. In both cases, the failures are caused by depen-dencies in the upstream Dockerfiles. Some build steps require external mirrors, registries, or version-specific toolchains. These resources were not re-liably accessible in our environment. The remain-ing category consists of non-self-contained tasks. These tasks require live external services at execu-tion time. Such services include public APIs, paid third-party endpoints, online model registries, and remote GPU resources. The exclusion criteria were fixed before evaluation. They were applied uni-formly to all compared methods. Thus, all methods were evaluated on the same 69-task subset. This preserves the fairness of the benchmark compari-son. 15
