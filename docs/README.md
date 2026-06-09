@@ -6,102 +6,87 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-06-08
-- 运行时间：2026-06-08 21:08:49 UTC
+- 最新运行日期：2026-06-09
+- 运行时间：2026-06-09 20:37:06 UTC
 - 运行状态：成功
-- 本次总论文数：26
-- 精读区：16
-- 速读区：10
+- 本次总论文数：21
+- 精读区：9
+- 速读区：12
 
 ### 今日简报（AI）
-今日推荐26篇论文，精读16篇，核心聚焦于通过追踪条件改进LLM代理技能（9.0分）以及技能发现与视觉化延伸。
+今日聚焦智能体强化学习中技能创建与策略优化的协同进化，精读9篇高分论文。
 
-最值得关注的是《SkillRevise》提出利用代理执行轨迹自动修订技能代码，以及《Agent Skills Should Go Beyond Text》强调视觉技能对复杂环境的重要性。
+最值得看的两大方向：技能与策略的解耦协调（ReSkill，9.0/10）及模型与训练框架的协同进化（EvoTrainer，9.0/10）。
 
-建议优先阅读《SkillRevise》理解技能自优化机制，再结合《Unsupervised Skill Discovery》探索数据分析中无监督技能挖掘的潜力。
-- 详情：[/202606/08/README](/202606/08/README)
+普通读者可优先关注技能路由与联邦学习等8分速读工作，从实战中理解技能如何从数据或知识库中高效提取与部署。
+- 详情：[/202606/09/README](/202606/09/README)
 
 ### 精读区论文标签
-1. [SkillRevise: Improving LLM-Authored Agent Skills via Trace-Conditioned Skill Revision](/202606/08/2606.01139v1-skillrevise-improving-llm-authored-agent-skills-via-trace-conditioned-skill-revision)  
+1. [ReSkill: Reconciling Skill Creation with Policy Optimization in Agentic RL](/202606/09/2606.01619v2-reskill-reconciling-skill-creation-with-policy-optimization-in-agentic-rl)  
    标签：评分：9.0/10、query:skill
-   evidence：通过轨迹条件化技能修订提升智能体技能
-2. [SkillRevise: Improving LLM-Authored Agent Skills via Trace-Conditioned Skill Revision](/202606/08/2606.01139v2-skillrevise-improving-llm-authored-agent-skills-via-trace-conditioned-skill-revision)  
+   evidence：ReSkill框架在agentic RL中融合技能创建与策略优化
+2. [EvoTrainer: Co-Evolving LLM Policies and Training Harnesses for Autonomous Agentic Reinforcement Learning](/202606/09/2606.03108v1-evotrainer-co-evolving-llm-policies-and-training-harnesses-for-autonomous-agentic-reinforcement-learning)  
    标签：评分：9.0/10、query:skill
-   evidence：基于执行轨迹迭代改进LLM智能体技能的框架
-3. [SkillSmith: Co-Evolving Skills and Tools for Self-Improving Agent Systems](/202606/08/2606.01314v1-skillsmith-co-evolving-skills-and-tools-for-self-improving-agent-systems)  
+   evidence：协同进化LLM策略与训练框架用于智能体RL，积累可复用技能
+3. [Skill Is Not Document: A Query-Conditional Benchmark and Two-Stage Retriever for LLM Agent Skill Routing](/202606/09/2606.03565v1-skill-is-not-document-a-query-conditional-benchmark-and-two-stage-retriever-for-llm-agent-skill-routing)  
    标签：评分：9.0/10、query:skill
-   evidence：技能与工具协同进化框架，直接处理技能获取和进化
-4. [Needles at Scale: LLM-Assisted Target Selection for Windows Vulnerability Research](/202606/08/2606.01364v1-needles-at-scale-llm-assisted-target-selection-for-windows-vulnerability-research)  
+   evidence：LLM智能体技能路由；查询条件基准
+4. [VASO: Formally Verifiable Self-Evolving Skills for Physical AI Agents](/202606/09/2606.05395v1-vaso-formally-verifiable-self-evolving-skills-for-physical-ai-agents)  
+   标签：评分：9.0/10、query:skill
+   evidence：物理AI代理的形式化可验证自进化技能
+5. [Declarative Skills for AI Agents in Knowledge-Grounded Tool-Use Workflows](/202606/09/2606.06923v1-declarative-skills-for-ai-agents-in-knowledge-grounded-tool-use-workflows)  
+   标签：评分：9.0/10、query:skill
+   evidence：声明式技能文件作为技能表示，用于AI代理知识型工作流
+6. [MOLOT System Card: Malicious Operational Logic Observation Transformer](/202606/09/2606.07792v1-molot-system-card-malicious-operational-logic-observation-transformer)  
    标签：评分：9.0/10、query:code-vuln
-   evidence：LLM辅助的Windows漏洞研究目标选择管道
-5. [MMG2Skill: Can Agents Distill In-the-Wild Guides into Self-Evolving Skills?](/202606/08/2606.01993v1-mmg2skill-can-agents-distill-in-the-wild-guides-into-self-evolving-skills)  
+   evidence：带有解释和源代码映射的静态恶意代码检测
+7. [CLASP: Language-Driven Robot Skill Selection and Composition using Task-Parameterized Learning](/202606/09/2606.08169v1-clasp-language-driven-robot-skill-selection-and-composition-using-task-parameterized-learning)  
    标签：评分：9.0/10、query:skill
-   evidence：从网络指南到智能体可执行技能的学习框架
-6. [Tracking the Behavioral Trajectories of Adapting Agents](/202606/08/2606.02536v1-tracking-the-behavioral-trajectories-of-adapting-agents)  
-   标签：评分：9.0/10、query:skill
-   evidence：使用技能文件差异在嵌入空间中测量智能体特质
-7. [FederatedSkill: Federated Learning for Agentic Skill Evolution](/202606/08/2606.03143v1-federatedskill-federated-learning-for-agentic-skill-evolution)  
-   标签：评分：9.0/10、query:skill
-   evidence：联邦学习用于智能体技能演化
-8. [Skill Is Not Document: A Query-Conditional Benchmark and Two-Stage Retriever for LLM Agent Skill Routing](/202606/08/2606.03565v1-skill-is-not-document-a-query-conditional-benchmark-and-two-stage-retriever-for-llm-agent-skill-routing)  
-   标签：评分：9.0/10、query:skill
-   evidence：面向LLM智能体的技能路由
-9. [SkillPyramid: A Hierarchical Skill Consolidation Framework for Self-Evolving Agents](/202606/08/2606.03692v1-skillpyramid-a-hierarchical-skill-consolidation-framework-for-self-evolving-agents)  
-   标签：评分：9.0/10、query:skill
-   evidence：技能整合与迁移
-10. [Skill-RM: Unifying Heterogeneous Evaluation Criteria via Agent Skill](/202606/08/2606.03980v1-skill-rm-unifying-heterogeneous-evaluation-criteria-via-agent-skill)  
-   标签：评分：9.0/10、query:skill
-   evidence：通过可重用的奖励评估技能统一奖励评价，直接涉及技能表示
-11. [SocialCoach: Personalized Social Skill Learning with RL-based Agentic Tutoring and Practice](/202606/08/2606.04155v1-socialcoach-personalized-social-skill-learning-with-rl-based-agentic-tutoring-and-practice)  
-   标签：评分：9.0/10、query:skill
-   evidence：基于RL的社交技能学习
-12. [Online Skill Learning for Web Agents via State-Grounded Dynamic Retrieval](/202606/08/2606.04391v1-online-skill-learning-for-web-agents-via-state-grounded-dynamic-retrieval)  
-   标签：评分：9.0/10、query:skill
-   evidence：基于状态接地动态检索的网页智能体在线技能学习
-13. [Revisiting Vul-RAG: Reproducibility and Replicability of RAG-based Vulnerability Detection with Open-Weight Models](/202606/08/2606.04739v1-revisiting-vul-rag-reproducibility-and-replicability-of-rag-based-vulnerability-detection-with-open-weight-models)  
+   evidence：使用任务参数化学习的语言驱动机器人技能选择与组合
+8. [FusionVul: A Multimodal Feature Fusion Framework for Source Code Vulnerability Detection](/202606/09/2606.08553v1-fusionvul-a-multimodal-feature-fusion-framework-for-source-code-vulnerability-detection)  
    标签：评分：9.0/10、query:code-vuln
-   evidence：基于RAG的源代码漏洞检测方法的可重复性研究
-14. [VASO: Formally Verifiable Self-Evolving Skills for Physical AI Agents](/202606/08/2606.05395v1-vaso-formally-verifiable-self-evolving-skills-for-physical-ai-agents)  
+   evidence：利用多模态特征融合的深度学习源代码漏洞检测
+9. [Anything2Skill: Compiling External Knowledge into Reusable Skills for Agents](/202606/09/2606.09316v1-anything2skill-compiling-external-knowledge-into-reusable-skills-for-agents)  
    标签：评分：9.0/10、query:skill
-   evidence：具有形式化验证的自演化机器人技能
-15. [Workflow-to-Skill: Skill Creation via Routing-Workflow-Semantics-Attachments Decomposition](/202606/08/2606.06893v1-workflow-to-skill-skill-creation-via-routing-workflow-semantics-attachments-decomposition)  
-   标签：评分：9.0/10、query:skill
-   evidence：从异构轨迹自动构建技能，直接与认知系统中的技能表示相关
-16. [Declarative Skills for AI Agents in Knowledge-Grounded Tool-Use Workflows](/202606/08/2606.06923v1-declarative-skills-for-ai-agents-in-knowledge-grounded-tool-use-workflows)  
-   标签：评分：9.0/10、query:skill
-   evidence：面向AI代理的声明式技能文件，直接相关于技能表示与编排
+   evidence：将外部知识编译为Agent可复用技能的框架
 
 ### 速读区论文标签
-1. [Agent Skills Should Go Beyond Text: The Case for Visual Skills](/202606/08/2606.01414v1-agent-skills-should-go-beyond-text-the-case-for-visual-skills)  
+1. [MMG2Skill: Can Agents Distill In-the-Wild Guides into Self-Evolving Skills?](/202606/09/2606.01993v1-mmg2skill-can-agents-distill-in-the-wild-guides-into-self-evolving-skills)  
    标签：评分：8.0/10、query:skill
-   evidence：智能体的多模态技能表示
-2. [When the Scaffold Stays On: AI, Practice Style, and Screening in Elite Skill Formation](/202606/08/2606.06253v1-when-the-scaffold-stays-on-ai-practice-style-and-screening-in-elite-skill-formation)  
+   evidence：从野生指南中进行技能学习，实现代理技能获取
+2. [FederatedSkill: Federated Learning for Agentic Skill Evolution](/202606/09/2606.03143v1-federatedskill-federated-learning-for-agentic-skill-evolution)  
    标签：评分：8.0/10、query:skill
-   evidence：AI在精英技能形成中的替代与互补
-3. [Unsupervised Skill Discovery for Agentic Data Analysis](/202606/08/2606.06416v1-unsupervised-skill-discovery-for-agentic-data-analysis)  
+   evidence：跨智能体协作技能演化的联邦学习
+3. [Skill Is Not Document: A Query-Conditional Benchmark and Two-Stage Retriever for LLM Agent Skill Routing](/202606/09/2606.03565v2-skill-is-not-document-a-query-conditional-benchmark-and-two-stage-retriever-for-llm-agent-skill-routing)  
    标签：评分：8.0/10、query:skill
-   evidence：无监督技能发现
-4. [On the Shoulders of Giants: Empowering Automated Smart Contract Auditing via the GiAnt Corpus](/202606/08/2606.07363v1-on-the-shoulders-of-giants-empowering-automated-smart-contract-auditing-via-the-giant-corpus)  
+   evidence：面向LLM代理的技能路由查询，关注技能检索与兼容性
+4. [Skill-RM: Unifying Heterogeneous Evaluation Criteria via Agent Skill](/202606/09/2606.03980v1-skill-rm-unifying-heterogeneous-evaluation-criteria-via-agent-skill)  
+   标签：评分：8.0/10、query:skill
+   evidence：将奖励模型重构为可复用的评估技能，与技能表示相关
+5. [On the Shoulders of Giants: Empowering Automated Smart Contract Auditing via the GiAnt Corpus](/202606/09/2606.07363v1-on-the-shoulders-of-giants-empowering-automated-smart-contract-auditing-via-the-giant-corpus)  
    标签：评分：8.0/10、query:code-vuln
-   evidence：自动化智能合约审计数据集构建用于漏洞检测
-5. [Self-evolving LLM agents with in-distribution Optimization](/202606/08/2606.07367v1-self-evolving-llm-agents-with-in-distribution-optimization)  
+   evidence：利用机器学习的自动化智能合约审计漏洞检测
+6. [Demand-Driven Vulnerability Detection for Cloud Security Posture Management: Removing Human Rule Authoring from the Disclosure-to-Protection Critical Path](/202606/09/2606.07957v1-demand-driven-vulnerability-detection-for-cloud-security-posture-management-removing-human-rule-authoring-from-the-disclosure-to-protection-critical-path)  
+   标签：评分：8.0/10、query:code-vuln
+   evidence：需求驱动云安全态势管理中的漏洞检测，直接针对云资产代码漏洞检测
+7. [Efficient Skill Grounding via Code Refactoring with Small Language Models](/202606/09/2606.07999v1-efficient-skill-grounding-via-code-refactoring-with-small-language-models)  
    标签：评分：8.0/10、query:skill
-   evidence：基于强化学习的自演化LLM智能体用于长程决策，隐含技能获取
-6. [Expanding Spatial and Temporal Context for Robotic Imitation Learning With Scene Graphs](/202606/08/2606.01072v2-expanding-spatial-and-temporal-context-for-robotic-imitation-learning-with-scene-graphs)  
+   evidence：面向具身代理的技能基础与重用，直接支持技能迁移
+8. [Framing, Judging, Steering: An Assessable Competency Model for Teach-ing Students to Reason With Generative AI](/202606/09/2606.05983v1-framing-judging-steering-an-assessable-competency-model-for-teach-ing-students-to-reason-with-generative-ai)  
    标签：评分：7.0/10、query:skill
-   evidence：在机器人模仿学习中使用场景图作为记忆，属于技能获取的一种形式
-7. [Continual Learning Bench: Evaluating Frontier AI Systems in Real-World Stateful Environments](/202606/08/2606.05661v1-continual-learning-bench-evaluating-frontier-ai-systems-in-real-world-stateful-environments)  
+   evidence：定义生成式AI使用技能的胜任力模型（构架、判断、引导），与认知系统中的技能表示相关
+9. [When the Scaffold Stays On: AI, Practice Style, and Screening in Elite Skill Formation](/202606/09/2606.06253v1-when-the-scaffold-stays-on-ai-practice-style-and-screening-in-elite-skill-formation)  
    标签：评分：7.0/10、query:skill
-   evidence：覆盖软件工程等多个领域的持续学习基准，可用于技能获取评估
-8. [Uncertainty-Aware LLM-Guided Policy Shaping for Sparse-Reward Reinforcement Learning](/202606/08/2606.06673v1-uncertainty-aware-llm-guided-policy-shaping-for-sparse-reward-reinforcement-learning)  
+   evidence：研究AI对精英编程技能形成和实践风格的影响
+10. [MalSkillBench: A Runtime-Verified Benchmark of Malicious Agent Skills](/202606/09/2606.07131v1-malskillbench-a-runtime-verified-benchmark-of-malicious-agent-skills)  
    标签：评分：7.0/10、query:skill
-   evidence：LLM引导的稀疏奖励强化学习策略塑造，可应用于技能获取
-9. [AdMem: Advanced Memory for Task-solving Agents](/202606/08/2606.06787v1-admem-advanced-memory-for-task-solving-agents)  
-   标签：评分：7.0/10、query:skill
-   evidence：代理程序性记忆
-10. [Tree-of-Experience: A Structured Experience-Management Solution for Self-Evolving Agents under Low-Repetition and Implicit-Reward Environments](/202606/08/2606.06960v1-tree-of-experience-a-structured-experience-management-solution-for-self-evolving-agents-under-low-repetition-and-implicit-reward-environments)  
+   evidence：恶意Agent技能的基准，直接与技能相关
+11. [ATTAIN: Automated Exploit Failure Analysis through Trace-Driven Diff Analysis](/202606/09/2606.09060v1-attain-automated-exploit-failure-analysis-through-trace-driven-diff-analysis)  
+   标签：评分：7.0/10、query:code-vuln
+   evidence：基于痕迹的差异分析框架评估漏洞存在性，属于漏洞检测技术
+12. [Diagnosing Knowledge Gaps in LLM Tool Use: An Agentic Benchmark for Novel API Acquisition](/202606/09/2606.03657v1-diagnosing-knowledge-gaps-in-llm-tool-use-an-agentic-benchmark-for-novel-api-acquisition)  
    标签：评分：6.0/10、query:skill
-   evidence：结构化经验管理用于自演化智能体
+   evidence：针对新型API获取的基准，与技能获取相关
 
 
 <div class="dpr-home-promo-card">

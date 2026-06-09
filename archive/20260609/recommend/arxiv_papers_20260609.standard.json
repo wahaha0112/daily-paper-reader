@@ -1,0 +1,874 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-06-09T20:28:55.980749+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 2,
+    "deep_divecandidates": 19,
+    "deep_cap": 7,
+    "deep_selected": 9,
+    "quick_candidates": 15,
+    "quick_skim_target": 12,
+    "quick_selected": 12
+  },
+  "deep_dive": [
+    {
+      "id": "2606.01619v2",
+      "source": "arxiv",
+      "title": "ReSkill: Reconciling Skill Creation with Policy Optimization in Agentic RL",
+      "abstract": "Agentic reinforcement learning (RL) enables LLM agents to improve continuously from environment rewards, yet the resulting policies do not systematically accumulate reusable strategies that generalize across tasks. Modular skills can provide such reusable strategies, yet existing skill-augmented RL methods decouple skill creation from policy optimization, risking adopting skills that conflict with the evolving policy. Inspired by Anthropic's Skill Creator, we introduce ReSkill, an RL-in-the-loop skill creation framework that reconciles skill evolution with policy learning. ReSkill exploits the group-wise structure of GRPO to naturally embed three mechanisms with only marginal additional overhead: (1) an assertion-driven skill creator that diagnoses failures from past experience and proposes conditional, trigger-based skill revisions; (2) within-group rollout sampling that enables controlled comparison of skill versions, capturing which version best supports the policy's ongoing learning; and (3) Thompson Sampling with adaptive discounting to balance exploration and exploitation in skill version selection as the policy evolves. Across several domains, ReSkill consistently outperforms existing memory and skill-based RL methods, with the largest gains on unseen tasks. Analysis of the skill lifecycle shows skills being automatically created, tested, refined, and pruned as the policy improves, demonstrating reconciled skill-policy co-evolution.",
+      "authors": [
+        "Zelin He",
+        "Haotian Lin",
+        "Boran Han",
+        "Wei Zhu",
+        "Haoyang Fang",
+        "Bernie Wang",
+        "Xuan Zhu",
+        "Runze Li",
+        "Matthew Reimherr"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.LG",
+        "stat.ML"
+      ],
+      "published": "2026-06-01T03:12:05+00:00",
+      "link": "https://arxiv.org/pdf/2606.01619v2",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "ReSkill framework for skill creation integrated with policy optimization in agentic RL",
+      "llm_evidence_cn": "ReSkill框架在agentic RL中融合技能创建与策略优化",
+      "llm_evidence": "ReSkill框架在agentic RL中融合技能创建与策略优化",
+      "canonical_evidence": "ReSkill框架在agentic RL中融合技能创建与策略优化",
+      "llm_tldr_en": "Introduces ReSkill, an RL-in-the-loop skill creation framework that reconciles skill evolution with policy learning using GRPO, enabling reusable strategies.",
+      "llm_tldr_cn": "针对强化学习中技能创建与策略优化脱节的问题，本文提出ReSkill，一种在强化学习循环内创建技能的方法。利用GRPO的群组结构，ReSkill包含断言驱动的技能创建器、技能评估器和技能优化器三种机制，在不显著增加开销的情况下协调技能进化与策略学习。实验表明该方法能有效积累跨任务可重用的策略。",
+      "llm_tldr": "针对强化学习中技能创建与策略优化脱节的问题，本文提出ReSkill，一种在强化学习循环内创建技能的方法。利用GRPO的群组结构，ReSkill包含断言驱动的技能创建器、技能评估器和技能优化器三种机制，在不显著增加开销的情况下协调技能进化与策略学习。实验表明该方法能有效积累跨任务可重用的策略。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "research papers on skill acquisition in reinforcement learning",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.03108v1",
+      "source": "arxiv",
+      "title": "EvoTrainer: Co-Evolving LLM Policies and Training Harnesses for Autonomous Agentic Reinforcement Learning",
+      "abstract": "Autonomous LLM training is often framed as recipe search, which leaves the training harness largely static. This limitation sharpens in agentic RL, where shifting bottlenecks and scalar rewards mask diverse failure modes. We introduce EvoTrainer, an autonomous training framework that co-evolves LLM policies and training-side harnesses through empirical feedback: it diagnoses rollout-level evidence, revises diagnostics, backtests interventions, and accumulates reusable skills. Evaluated on mathematical reasoning, competitive-programming code generation, and repository-level software engineering, EvoTrainer matches or exceeds the human-engineered RL references under the same data, codebase, and evaluation protocol, with the largest gain on long-horizon agentic SWE. Trajectory analyses show that retained strategies diverge across domains, evolving diagnostics prevent invalid high-scoring branches from being promoted, and reusable skills shape later search. Autonomous LLM RL should move beyond recipe search toward joint evolution of policies and the training harnesses that interpret them.",
+      "authors": [
+        "Guhong Chen",
+        "Yingcheng Shi",
+        "Yongbin Li",
+        "Binhua Li",
+        "Xander Xu",
+        "Hu Wei",
+        "Shiwen Ni",
+        "Min Yang",
+        "Jieping Ye"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-02T03:47:48+00:00",
+      "link": "https://arxiv.org/pdf/2606.03108v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "co-evolves LLM policies and training harnesses for agentic RL, accumulates reusable skills",
+      "llm_evidence_cn": "协同进化LLM策略与训练框架用于智能体RL，积累可复用技能",
+      "llm_evidence": "协同进化LLM策略与训练框架用于智能体RL，积累可复用技能",
+      "canonical_evidence": "协同进化LLM策略与训练框架用于智能体RL，积累可复用技能",
+      "llm_tldr_en": "EvoTrainer autonomously co-evolves LLM policies and training harnesses in agentic RL, accumulating reusable skills, matching or exceeding human-engineered baselines.",
+      "llm_tldr_cn": "针对自主LLM训练中训练框架静态化的问题，本文提出EvoTrainer框架，通过经验反馈协同进化LLM策略与训练框架：诊断轨迹级证据、修订诊断、回溯干预并积累可复用技能。在数学推理、竞赛编程和仓库级软件工程任务上，EvoTrainer在相同数据和计算条件下达到或超过人工设计的RL基线，展示了技能积累的自动化能力，对技能获取研究具有重要价值。",
+      "llm_tldr": "针对自主LLM训练中训练框架静态化的问题，本文提出EvoTrainer框架，通过经验反馈协同进化LLM策略与训练框架：诊断轨迹级证据、修订诊断、回溯干预并积累可复用技能。在数学推理、竞赛编程和仓库级软件工程任务上，EvoTrainer在相同数据和计算条件下达到或超过人工设计的RL基线，展示了技能积累的自动化能力，对技能获取研究具有重要价值。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "research papers on skill acquisition in reinforcement learning",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.03565v1",
+      "source": "arxiv",
+      "title": "Skill Is Not Document: A Query-Conditional Benchmark and Two-Stage Retriever for LLM Agent Skill Routing",
+      "abstract": "LLM agents complete complex tasks by composing multiple skills, and skill retrieval is a front-end stage for agents. Skill retrieval differs fundamentally from traditional document retrieval at the supervision level: top-K joint correctness depends not only on the semantic relevance of each individual query-skill pair, but also on whether the skills retrieved together can collaborate to fulfill the task under the given query. Such \"skill compatibility\" cannot be derived from independent relevance alone. Yet existing LLM-based data synthesis pipelines can produce a direct supervision signal for \"which skills should not be jointly retrieved under this query\" -- namely the LLM's own rejection decisions -- and this signal is routinely discarded as low-quality data. To address this gap, we propose Reject-as-Resource Retriever (R3) and construct R3-Skill, a bilingual (Chinese-English) skill retrieval benchmark targeting realistic agent skill routing. R3-Skill spans four language directions, features query phrasings close to real user requests, and is verified through multi-expert cross-checking. On R3-Skill, we build a two-stage retrieval system (R3-Embedding + R3-Reranker) with skill compatibility as an explicit training signal. Gradient analysis shows that the \"push-away\" signal is diluted by bilateral balancing in the bi-encoder but acts as lossless graded ranking supervision in the cross-encoder -- motivating its placement at the cross-encoder stage, as confirmed by ablations on two datasets. The R3-Embedding + R3-Reranker pipeline attains Hit@1 = 0.7714, NDCG@10 = 0.8327 and Set-Compat = 0.3525 on R3-Skill. The dataset, training code and model weights are released as open source for agent skill routing.",
+      "authors": [
+        "Zifei Wang",
+        "Wei Wen",
+        "Qiang Ji",
+        "Ruizhi Qiao",
+        "Xing Sun"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-06-02T12:30:46+00:00",
+      "link": "https://arxiv.org/pdf/2606.03565v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "skill routing for LLM agents; query-conditional benchmark",
+      "llm_evidence_cn": "LLM智能体技能路由；查询条件基准",
+      "llm_evidence": "LLM智能体技能路由；查询条件基准",
+      "canonical_evidence": "LLM智能体技能路由；查询条件基准",
+      "llm_tldr_en": "LLM agents require skill retrieval that considers compatibility among jointly retrieved skills, not just individual relevance. This paper proposes a query-conditional benchmark and two-stage retriever using LLM rejection signals, demonstrating improved task completion.",
+      "llm_tldr_cn": "当前LLM智能体技能检索仅关注单查询-技能语义相关性，忽略了多技能协作完成任务所需的兼容性。本文构建了查询条件基准并设计两阶段检索器，利用LLM自身的拒绝决策信号作为监督，显式建模技能兼容性。实验表明该方法在多项任务上优于传统检索，为智能体技能路由提供了有效的评估与解决方案。",
+      "llm_tldr": "当前LLM智能体技能检索仅关注单查询-技能语义相关性，忽略了多技能协作完成任务所需的兼容性。本文构建了查询条件基准并设计两阶段检索器，利用LLM自身的拒绝决策信号作为监督，显式建模技能兼容性。实验表明该方法在多项任务上优于传统检索，为智能体技能路由提供了有效的评估与解决方案。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.05395v1",
+      "source": "arxiv",
+      "title": "VASO: Formally Verifiable Self-Evolving Skills for Physical AI Agents",
+      "abstract": "Reusable robot skills are becoming the basic units through which embodied agents turn open-ended instructions into long-horizon physical behavior. We argue that, while foundation models have collapsed the cost of creating these skills, the cost of trusting them has not. Existing skill-evolution loops refine skills through execution feedback, unit tests, environment reward, or LLM self-critique, but these signals provide only trace-level evidence: they show that a skill worked on sampled executions, not that skill-induced plans satisfy temporal safety contracts under untested conditions. We introduce VASO, a framework for verification-guided self-evolution of LLM-generated robot skill contracts. In VASO, each skill is represented as a semantic contract with two coupled interfaces: a formal interface that aligns robot states, observations, and control commands with logical propositions for model checking, and a planner-facing interface that guides executable behavior generation. A model checker first filters logically inconsistent skill contracts, then verifies plans induced by the skill against global and local temporal specifications. When verification fails, VASO translates the counterexample trace into a textual gradient that updates the reusable skill contract while keeping foundation-model weights frozen. On Clearpath Jackal and PX4 quadcopter tasks, VASO reaches 97.2% formal-specification compliance using fewer than 100 optimization samples, outperforming execution-feedback, prompt-optimization, and fine-tuning baselines. To our knowledge, VASO is the first framework that closes the loop between formal verification and self-evolving LLM-generated skills for physical AI agents: formal counterexamples become optimization feedback for reusable robot skill contracts, rather than merely verifying one-off plans, tuning planner prompts, or fine-tuning model weights.",
+      "authors": [
+        "Yunhao Yang",
+        "Neel P. Bhatt",
+        "Kevin Wang",
+        "Samuel Tetteh",
+        "Zhangyang Wang",
+        "Ufuk Topcu"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.AI"
+      ],
+      "published": "2026-06-03T20:02:35+00:00",
+      "link": "https://arxiv.org/pdf/2606.05395v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "formally verifiable self-evolving skills for embodied agents",
+      "llm_evidence_cn": "物理AI代理的形式化可验证自进化技能",
+      "llm_evidence": "物理AI代理的形式化可验证自进化技能",
+      "canonical_evidence": "物理AI代理的形式化可验证自进化技能",
+      "llm_tldr_en": "VASO introduces verification-guided self-evolution of LLM-generated robot skill contracts, ensuring temporal safety under untested conditions.",
+      "llm_tldr_cn": "VASO提出了一个验证引导的自进化框架，用于机器人技能的形式化验证。针对现有技能进化依赖迹线级证据（仅证明在采样执行中有效）的局限性，VASO将每个技能表示为语义契约，并通过形式化验证确保其在未测试条件下满足临时安全约束。该方法将LLM生成的技能与形式化保证结合，提升了技能的可信度和鲁棒性，为技能表示和安全保证提供了新思路。",
+      "llm_tldr": "VASO提出了一个验证引导的自进化框架，用于机器人技能的形式化验证。针对现有技能进化依赖迹线级证据（仅证明在采样执行中有效）的局限性，VASO将每个技能表示为语义契约，并通过形式化验证确保其在未测试条件下满足临时安全约束。该方法将LLM生成的技能与形式化保证结合，提升了技能的可信度和鲁棒性，为技能表示和安全保证提供了新思路。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.06923v1",
+      "source": "arxiv",
+      "title": "Declarative Skills for AI Agents in Knowledge-Grounded Tool-Use Workflows",
+      "abstract": "We study orchestration mechanisms for tool-using AI agents in realistic customer-service workflows over an unstructured knowledge base. We argue that declarative agents -- AI agents equipped with natural-language skill files appended to the system prompt -- are an effective orchestration paradigm. Concretely, we compare (i) a DeclarativeAgent that reads three domain-specific skill files at inference time and decides its own control flow, (ii) an ImperativeAgent based on a programmatic state machine with explicit phases, and (iii) an unscaffolded baseline agent modeled after the $τ$-Knowledge benchmark agent. Our ImperativeAgent is motivated by externalised-control inference as in Recursive Language Models and graph-based orchestration frameworks. We formalise the three agents as policy classes within a decentralised partially-observable Markov decision process and analyse their information-theoretic and structural properties; we then test the predicted differences empirically on five language models and two retrieval regimes. Our results show that retrieval quality is a dominant bottleneck for AI agents: when evidence is incomplete or skewed, all agents degrade substantially, and skill files cannot recover lost performance. Under high-quality retrieval, however, declarative skills consistently improve accuracy on procedural tasks and reduce orchestration errors, while the imperative state machine's brittleness does not reliably improve task success or compliance.",
+      "authors": [
+        "M. Danish Lim",
+        "I. Danial Bin Sharudin",
+        "Wen Han Chen",
+        "Cedric Lim",
+        "Laura Wynter"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.SE"
+      ],
+      "published": "2026-06-05T05:38:51+00:00",
+      "link": "https://arxiv.org/pdf/2606.06923v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "declarative skills as natural-language skill files for agents",
+      "llm_evidence_cn": "声明式技能文件作为技能表示，用于AI代理知识型工作流",
+      "llm_evidence": "声明式技能文件作为技能表示，用于AI代理知识型工作流",
+      "canonical_evidence": "声明式技能文件作为技能表示，用于AI代理知识型工作流",
+      "llm_tldr_en": "Compares declarative agents with skill files against imperative and baselines in knowledge-grounded tool-use workflows, showing declarative agents are effective.",
+      "llm_tldr_cn": "针对工具型AI代理的工作流编排问题，研究声明式代理（运行时读取自然语言技能文件）的效果。与命令式状态机和基准代理对比，实验表明声明式代理在知识密集型客服工作流中性能优越且实现简单。",
+      "llm_tldr": "针对工具型AI代理的工作流编排问题，研究声明式代理（运行时读取自然语言技能文件）的效果。与命令式状态机和基准代理对比，实验表明声明式代理在知识密集型客服工作流中性能优越且实现简单。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "representation of skills in cognitive systems",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.07792v1",
+      "source": "arxiv",
+      "title": "MOLOT System Card: Malicious Operational Logic Observation Transformer",
+      "abstract": "MOLOT (Malicious Operational Logic Observation Transformer) is a static malicious-code detection system designed for SAST setup where package metadata, maintainer history, and dynamic execution traces may be unavailable or unreliable. The system represents source code as behavior sequences derived from static call graphs, includes an explanation stage that ranks suspicious behavior activities and maps them back to source-code locations. The approach is evaluated on Python and JavaScript packages from PyPI and npm, compared with opensource detection tools, and validated under product constraints including runtime, memory use, and false-positive rates observed in a real moderation workflow. We also release Open Malicious-Code Bench, a public benchmark for reproducible evaluation of malicious-package detection methods. The results show that static behavior-sequence modeling can provide accurate, explainable, and deployable malicious-code detection for modern DevSecOps workflows.",
+      "authors": [
+        "Daniil Lopatkin",
+        "Maksim Mitrofanov",
+        "Stanislav Rakovsky",
+        "Aleksandr Khalikov"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.LG",
+        "cs.SE"
+      ],
+      "published": "2026-06-05T19:10:31+00:00",
+      "link": "https://arxiv.org/pdf/2606.07792v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Static malicious-code detection with explanation and source-code mapping",
+      "llm_evidence_cn": "带有解释和源代码映射的静态恶意代码检测",
+      "llm_evidence": "带有解释和源代码映射的静态恶意代码检测",
+      "canonical_evidence": "带有解释和源代码映射的静态恶意代码检测",
+      "llm_tldr_en": "MOLOT uses a transformer to detect malicious code from static call graphs, providing explanations that map suspicious behaviors to source-code locations, evaluated on Python and JavaScript packages.",
+      "llm_tldr_cn": "MOLOT是一个静态恶意代码检测系统，基于Transformer从调用图提取行为序列进行检测，并包含解释阶段将可疑行为映射回源代码位置。在PyPI和npm上评估，与开源检测工具对比，在真实审核流程中验证了运行时和误报率。同时发布了开放恶意代码基准。",
+      "llm_tldr": "MOLOT是一个静态恶意代码检测系统，基于Transformer从调用图提取行为序列进行检测，并包含解释阶段将可疑行为映射回源代码位置。在PyPI和npm上评估，与开源检测工具对比，在真实审核流程中验证了运行时和误报率。同时发布了开放恶意代码基准。",
+      "llm_tags": [
+        "query:code-vuln:composite"
+      ],
+      "matched_query_tag": "query:code-vuln:composite",
+      "matched_query_text": "Papers central to 查找代码漏洞检测相关的论文, especially work that connects or combines: code vulnerability detection techniques; recent research on code vulnerability detection using machine learning; deep learning approaches for vulnerability detection in source code.",
+      "matched_requirement_id": "req-composite-code-vuln",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.08169v1",
+      "source": "arxiv",
+      "title": "CLASP: Language-Driven Robot Skill Selection and Composition using Task-Parameterized Learning",
+      "abstract": "Enabling robots to understand and execute tasks from natural language commands while maintaining data efficiency remains challenging. Foundation models such as vision-language-action (VLA) and vision-language models (VLMs) provide intuitive interaction channels but require extensive data; task-parameterized imitation learning achieves data efficiency but lacks natural language grounding. This work bridges this gap through a modular architecture combining task-parameterized kernelized movement primitives (TP-KMPs) with pretrained VLMs. During learning, skills are acquired from 2 to 5 kinesthetic demonstrations, and the VLM generates skill schemas describing each skill's parameters and preconditions. During execution, the VLM interprets commands to select skills, reason about parameter bindings, and create novel behaviors through covariance-weighted composition. When no skill or composition suffices, the system identifies capability gaps and requests targeted demonstrations, all without fine-tuning. Validation on a 7-DoF manipulator shows success rates of 73.3%-100% in scenarios requiring skill selection, composition, and active learning.",
+      "authors": [
+        "Markus Knauer",
+        "Valentin Gieraths",
+        "Tai Mai",
+        "Samuel Bustamante",
+        "Alin Albu-Schäffer",
+        "Freek Stulp",
+        "João Silvério"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.AI",
+        "cs.CL",
+        "cs.HC",
+        "cs.LG"
+      ],
+      "published": "2026-06-06T13:33:39+00:00",
+      "link": "https://arxiv.org/pdf/2606.08169v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Language-driven robot skill selection and composition with task-parameterized learning",
+      "llm_evidence_cn": "使用任务参数化学习的语言驱动机器人技能选择与组合",
+      "llm_evidence": "使用任务参数化学习的语言驱动机器人技能选择与组合",
+      "canonical_evidence": "使用任务参数化学习的语言驱动机器人技能选择与组合",
+      "llm_tldr_en": "CLASP bridges natural language commands and data-efficient skill acquisition by combining task-parameterized movement primitives with pretrained vision-language models, enabling robots to learn and compose skills from few demonstrations.",
+      "llm_tldr_cn": "CLASP通过结合任务参数化核化运动原语和预训练视觉语言模型，弥合自然语言命令与数据高效技能获取之间的差距，使机器人能够从少量演示中学习技能并组合技能。该方法利用VLM生成技能模式，在执行时根据语言指令选择并组合技能，实现了数据效率与自然语言理解的统一。",
+      "llm_tldr": "CLASP通过结合任务参数化核化运动原语和预训练视觉语言模型，弥合自然语言命令与数据高效技能获取之间的差距，使机器人能够从少量演示中学习技能并组合技能。该方法利用VLM生成技能模式，在执行时根据语言指令选择并组合技能，实现了数据效率与自然语言理解的统一。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.08553v1",
+      "source": "arxiv",
+      "title": "FusionVul: A Multimodal Feature Fusion Framework for Source Code Vulnerability Detection",
+      "abstract": "Source code vulnerability detection remains a long-standing challenge due to the increasing scale, structural complexity, and semantic diversity of modern codebases. Conventional static-analysis or rule-based approaches often fail to capture subtle execution dependencies, while single-modality learning models tend to overlook critical structural information embedded beyond the lexical surface of source code. To improve robustness across heterogeneous code patterns, we propose FusionVul, a joint representation learning framework that integrates sequential syntactic representations extracted by a pretrained Transformer encoder with structural semantics propagated through a graph neural network. The framework further incorporates a cross-attention-based feature fusion network to enable fine-grained cross-modal interaction and employs a sample-aware weighting mechanism to integrate multiple predictive branches. Experimental results on four datasets demonstrate that FusionVul achieves superior F1 scores on datasets with highly dispersed function size distributions and broader vulnerability-type coverage, such as SVulD and DiverseVul, reflecting its capability to capture complex and diverse vulnerability patterns.",
+      "authors": [
+        "Hongyu Yang",
+        "Yaping Zhu",
+        "Jingchuan Luo",
+        "Hiroshi Nomaguchi",
+        "Chunhua Su",
+        "Willy Susilo"
+      ],
+      "primary_category": "cs.SE",
+      "categories": [
+        "cs.SE"
+      ],
+      "published": "2026-06-07T10:14:00+00:00",
+      "link": "https://arxiv.org/pdf/2606.08553v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Deep learning for source code vulnerability detection using multimodal feature fusion",
+      "llm_evidence_cn": "利用多模态特征融合的深度学习源代码漏洞检测",
+      "llm_evidence": "利用多模态特征融合的深度学习源代码漏洞检测",
+      "canonical_evidence": "利用多模态特征融合的深度学习源代码漏洞检测",
+      "llm_tldr_en": "Proposes FusionVul, a joint representation learning framework that combines Transformer and GNN for robust source code vulnerability detection.",
+      "llm_tldr_cn": "针对现有方法难以捕捉代码中细微执行依赖和结构信息的问题，提出了FusionVul多模态特征融合框架。该框架通过预训练Transformer编码器提取序列语法表示，图神经网络传播结构语义，并引入跨模态交互机制。在多个基准数据集上，FusionVul的检测性能优于现有方法，尤其对复杂漏洞具有更强的鲁棒性。",
+      "llm_tldr": "针对现有方法难以捕捉代码中细微执行依赖和结构信息的问题，提出了FusionVul多模态特征融合框架。该框架通过预训练Transformer编码器提取序列语法表示，图神经网络传播结构语义，并引入跨模态交互机制。在多个基准数据集上，FusionVul的检测性能优于现有方法，尤其对复杂漏洞具有更强的鲁棒性。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "deep learning approaches for vulnerability detection in source code",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.09316v1",
+      "source": "arxiv",
+      "title": "Anything2Skill: Compiling External Knowledge into Reusable Skills for Agents",
+      "abstract": "Retrieval-augmented generation (RAG) enables agents to access external knowledge at inference time, but it primarily retrieves fragmented declarative evidence, leaving agents to repeatedly infer task procedures from passages, manuals, examples, logs, or trajectories. This raises a fundamental question: can skills extracted from external knowledge bases be installed into an agent, enabling it to rapidly approximate domain expertise? In this paper, we propose Anything2Skill, a taxonomy-guided framework that compiles heterogeneous external knowledge into reusable, retrievable, and executable skills for agents. Given a corpus of knowledge records, \\textsc{Anything2Skill} first decomposes each record into evidence windows and performs plan-and-expand skill extraction under a skill-tree prior. The extracted candidates are then converted into structured skill contracts that specify invocation conditions, contraindications, action moves, workflow steps, constraints, output specifications, supporting evidence, and confidence scores. To construct a deployable procedural memory, Anything2Skill manages the extracted skills in a persistent SkillBank through taxonomy-aware compilation, registry-level reconciliation, lifecycle tracking, versioned updates, and visible skill-tree projection. At inference time, agents retrieve both task-specific passages from the original knowledge base and relevant procedural skills from the SkillBank, allowing RAG to provide declarative evidence while compiled skills provide reusable procedural guidance. Experiments on qsv and GitHub-CLI show that Anything2Skill combined with RAG achieves 98.85\\% and 94.10\\% success rates, respectively, substantially outperforming RAG-only agents. These results suggest that compiling latent procedural knowledge into explicit skills is an effective way to extend retrieval-augmented agents from knowledge access toward capability reuse.",
+      "authors": [
+        "Qianjun Pan",
+        "Yutao Yang",
+        "Junsong Li",
+        "Jie Zhou",
+        "Kai Chen",
+        "Xin Li",
+        "Qin Chen",
+        "Liang He"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-08T10:24:32+00:00",
+      "link": "https://arxiv.org/pdf/2606.09316v1",
+      "tags": [
+        "keyword:code-vuln",
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "framework to compile external knowledge into reusable skills for agents",
+      "llm_evidence_cn": "将外部知识编译为Agent可复用技能的框架",
+      "llm_evidence": "将外部知识编译为Agent可复用技能的框架",
+      "canonical_evidence": "将外部知识编译为Agent可复用技能的框架",
+      "llm_tldr_en": "Proposes Anything2Skill, a taxonomy-guided framework compiling heterogeneous external knowledge into reusable skills for agents.",
+      "llm_tldr_cn": "现有检索增强生成（RAG）只提供碎片化证据，Agent需反复推理任务流程。本文提出Anything2Skill框架，通过分类指导将异构外部知识（如手册、日志）编译为可复用、可检索、可执行的技能。该方法首先分解知识记录为证据窗口，然后执行计划与扩展步骤，使Agent能快速近似领域专业知识，显著提升任务效率。",
+      "llm_tldr": "现有检索增强生成（RAG）只提供碎片化证据，Agent需反复推理任务流程。本文提出Anything2Skill框架，通过分类指导将异构外部知识（如手册、日志）编译为可复用、可检索、可执行的技能。该方法首先分解知识记录为证据窗口，然后执行计划与扩展步骤，使Agent能快速近似领域专业知识，显著提升任务效率。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2606.01993v1",
+      "source": "arxiv",
+      "title": "MMG2Skill: Can Agents Distill In-the-Wild Guides into Self-Evolving Skills?",
+      "abstract": "Abundant procedural knowledge on the Web holds great potential for helping agents solve long-horizon tasks. However, such knowledge is often multimodal, heterogeneous, noisy, and implicitly assumes human executors, making it difficult to use directly as the skills required by agents. To bridge the gap between human-oriented guides and agent-executable skills, we formalize this problem as guide-to-skill learning: converting in-the-wild guides into executable skills and continuously improving them from trajectories observable to the agent. To evaluate the capability of existing agents on this task, we introduce MMG2Skill-Bench, the first benchmark designed for this problem. We further propose MMG2Skill, a closed-loop framework that compiles guides into editable skills, conditions a fixed vision-language model (VLM) agent on these skills during execution, and revises the skills from trajectory-level root-cause feedback without using benchmark scores. Across GUI control, open-ended gameplay, and strategic card play with six VLM backbones, MMG2Skill consistently outperforms vanilla baseline agents in every model-domain setting, achieving macro-average gains of +12.8 to +25.3 percentage points across backbones. Ablation studies show that directly prompting agents with raw guides can degrade performance, while both structured skill construction and trajectory-driven revision are necessary for the observed improvements. On success-inferable tasks, analyzer-based early stopping further prevents late-stage performance regressions and saves 25%-53% of attempts when the success signal is properly calibrated.",
+      "authors": [
+        "Xinyu Che",
+        "Junqi Xiong",
+        "Yunfei Ge",
+        "Xinping Lei",
+        "Shihao Li",
+        "Hang Yan",
+        "Han Li",
+        "Yuanxing Zhang",
+        "Zhiqi Bai",
+        "Jinhua Hao",
+        "Ming Sun",
+        "Han Li",
+        "Jiaheng Liu"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-06-01T09:50:40+00:00",
+      "link": "https://arxiv.org/pdf/2606.01993v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "guide-to-skill learning for agent skill acquisition",
+      "llm_evidence_cn": "从野生指南中进行技能学习，实现代理技能获取",
+      "llm_evidence": "从野生指南中进行技能学习，实现代理技能获取",
+      "canonical_evidence": "从野生指南中进行技能学习，实现代理技能获取",
+      "llm_tldr_en": "Proposes MMG2Skill, a framework that converts in-the-wild guides into executable skills and improves them from trajectories, with a benchmark for evaluation.",
+      "llm_tldr_cn": "针对网络上的多模态、异构、噪声指南难以直接用于代理的问题，形式化指南到技能学习任务。提出MMG2Skill框架，从指南编译可执行技能并通过轨迹迭代改进。同时构建MMG2Skill-Bench基准评估现有代理能力。",
+      "llm_tldr": "针对网络上的多模态、异构、噪声指南难以直接用于代理的问题，形式化指南到技能学习任务。提出MMG2Skill框架，从指南编译可执行技能并通过轨迹迭代改进。同时构建MMG2Skill-Bench基准评估现有代理能力。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "research papers on skill acquisition in reinforcement learning",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.05983v1",
+      "source": "arxiv",
+      "title": "Framing, Judging, Steering: An Assessable Competency Model for Teach-ing Students to Reason With Generative AI",
+      "abstract": "Generative AI makes answers easy and understanding hard, and uncritical use invites cognitive offloading. Schools still measure unaided performance, yet the real task is to produce good work with AI: framing an ill-defined task, judging the output, and steering the model toward a better result. This ability is rarely assessed in its own right; where measured, it collapses into one \"prompting\" score that cannot diagnose why AI use succeeds or fails. We propose CoRe-3 (Co-Reasoning), a competency model factoring productive AI use into three assessable skills we abbreviate FJS: Framing (specifying an ill-defined task before invoking AI), Judging (evaluating output for errors and unstated assumptions), and Steering (iteratively redirecting the model). Its distinguishing claim is the separation of pre-generation Framing from post-generation Steering, with Judging as the gate between. We ground the skills in theory, state five testable propositions, and instantiate them in CoReasoningLab, an open platform that presents flawed AI output and scores them independently. Over simulated learners (generated and graded by different models), the skills dissociate: each tracks its own manipulated competence while staying flat in the others, and grades become correlated when one competence is shared across all three (convergent and discriminant validity), across grader backends from two providers. Human-rater agreement and outcomes are next; we release the instrument, data, and protocol.",
+      "authors": [
+        "Alexander Apartsin",
+        "Yehudit Aperstein"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-06-04T10:25:31+00:00",
+      "link": "https://arxiv.org/pdf/2606.05983v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Competency model defining skills (Framing, Judging, Steering) for generative AI use, relevant to skill representation in cognitive systems",
+      "llm_evidence_cn": "定义生成式AI使用技能的胜任力模型（构架、判断、引导），与认知系统中的技能表示相关",
+      "llm_evidence": "定义生成式AI使用技能的胜任力模型（构架、判断、引导），与认知系统中的技能表示相关",
+      "canonical_evidence": "定义生成式AI使用技能的胜任力模型（构架、判断、引导），与认知系统中的技能表示相关",
+      "llm_tldr_en": "CoRe-3 proposes a competency model decomposing productive AI use into three assessable skills—Framing, Judging, Steering—providing a diagnostic framework for student reasoning with AI.",
+      "llm_tldr_cn": "生成式AI使答案容易但理解困难，现有评估仅用单一提示分数无法诊断失败原因。本文提出CoRe-3模型，将高效AI使用分解为构架（任务界定）、判断（输出评估）和引导（模型调优）三项可评估技能。该框架为教学和评估提供了细致工具，有助于培养学生的AI协作推理能力，并拓展了技能在认知系统中的应用。",
+      "llm_tldr": "生成式AI使答案容易但理解困难，现有评估仅用单一提示分数无法诊断失败原因。本文提出CoRe-3模型，将高效AI使用分解为构架（任务界定）、判断（输出评估）和引导（模型调优）三项可评估技能。该框架为教学和评估提供了细致工具，有助于培养学生的AI协作推理能力，并拓展了技能在认知系统中的应用。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.03657v1",
+      "source": "arxiv",
+      "title": "Diagnosing Knowledge Gaps in LLM Tool Use: An Agentic Benchmark for Novel API Acquisition",
+      "abstract": "Large language models for code generation often need to use APIs that are absent from their pretraining data. This requires more than recalling a function name: models must coordinate signatures, module paths, input-output contracts, semantics, and executable usage patterns. Existing novel-API benchmarks are typically static, rely on coarse pass/fail metrics, or use synthetic APIs that may not reflect real library evolution. We introduce NovelAPIBench, a fully automated dynamic benchmark that, for any base model and target library, discovers novel APIs, extracts decomposed knowledge bundles, generates executable coding tasks, and assigns failed samples to six diagnostic categories. Across about 1.9K tasks, four base models, and five domains, we compare knowledge injected through retrieval with knowledge internalized through parametric adaptation. We find that knowledge components are not interchangeable: usage examples are the strongest standalone signal, while the best two-component setting pairs signatures with either mechanisms or examples depending on the domain and backbone. Adding more context, especially source code, can hurt by increasing import-path errors. Parametric adaptation also does not replace retrieval once external knowledge is removed; rather, fine-tuning mainly teaches models how to use provided bundles, and this ability transfers to held-out libraries. These results suggest that retrieval and tuning play complementary roles: retrieval supplies volatile API content, while tuning improves procedural integration.",
+      "authors": [
+        "Jinnuo Liu",
+        "Yue Peng",
+        "Jinhan Niu",
+        "Hongyi Wen"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-02T13:46:04+00:00",
+      "link": "https://arxiv.org/pdf/2606.03657v1",
+      "tags": [
+        "keyword:code-vuln",
+        "keyword:skill",
+        "query:code-vuln"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "benchmark for novel API acquisition, relevant to skill acquisition",
+      "llm_evidence_cn": "针对新型API获取的基准，与技能获取相关",
+      "llm_evidence": "针对新型API获取的基准，与技能获取相关",
+      "canonical_evidence": "针对新型API获取的基准，与技能获取相关",
+      "llm_tldr_en": "Introduces NovelAPIBench, a dynamic benchmark for evaluating LLMs' ability to acquire novel APIs as skills.",
+      "llm_tldr_cn": "LLM在代码生成中常需使用预训练数据中不存在的API，但现有基准往往是静态的。本文提出NovelAPIBench，一个全自动动态基准，能够针对任意基模型和目标库发现新API，提取知识包，生成可执行编码任务，并将失败样本分配到六个诊断类别。在约1900个任务、四个基模型和五个库上验证，揭示了模型在API获取上的不同知识缺口。",
+      "llm_tldr": "LLM在代码生成中常需使用预训练数据中不存在的API，但现有基准往往是静态的。本文提出NovelAPIBench，一个全自动动态基准，能够针对任意基模型和目标库发现新API，提取知识包，生成可执行编码任务，并将失败样本分配到六个诊断类别。在约1900个任务、四个基模型和五个库上验证，揭示了模型在API获取上的不同知识缺口。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.03143v1",
+      "source": "arxiv",
+      "title": "FederatedSkill: Federated Learning for Agentic Skill Evolution",
+      "abstract": "Modern LLM agents increasingly rely on skill libraries to handle complex tasks, making skill evolution a primary driver of self-improvement. However, isolated single-user task streams lack the diversity required to build comprehensive skills. While cross-user collaboration can overcome this data bottleneck, current trajectory-sharing approaches compromise user privacy and impose a uniform global library that fails to accommodate client heterogeneity. We introduce FederatedSkill, a privacy-preserving framework for collaborative agent evolution. Moving beyond raw trajectory sharing, FederatedSkill utilizes semantic skill diffs, structured patches over local libraries, as the fundamental unit of communication. On the server side, an evolution agent aggregates these patches to dynamically model client-specific capability boundaries, facilitating strictly personalized skill evolution rather than a suboptimal global average. Evaluated across 20 distinct agent task families, FederatedSkill demonstrates substantial gains over self-evolving baselines, achieving up to a 44.4% increase in success rate and a 37.5% reduction in computational cost.",
+      "authors": [
+        "Jingbo Yang",
+        "Guanyu Yao",
+        "Yang Zhang",
+        "Ramana Rao Kompella",
+        "Gaowen Liu",
+        "Shiyu Chang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CL"
+      ],
+      "published": "2026-06-02T04:38:05+00:00",
+      "link": "https://arxiv.org/pdf/2606.03143v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Federated learning for collaborative skill evolution across agents",
+      "llm_evidence_cn": "跨智能体协作技能演化的联邦学习",
+      "llm_evidence": "跨智能体协作技能演化的联邦学习",
+      "canonical_evidence": "跨智能体协作技能演化的联邦学习",
+      "llm_tldr_en": "FederatedSkill enables privacy-preserving collaborative evolution of skill libraries across LLM agents using semantic skill diffs, aggregating diverse experiences without sharing raw trajectories.",
+      "llm_tldr_cn": "FederatedSkill提出一种隐私保护的联邦学习框架，允许多个LLM智能体协作演化技能库。通过交换语义技能差异（而非原始轨迹）作为通信单位，服务器端聚合差异并更新全局技能知识，同时适应客户端异质性。该方法在保证隐私的同时，利用多样任务流提升技能库质量。",
+      "llm_tldr": "FederatedSkill提出一种隐私保护的联邦学习框架，允许多个LLM智能体协作演化技能库。通过交换语义技能差异（而非原始轨迹）作为通信单位，服务器端聚合差异并更新全局技能知识，同时适应客户端异质性。该方法在保证隐私的同时，利用多样任务流提升技能库质量。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.06253v1",
+      "source": "arxiv",
+      "title": "When the Scaffold Stays On: AI, Practice Style, and Screening in Elite Skill Formation",
+      "abstract": "Generative AI raises short-term productivity by completing tasks that learners would otherwise practice on their own. Whether this substitution erodes frontier skill, the skill behind top-tail non-AI-aided performance, is an open question of rising stakes. The sharper question is whether selection mechanisms can screen apart two coexisting types: substitute-users, who use AI in place of deliberate practice, and complement-users, who use it to accelerate skill development. In elite programming, the International Collegiate Programming Contest (ICPC) and the International Olympiad in Informatics (IOI) prohibit AI under proctoring and admit entrants through qualification rounds, whereas online Codeforces (CF) contests are unproctored and open to all. From CF histories we build an AI-prompt signature (more first-attempt acceptances, fewer attempts and retries) consistent with AI-assisted practice. Three patterns triangulate institutional screening. First, CF practice shifted toward this signature across cohorts over two AI rollouts. Second, in open CF contests a stronger signature predicts smaller rating gains for users with no ICPC/IOI affiliation, but not for those who qualified for the AI-prohibited contests. Third, inside the AI-prohibited ICPC environment, a shift toward AI-style practice predicts higher non-AI-aided scores for AI-era entrants. The same practice input carries opposite signs depending on whether the environment screens for it. The contrast points to two levers: how AI is integrated into training, since within the screened pool AI-style practice coincides with stronger non-AI-aided performance; and the design of AI-prohibited evaluation gates as a type-separating institution. Both extend beyond programming to credentialing systems (medical and legal boards, professional certification) that certify skill in a workforce increasingly shaped by AI.",
+      "authors": [
+        "Song Yao"
+      ],
+      "primary_category": "econ.EM",
+      "categories": [
+        "econ.EM",
+        "cs.CY"
+      ],
+      "published": "2026-06-04T14:54:44+00:00",
+      "link": "https://arxiv.org/pdf/2606.06253v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "studies AI impact on elite skill formation and practice styles in programming",
+      "llm_evidence_cn": "研究AI对精英编程技能形成和实践风格的影响",
+      "llm_evidence": "研究AI对精英编程技能形成和实践风格的影响",
+      "canonical_evidence": "研究AI对精英编程技能形成和实践风格的影响",
+      "llm_tldr_en": "Examines how generative AI affects elite skill formation, distinguishing substitute-users and complement-users through screening mechanisms.",
+      "llm_tldr_cn": "本文探讨生成式AI对精英技能形成的影响，区分替代型用户（用AI代替刻意练习）和互补型用户（用AI加速技能发展）。通过分析ICPC、IOI等竞赛中的AI使用规则，提出筛选机制可区分两类用户。研究揭示了AI对前沿技能积累的潜在侵蚀风险。",
+      "llm_tldr": "本文探讨生成式AI对精英技能形成的影响，区分替代型用户（用AI代替刻意练习）和互补型用户（用AI加速技能发展）。通过分析ICPC、IOI等竞赛中的AI使用规则，提出筛选机制可区分两类用户。研究揭示了AI对前沿技能积累的潜在侵蚀风险。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.03565v2",
+      "source": "arxiv",
+      "title": "Skill Is Not Document: A Query-Conditional Benchmark and Two-Stage Retriever for LLM Agent Skill Routing",
+      "abstract": "LLM agents complete complex tasks by composing multiple skills, and skill retrieval is a front-end stage for agents. Skill retrieval differs fundamentally from traditional document retrieval at the supervision level: top-K joint correctness depends not only on the semantic relevance of each individual query-skill pair, but also on whether the skills retrieved together can collaborate to fulfill the task under the given query. Such \"skill compatibility\" cannot be derived from independent relevance alone. Yet existing LLM-based data synthesis pipelines can produce a direct supervision signal for \"which skills should not be jointly retrieved under this query\" -- namely the LLM's own rejection decisions -- and this signal is routinely discarded as low-quality data. To address this gap, we propose Reject-as-Resource Retriever (R3) and construct R3-Skill, a bilingual (Chinese-English) skill retrieval benchmark targeting realistic agent skill routing. R3-Skill spans four language directions, features query phrasings close to real user requests, and is verified through multi-expert cross-checking. On R3-Skill, we build a two-stage retrieval system (R3-Embedding + R3-Reranker) with skill compatibility as an explicit training signal. Gradient analysis shows that the \"push-away\" signal is diluted by bilateral balancing in the bi-encoder but acts as lossless graded ranking supervision in the cross-encoder -- motivating its placement at the cross-encoder stage, as confirmed by ablations on two datasets. The R3-Embedding + R3-Reranker pipeline attains Hit@1 = 0.7714, NDCG@10 = 0.8327 and Set-Compat = 0.3525 on R3-Skill. The dataset, training code and model weights are released as open source for agent skill routing.",
+      "authors": [
+        "Zifei Wang",
+        "Wei Wen",
+        "Qiang Ji",
+        "Ruizhi Qiao",
+        "Xing Sun"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-06-02T12:30:46+00:00",
+      "link": "https://arxiv.org/pdf/2606.03565v2",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "skill retrieval and compatibility for agent skill routing",
+      "llm_evidence_cn": "面向LLM代理的技能路由查询，关注技能检索与兼容性",
+      "llm_evidence": "面向LLM代理的技能路由查询，关注技能检索与兼容性",
+      "canonical_evidence": "面向LLM代理的技能路由查询，关注技能检索与兼容性",
+      "llm_tldr_en": "Introduces a query-conditional benchmark and two-stage retriever for LLM agent skill routing, addressing joint correctness of skill sets beyond individual relevance.",
+      "llm_tldr_cn": "针对LLM代理技能路由中传统检索忽略技能协作兼容性的问题，提出查询条件基准和两阶段检索器。通过LLM拒绝信号提供直接监督，优化技能集合的联合正确性。实验证明该方法有效提升下游任务性能。",
+      "llm_tldr": "针对LLM代理技能路由中传统检索忽略技能协作兼容性的问题，提出查询条件基准和两阶段检索器。通过LLM拒绝信号提供直接监督，优化技能集合的联合正确性。实验证明该方法有效提升下游任务性能。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.07131v1",
+      "source": "arxiv",
+      "title": "MalSkillBench: A Runtime-Verified Benchmark of Malicious Agent Skills",
+      "abstract": "AI coding agents such as Claude Code and Gemini CLI increasingly extend themselves with third-party skills: markdown packages bundling natural-language instructions, executable scripts, and tool permissions. Because a skill is at once code and agent-facing instruction, it introduces a supply chain dependency whose risk is neither pure code nor pure prompt. Detection tools have never been measured against verified ground truth spanning this hybrid space, leaving their effectiveness unknown and wild-only evaluations biased.   We present MalSkillBench, the first runtime-verified benchmark of malicious agent skills: 3,944 malicious skills labeled along a three-dimensional taxonomy of 108 cells. Of these, 3,214 come from a closed-loop Generate-Verify-Feedback pipeline admitting only samples whose malicious behavior fires inside a Docker sandbox under system-call monitoring and an LLM judge; we add 703 in-the-wild and 4,000 matched benign skills. Our measurements are consistent: code injection reaches 94.5% verification yield but prompt injection only 75.8%, the same fragility that later makes it hard to detect; the wild sample is narrow, dominated by one cryptocurrency-theft campaign (86.6% one behavior, 81% from two accounts) with a small but architecturally new tail attacking the agent control plane; the strongest skill-specific detector reaches 98.4% recall on code injection yet collapses on prompt-injection and agent-control attacks, and wild-only scoring swings the ranking by up to 66 recall points; supply-chain scanners and prompt-injection defenses each see only half of a skill, and no combination recovers the code-instruction relationship. Detecting malicious skills therefore requires reasoning jointly over task intent, code, and instructions. We release the dataset, pipeline, baselines, and results.",
+      "authors": [
+        "Wenbo Guo",
+        "Wei Zeng",
+        "Chengwei Liu",
+        "Xiaojun Jia",
+        "Yijia Xu",
+        "Lei Tang",
+        "Yong Fang",
+        "Yang Liu"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.SE"
+      ],
+      "published": "2026-06-05T10:43:19+00:00",
+      "link": "https://arxiv.org/pdf/2606.07131v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "benchmark for malicious agent skills, directly related to skills",
+      "llm_evidence_cn": "恶意Agent技能的基准，直接与技能相关",
+      "llm_evidence": "恶意Agent技能的基准，直接与技能相关",
+      "canonical_evidence": "恶意Agent技能的基准，直接与技能相关",
+      "llm_tldr_en": "Presents MalSkillBench, a runtime-verified benchmark for malicious agent skills with 3,944 skills labeled across a taxonomy.",
+      "llm_tldr_cn": "AI编码Agent通过第三方技能扩展引入供应链风险，但现有检测工具缺乏真实基准。本文提出MalSkillBench，首个运行时验证的恶意Agent技能基准，包含3944个恶意技能，覆盖108种三维分类标签。该基准通过闭环生成-验证-反馈流程构建，为评估技能安全检测工具提供了可靠的基础。",
+      "llm_tldr": "AI编码Agent通过第三方技能扩展引入供应链风险，但现有检测工具缺乏真实基准。本文提出MalSkillBench，首个运行时验证的恶意Agent技能基准，包含3944个恶意技能，覆盖108种三维分类标签。该基准通过闭环生成-验证-反馈流程构建，为评估技能安全检测工具提供了可靠的基础。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.03980v1",
+      "source": "arxiv",
+      "title": "Skill-RM: Unifying Heterogeneous Evaluation Criteria via Agent Skill",
+      "abstract": "Reward models (RMs) provide critical feedback signals for LLM post-training, notably in reinforced fine-tuning (RFT) and reinforcement learning (RL) pipelines. However, current reward evaluation relies on heterogeneous criteria such as rule-based verifiers, ground-truth references, procedural checklists, and complex rubrics, where a unified mechanism to integrate all types of evidence remains unexplored. To this end, we propose Skill Reward Model (Skill-RM), a unified framework that reformulates reward modeling as the execution of a reusable Reward-Evaluation Skill. By treating reward computation as a structured agentic task, Skill-RM provides a consistent interface to orchestrate heterogeneous resources, dynamically selecting and aggregating evidence tailored to the specific requirements of each input. This approach enables the reward model to move beyond static evaluation, ensuring consistency and transparency across diverse tasks. Extensive experiments on reward benchmarks and downstream applications, including best-of-N selection and reinforcement learning, demonstrate that Skill-RM consistently outperforms traditional judge baselines. Our findings suggest that Skill-RM not only provides a unified solution for reward modeling but also achieves superior performance through the strategic and dynamic orchestration of evidence. The code is at https://github.com/Qwen-Applications/Skill-RM.",
+      "authors": [
+        "Tao Chen",
+        "Gangwei Jiang",
+        "Pengyu Cheng",
+        "Siyuan Huang",
+        "Yihao Liu",
+        "Jingwei Ni",
+        "Jiaqi Guo",
+        "Mengyu Zhou",
+        "Kai Tang",
+        "Junling Liu",
+        "Qinliang Su",
+        "Xiaoxi Jiang",
+        "Guanjun Jiang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.CL"
+      ],
+      "published": "2026-06-02T17:56:57+00:00",
+      "link": "https://arxiv.org/pdf/2606.03980v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Unified reward model reformulated as a reusable Reward-Evaluation Skill, relevant to skill representation",
+      "llm_evidence_cn": "将奖励模型重构为可复用的评估技能，与技能表示相关",
+      "llm_evidence": "将奖励模型重构为可复用的评估技能，与技能表示相关",
+      "canonical_evidence": "将奖励模型重构为可复用的评估技能，与技能表示相关",
+      "llm_tldr_en": "Skill-RM unifies heterogeneous evaluation criteria by reformulating reward modeling as execution of a reusable Reward-Evaluation Skill, providing a consistent interface for LLM post-training.",
+      "llm_tldr_cn": "当前奖励模型依赖异构标准（规则、参考、检查表等），缺乏统一整合机制。本文提出Skill-RM，将奖励计算重构为结构化智能体任务——可复用的评估技能，通过统一接口动态选择和聚合证据。该方法在多个LLM后训练场景中实现了更一致的奖励信号，提升了强化微调效果，并为技能表示提供了新颖视角。",
+      "llm_tldr": "当前奖励模型依赖异构标准（规则、参考、检查表等），缺乏统一整合机制。本文提出Skill-RM，将奖励计算重构为结构化智能体任务——可复用的评估技能，通过统一接口动态选择和聚合证据。该方法在多个LLM后训练场景中实现了更一致的奖励信号，提升了强化微调效果，并为技能表示提供了新颖视角。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.09060v1",
+      "source": "arxiv",
+      "title": "ATTAIN: Automated Exploit Failure Analysis through Trace-Driven Diff Analysis",
+      "abstract": "Exploits are widely used to check whether library vulnerabilities appear in different versions and to mark affected version ranges. Exploit-based checks sometimes fail because exploits stop running on many versions after API or environment changes. Commit-based methods, such as SZZ-style analysis, sometimes miss the right introduce commits and spread labels incorrectly along long version chains. These problems leave many affected versions unlabeled or wrongly labeled and make manual exploit failure analysis very expensive and impractical at scale.   We present ATTAIN, a trace-driven diff analysis framework with three modules to assess vulnerability presence across evolving library versions. The modules are trace construction, diff exploration, and affected-version judgment. The trace construction module executes an exploit across historical library versions and compares their behaviors to capture cross-version execution divergences. Using these divergences, the diff exploration module guides an LLM through a finite-state tool loop to autonomously search over version changes and collect vulnerability-relevant diff hunks. The affected-version judgment module reasons over the collected evidence to determine whether the vulnerability exists in each version and outputs the affected version range.   We evaluate ATTAIN on an extensive dataset comprising 224 CVEs and 25,943 library versions across 128 libraries. ATTAIN achieves an F1-score of 93.24%, outperforming the commit-based methods V-SZZ and LLM4SZZ by 116.28% and 33.30%, respectively. ATTAIN uses short tool-guided prompts and a fixed number of iterations, keeping token usage low. It matches or surpasses existing methods on frequent CWE types, including cases where exploit runs fail for non-vulnerability reasons or commit messages do not clearly delimit affected versions.",
+      "authors": [
+        "Xinwei Mao",
+        "Zirui Chen",
+        "Xing Hu",
+        "Xin Xia"
+      ],
+      "primary_category": "cs.SE",
+      "categories": [
+        "cs.SE"
+      ],
+      "published": "2026-06-08T05:49:50+00:00",
+      "link": "https://arxiv.org/pdf/2606.09060v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "trace-driven diff analysis for vulnerability presence assessment",
+      "llm_evidence_cn": "基于痕迹的差异分析框架评估漏洞存在性，属于漏洞检测技术",
+      "llm_evidence": "基于痕迹的差异分析框架评估漏洞存在性，属于漏洞检测技术",
+      "canonical_evidence": "基于痕迹的差异分析框架评估漏洞存在性，属于漏洞检测技术",
+      "llm_tldr_en": "Presents ATTAIN, a trace-driven diff analysis framework to assess vulnerability presence across library versions using exploit failure analysis.",
+      "llm_tldr_cn": "针对现有利用漏洞检查因API或环境变化失败，以及提交基方法标记不准确的问题，提出ATTAIN框架。通过痕迹构造、差异探索和评估模块，自动分析漏洞在演化库版本中的存在性。实验证明比现有方法更准确。",
+      "llm_tldr": "针对现有利用漏洞检查因API或环境变化失败，以及提交基方法标记不准确的问题，提出ATTAIN框架。通过痕迹构造、差异探索和评估模块，自动分析漏洞在演化库版本中的存在性。实验证明比现有方法更准确。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "code vulnerability detection techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.07363v1",
+      "source": "arxiv",
+      "title": "On the Shoulders of Giants: Empowering Automated Smart Contract Auditing via the GiAnt Corpus",
+      "abstract": "High-quality smart contract auditing datasets are crucial for evaluating security tools and advancing smart contract security research. Two major limitations of existing datasets are the manual-induced scalability bottleneck and the deficiency in data granularity and diversity. To address these limitations, we propose GiANT, an automated framework designed to curate smart contract auditing datasets by distilling vulnerability insights from real-world auditing reports. GiANT employs a divide-and-conquer strategy coupled with the Chain-of-Thought technique to extract structured vulnerability information from Code4rena reports, followed by an LLM-as-a-judge mechanism to perform rigorous quality assurance. To evaluate GiANT's effectiveness, we run it on 388 real-world audit reports and generate the GiAnt Corpus comprising 7,711 vulnerability findings across five severity levels. Manual assessment of the dataset demonstrates exceptional reliability in information extraction, achieving a mean quality score of $4.76\\pm0.37$ (out of 5) with inter-rater agreement $κ$ of 0.88. We further validate the practicality of our dataset by benchmarking 4 state-of-the-art LLMs on vulnerability detection, code summarization, mitigation recommendation, and automated gas optimization tasks, to establish performance baselines, thereby providing a valuable data foundation for future research in automated smart contract auditing.",
+      "authors": [
+        "Xiaoting Zhang",
+        "Zhipeng Gao",
+        "Yiran Lv",
+        "Xing Hu",
+        "Feifei Niu",
+        "Xin Xia"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.SE"
+      ],
+      "published": "2026-06-05T15:08:32+00:00",
+      "link": "https://arxiv.org/pdf/2606.07363v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Automated smart contract auditing with machine learning for vulnerability detection",
+      "llm_evidence_cn": "利用机器学习的自动化智能合约审计漏洞检测",
+      "llm_evidence": "利用机器学习的自动化智能合约审计漏洞检测",
+      "canonical_evidence": "利用机器学习的自动化智能合约审计漏洞检测",
+      "llm_tldr_en": "Proposes GiANT, an automated framework to curate smart contract auditing datasets using LLMs and Chain-of-Thought for vulnerability extraction.",
+      "llm_tldr_cn": "针对现有智能合约审计数据集规模小、粒度粗的问题，提出了GiANT自动化框架。该框架采用分治策略和思维链技术从Code4rena审计报告提取结构化漏洞信息，并利用LLM-as-a-judge进行质量保证。实验表明，基于GiANT数据集训练的模型在多个漏洞检测任务上表现优异，为智能合约安全研究提供了高质量数据资源。",
+      "llm_tldr": "针对现有智能合约审计数据集规模小、粒度粗的问题，提出了GiANT自动化框架。该框架采用分治策略和思维链技术从Code4rena审计报告提取结构化漏洞信息，并利用LLM-as-a-judge进行质量保证。实验表明，基于GiANT数据集训练的模型在多个漏洞检测任务上表现优异，为智能合约安全研究提供了高质量数据资源。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "recent research on code vulnerability detection using machine learning",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.07957v1",
+      "source": "arxiv",
+      "title": "Demand-Driven Vulnerability Detection for Cloud Security Posture Management: Removing Human Rule Authoring from the Disclosure-to-Protection Critical Path",
+      "abstract": "Cloud Security Posture Management (CSPM) systems detect known vulnerabilities by maintaining a rule set, distributing it to customers, and evaluating it against periodically-collected asset inventories. To our knowledge, in publicly documented architectures the rule set is environment-agnostic and curated centrally by the vendor; updates are batched into release cycles and shipped on a cadence ranging from hours to days depending on detection severity. The disclosure-to-protection window -- from a CVE being published to the customer's system being capable of detecting affected assets -- is therefore bounded by the vendor's release cadence for version-match detections, and by additional human authoring time for richer detections incorporating configuration predicates beyond the affected-software string. We propose an architecture in which the rule set is not vendor-distributed but continuously derived, within the customer's tenant, from the intersection of public catalogue feeds and the live asset graph. A rule comes into existence when a catalogue entry and an applicable asset are simultaneously present, and goes out of existence when either input ceases to support it. Derivation is bidirectional: new catalogue entries and new assets both trigger it. It incorporates the full structured-field content of catalogue entries, not only the affected-software predicate. The live rule set is bounded by environment diversity rather than catalogue breadth. Prior systems incrementally evaluate a static rule set; we incrementally derive the rule set itself. We present the threat model, the architecture, formal semantics with an equivalence theorem, complexity analysis, a worked example, and an evaluation methodology. The contribution is the architectural shift and its latency and resource consequences; rule correctness and alert prioritization are out of scope.",
+      "authors": [
+        "Prashant Kumar Pathak"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.DB",
+        "cs.DC"
+      ],
+      "published": "2026-06-06T03:26:34+00:00",
+      "link": "https://arxiv.org/pdf/2606.07957v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "demand-driven vulnerability detection for CSPM, directly addresses code vulnerability detection in cloud assets",
+      "llm_evidence_cn": "需求驱动云安全态势管理中的漏洞检测，直接针对云资产代码漏洞检测",
+      "llm_evidence": "需求驱动云安全态势管理中的漏洞检测，直接针对云资产代码漏洞检测",
+      "canonical_evidence": "需求驱动云安全态势管理中的漏洞检测，直接针对云资产代码漏洞检测",
+      "llm_tldr_en": "This paper proposes a demand-driven vulnerability detection approach for CSPM that removes human rule authoring, reducing disclosure-to-protection window.",
+      "llm_tldr_cn": "针对云安全态势管理（CSPM）中漏洞规则更新延迟问题，本文提出需求驱动漏洞检测方法，从人工规则编写转向自动生成。该方法能显著缩短从漏洞披露到系统具备检测能力的窗口期，同时保持高检测率。实验表明，对比传统基于发布周期的规则更新，该方案能更快响应新CVE，提升云资产安全性。",
+      "llm_tldr": "针对云安全态势管理（CSPM）中漏洞规则更新延迟问题，本文提出需求驱动漏洞检测方法，从人工规则编写转向自动生成。该方法能显著缩短从漏洞披露到系统具备检测能力的窗口期，同时保持高检测率。实验表明，对比传统基于发布周期的规则更新，该方案能更快响应新CVE，提升云资产安全性。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "code vulnerability detection techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.07999v1",
+      "source": "arxiv",
+      "title": "Efficient Skill Grounding via Code Refactoring with Small Language Models",
+      "abstract": "Effective skill grounding is essential for deploying reusable skills in embodied agents, as even minor embodiment or environmental differences can render an entire skill incompatible. This challenge is particularly pronounced in embodied settings, where agents must operate in dynamic, partially observable environments without access to large language models (LLMs). In this setting, reliance on LLMs is impractical, while small language models (sLMs) remain insufficient for the effective skill grounding required for reliable long-horizon control. We present RECENT, a refactoring-centric agent framework that enables efficient skill grounding with sLMs by decoupling skill semantics from embodiment- and environment-specific execution binding. By representing skills as executable code, RECENT preserves the semantic intent encoded in a skill's control structure while grounding it by modifying only execution bindings through localized refactoring, rather than regenerating code from scratch. We evaluate RECENT across diverse skill grounding scenarios spanning multiple robot embodiments in dynamic environments, demonstrating robust long-horizon performance when deployed with an sLM. Across all scenarios, RECENT achieves the best performance among sLM-based Code-as-Policies (CaP) methods and matches the task performance of LLM-based CaP.",
+      "authors": [
+        "Sera Choi",
+        "Wonje Choi",
+        "Saehun Chun",
+        "Daehee Lee",
+        "Jooyoung Kim",
+        "Chaeun Lee",
+        "Honguk Woo"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-06-06T06:33:51+00:00",
+      "link": "https://arxiv.org/pdf/2606.07999v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "skill grounding and reuse for transfer in embodied agents",
+      "llm_evidence_cn": "面向具身代理的技能基础与重用，直接支持技能迁移",
+      "llm_evidence": "面向具身代理的技能基础与重用，直接支持技能迁移",
+      "canonical_evidence": "面向具身代理的技能基础与重用，直接支持技能迁移",
+      "llm_tldr_en": "Proposes RECENT, a refactoring framework that decouples skill semantics from embodiment for efficient skill grounding with small language models, enabling reusable skills across environments.",
+      "llm_tldr_cn": "针对具身代理中技能因环境和体态差异而难以重用的问题，提出RECENT框架。通过代码重构将技能语义与执行绑定解耦，使小型语言模型能够高效进行技能基础化。实验表明该方法在不同体态和环境间实现技能可靠迁移，为长时控制提供了实用方案。",
+      "llm_tldr": "针对具身代理中技能因环境和体态差异而难以重用的问题，提出RECENT框架。通过代码重构将技能语义与执行绑定解耦，使小型语言模型能够高效进行技能基础化。实验表明该方法在不同体态和环境间实现技能可靠迁移，为长时控制提供了实用方案。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "studies about skill transfer in artificial intelligence",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    }
+  ]
+}
