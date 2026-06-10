@@ -1,0 +1,1068 @@
+Title: Multi-task LLMs for Bug Classification: Efficient Inference with Auxiliary Decoding Heads
+
+URL Source: https://arxiv.org/pdf/2606.09956v1
+
+Published Time: Wed, 10 Jun 2026 00:04:14 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# Multi-task LLMs for Bug Classification: Efficient Inference with Auxiliary Decoding Heads 
+
+Nikolai Rozanov 1, *1Department of Computing, Imperial College London, London, UK  
+
+> Correspondence: nikolai.rozanov13@imperial.ac.uk
+
+Abstract 
+
+The rapid adoption of LLM-powered code gen-eration has dramatically accelerated software development, yet effective verification methods remain severely underdeveloped. Existing bug localization techniques are either prohibitively expensive, requiring minutes of agentic reason-ing and thousands of generated tokens per file, and/or operate at coarse function-level granu-larity unsuitable for precise debugging. While works that focus on line-level granularity and are more light-weight are often limited in their performance or context size. We introduce a novel line-level bug localization approach that addresses these limitations through three key contributions: (1) a token alignment algorithm that overcomes fundamental tokenization chal-lenges in previous work, (2) a lightweight multi-task LLM for bug localization (MLC) enabling efficient line-level bug classification, and (3) an optimized training recipe for multi-line pre-diction. Our method achieves state-of-the-art performance among similar setups on line-level bug localization with full-file context. At the same time we reach comparable performance to agentic approaches on Defects4J and Pyp-iBugs benchmarks while reducing inference latency by orders of magnitudes, requiring only a single generated token per file. We further demonstrate strong generalization by introduc-ing and evaluating on a small out-of-domain evaluation datasets in Python. We will open source our code, models, and datasets upon acceptance. 
+
+1 Introduction 
+
+With the advancement of LLMs, code generation went beyond just the human software engineers (Chen et al., 2021). In recent years there was an explosion of autonomous coding systems (i.e. ‘vibe’ coding platforms, LLM Coding Agents, etc.) (Team, 2025; Xia et al., 2024; Wang et al., 2025; 
+
+> *This work was partially accomplished at Recurse Ltd., London UK.
+
+DeepSeek-AI et al., 2025). However, the ability to verify this code lags behind and was not sig-nificantly extended beyond initial ML based fault localisation, human reviewers and existing analysis tools (Charoenwet et al., 2024). This creates an enormous problem for both the safety and secu-rity of open source software (Kharma et al., 2025) as well as the actual performance and stability of software (Ouyang et al., 2025). In our work we are investigating how to address the issue of automatic bug localization. Histori-cally, fault localization either was done using ex-pensive human review, automatic dynamic analysis tools (Wong et al., 2016), which requires running the code and can be very expensive and resource intensive; or static analysis (Mehrpour and LaToza, 2022; Wong et al., 2016; Charoenwet et al., 2024), which can be limited in what can be extracted. To address these limitations LLM based analysis tools were proposed. Our work explores LLM based bug localization. Existing work focuses primarily on agentic sys-tems, reasoning models, RAG-based systems or classical supervised fine-tuning (Chen et al., 2025; Asad et al., 2026; Ji et al., 2024; Yang et al., 2023; Jambigi et al., 2025; Qin et al., 2024). We observe two main issues with existing systems and work, firstly it is very expensive to run such systems 1
+
+the classification of a single file takes 1 to 2 min-utes of LLM inference (and many API calls) and secondly these often work on the function level granularity, which can be limiting for downstream tasks. Additionally, works (Yang et al., 2023; Ji et al., 2024) that attempted line-level prediction use an additional transformer architecture on top of a standard LLM making it hard and expensive to train or used short context windows at the method level. 
+
+> 1Popular bug identification online tools like code rabbit, claude caude, recurse etc.
+
+1
+
+> arXiv:2606.09956v1 [cs.SE] 8 Jun 2026 Figure 1: Model architecture showing both the original LLM ‘channel’ for next token prediction as well as the additional classification head.
+
+We take a different approach and introduce ‘Multi-task LLM for Bug Localization’ (MLC). Our method achieves the state-of-the-art results on a comparable setup (line-level granularity and full file context) with models ranging from 1.7B to 8B parameters. On the ‘shorter context’ setup we beat the previous state-of-the-art LLMAO and achieve comparable results to Agentic setups. At the same time our method only requires a single token to be generated for all lines to be classified; therefore making inference very fast (especially relative to reasoning and agentic systems that often require multiple thousand tokens to be generated). Additionally, we introduce a small evaluation dataset of unseen python bugs to evaluate out-of-distribution performance. We observe that gen-eral bug localization abilities generalize well, while catching all bugs becomes harder in the OOD do-main. In summary, our contributions are: 1) a Token Alignment Algorithm that overcomes theoretical assumptions made by previous work, 2) a Multi-task LLM modelling technique for bug localization, 3) a training recipe that produces very competitive results at a fraction of the cost and 4) an additional evaluation dataset for out-of-distribution testing. 
+
+2 Background and related Work 
+
+Automated Fault Localization (FL) is a core chal-lenge in software debugging, aiming to identify the specific code responsible for a failure. Apart from humans analysing vast amounts of textual data, tra-ditional techniques rely primarily on dynamic anal-ysis, such as Spectrum-Based Fault Localization (SBFL) (Wong et al., 2016), which depends on ex-pensive test execution to gather coverage spectra; or static analysis like ochiai and others (Mehrpour and LaToza, 2022; Charoenwet et al., 2024), which can be limited in scope. The advent of Large Lan-guage Models (LLMs) has opened a new paradigm for learning-based fault localization, though exist-ing approaches struggle with efficiency, cost, and granularity. 
+
+Agentic and retrieval-based localization: Asignificant trend frames FL as an information re-trieval (IRBL) or agentic reasoning task. Works like G EN LOC (Asad et al., 2026), M EM FL (Yeo et al., 2025), and O RCA LOCA (Yu et al., 2025) employ multi-step agents, external memory, or graph-based code representations to retrieve rel-evant files or functions. Similarly, A GENT FL (Qin et al., 2024) uses a multi-agent pipeline for com-prehension, navigation, and confirmation. While these systems can navigate large codebases, their agentic nature makes them prohibitively expensive for widespread use, often requiring minutes of rea-soning, multiple LLM calls, and generating thou-sands of tokens per bug. Furthermore, their file or function-level granularity is insufficient for auto-mated repair. 
+
+Line-level prediction and its costs: For prac-tical debugging, line-level precision is essential. LLMAO (Yang et al., 2023) directly addresses this by fine-tuning a separate neural network on top of a frozen LLM backbone to predict faulty lines, setting strong Top-k benchmarks. However, this ar-chitecture requires training and maintaining an ad-ditional transformer model, increasing complexity and cost. It also typically operates within a limited context window (e.g., a single function), missing broader file-level context. Other approaches, such as F LEX FL (Xu et al., 2025) or studies on fine-tuning LLMs for FL (Ji et al., 2024; Jambigi et al., 2025), often rely on generating natural language tokens (CoT), thereby inheriting the large latency. 
+
+Our approach, efficient direct classification: 
+
+Our work diverges from these paradigms. We avoid the high latency of agentic systems and the archi-tectural overhead of attached networks. Instead, we introduce a lightweight fine-tuning method that adds and optional adapter and a decoding head to the the LLM’s final layer to perform direct, token-level binary classification ( Bug/No-Bug ) across all lines in a file simultaneously. This enables a single forward pass, requiring only one generated token for the entire file. This significantly reduces cost 2Figure 2: Code snippet showing how GPT-5 tokenizer splits the token. Particularly, one can see that the newline ‘\n’ token is split over multiple lines and includes other words from either line. 
+
+and latency compared to iterative agents or gen-erative pipelines. Our method achieves precise line-level localization while being more parameter-efficient, easier to train, and capable of leveraging full-file context, addressing key limitations of prior methods. Crucially, the original capability of the LLM remains intact and inference using the origi-nal classification head has a negligible overhead. 
+
+3 Method 
+
+Overall, our method consists of i) a token alignment algorithm, ii) an aggregation and classification head to allow for the multi-task predictions iii) a training recipe that is successful and produces strong results. See Figure 3 for a complete flow. 
+
+3.1 Token-line alignment algorithm 
+
+The motivation for our token alignment algorithm is two-fold. Firstly, we observe a flaw with the existing line classification methods (Yang et al., 2023) for line-level classification, often the ‘\n’ 
+
+(newline) character (and associated token) is used to classify bug lines. This is a problem, however, as tokenizers do not respect the newline bound-ary. Consistently, across tokenizers and models, tested in our work, the newline character appears in combination with many other tokens (sometimes spanning several newlines) See Figure 2. Secondly, we want to allow the model to be able to use more than one token of a given line (if needed) to make final predictions if a given line is buggy. Therefore, in our case we need to associate to-kens with specific buggy lines of code and the dif-ficulty lies in that tokens start and end characters often do not neatly correspond to new lines. To solve this issue we develop our own token-line alignment algorithm, which employs a two-pointer like approach. See Algorithm 1 in Appendix B. The algorithm efficiently process tokens and their associated start end ending character indexes and outputs a list (corresponding to lines) of lists of token ids (corresponding to tokens in the given line). See Appendix B for more details. 
+
+3.2 Multi-task bug classification head 
+
+Our architecture builds upon a pre-trained LLM backbone, augmented with an additional classifica-tion head and optional additional components for bug detection. Importantly, the original backbone LLM can be still used normally during inference with negligible overhead 2.
+
+3.2.1 LLM backbone 
+
+We employ a pre-trained (code) LLMs (e.g., Qwen-2.5-Coder-7B 3) as our feature extractor. Given an input of code, the model’s tokenizer produces a sequence of tokens X = [ x1, x 2, . . . , x n], the backbone produces hidden state representations 
+
+H = [ h1, h 2, . . . , h n] ∈ Rn×d, where d is the hid-den dimension size. The backbone parameters re-main frozen during training to preserve pre-existing code understanding capabilities. We experiment with both just using the additional decoding head as well as adding additional parameter efficient LORA adapter layers (PEFT) (Hu et al., 2021). 
+
+3.2.2 Token aggregation 
+
+Our token alignment algorithm gives us the token ids for each line of code. Thus, we aggregate the hidden states of each line of tokens to produce a line-level representation. Given token indices Il
+
+corresponding to line l, we compute: 
+
+hagg  
+
+> l
+
+= Aggregate ({hi : i ∈ I l}) (1) We experiment with different Aggregate (·) func-tions. (1) Sum : the summation of token embed-dings, (2) Mean : average of token embeddings, or (3) Last-token : the hidden state of the final token in the line. Our modular architecture allows for other aggregation strategies in future research. 
+
+3.2.3 Decoding (classification) head 
+
+The aggregated line embeddings hagg  
+
+> l
+
+are passed through a final classification head to predict bug  
+
+> 2The overhead is a single forward pass of the original softmax layer.
+> 3Accessed from here https://huggingface.co/Qwen/ Qwen2.5-Coder-7B .
+
+3Figure 3: The full flow of a code file to a per-line bug classification. 
+
+probabilities. The line embeddings runs through an optional feedforward network (FFN) with RELU activation. 
+
+sl = FFN (hagg  
+
+> l
+
+) (2) After that we have a final linear projection and classification head for the logits of the new vocab size of 2 ( NO BUG and BUG ). 
+
+pl = σ(W s l + b) (3) Where σ is either softmax or sigmoid . In our case, 
+
+pl is two dimensional and each dimension repre-sents the probability of the two resulting tokens. In our case we mostly do greedy decoding and therefore choose argmax between these tokens. 
+
+3.3 Training recipe 
+
+Line by line prediction generally would happen either on a line by line basis or in batches of lines. Due to the efficiency of our method we are able to predict all lines for a given file at the same time, as it equates to generating a single token. Thus, in our context the notion of batch-size 
+
+means how many files to predict at once (with all the lines in each of the files). It is important to note, that in other works the line number is considered as the batch size (Ji et al., 2024); compared to such works our batch size is effectively varying from each gradient update to the next. Hence we introduce a weighted loss to account for that. Concretely, with a batch-size=1 (i.e. one file with many lines) we train our model using a weighted binary cross-entropy loss that processes entire code files simultaneously. For a file with m
+
+lines, the loss function is: 
+
+L = − 1
+
+m
+
+> m
+
+X
+
+> l=1
+
+wpos · yl log( pl, 1) + wneg · (1 − yl) log( pl, 2)
+
+(4) where: • yl ∈ { 0, 1} is the ground truth label for line l
+
+(1 if buggy, 0 otherwise) • pl,i is the predicted probability for token 1 and token 2 for line l. In the case of softmax 
+
+pl, 1 = 1 − pl, 2, in the case of sigmoid these are independent. • wpos and wneg are class weights to address label imbalance We choose a single weight based on the valida-tion loss and is treated as a static hyper-parameter. The hyper-parameters can be seen in Appendix A. 
+
+3.4 Summary of method & hyper-parameters 
+
+In summary our model adds another task or ‘chan-nel’ to the LLM. This allowes the LLM to not only predict the next code token but in parallel also the 
+
+BUG vs. NO BUG token. This happens via: 1) Em-bedding each token using an LLM, 2) Aggregating each aligned line token into a single line embed-ding, 3) using a decoding head to assign probabili-ties over (in our case two) new tokens, as seen in Figure 3. 
+
+4 Experimental setup 
+
+4.1 Datasets 
+
+In order to validate our approach we wanted to test on the well established Java Fault Localization (FL) 4dataset Defects4J (Just et al., 2014). Additionally, we chose to also use a Python based dataset; to this end we used the PypiBugs dataset (Allamanis et al., 2021). Finally, we also chose to evaluate out-of-distribution (OOD) generalization. For this purpose we created a small python bug dataset based on latest bugs in public projects from Github. We call our dataset BugsEval, which has a total of 12 projects, 121 bugs from these projects and a total of 67 files. We manually annotated all the existing bugs using 2 annotators, see Appendix K and H. In line with previous work (Ji et al., 2024) we split our data into 80% for training 10% for valida-tion and 10% for testing. For full reproducibility we fixed our splits and uploaded them. See details in Appendix D. 
+
+4.1.1 Function-level predictions and shorter context 
+
+Our work operates on i) the line-level granularity and ii) is able to process entire code files with-out splitting them up. Line-level granularity is the 
+
+harder task and also the more useful for down-stream tasks. Additionally, being able to process the entire context of a coding file is theoretically more grounded than function-level or chunks, as some bugs depends on the entire file. In fact the entire project would be the best setup in terms of single context, but this exceeds current capabilities of LLMs. Therefore, we believe that our setup is superior in terms of its merits for Automatic Fault Localization research based on LLMs. However, to bridge the gap between existing agentic workflows and previous work that oper-ates on chunks of the data we also processed De-fects4J similar to LLMAO, by splitting into chunks of roughly 2K tokens. We present these results in Section 5.3 as a complete comparison with existing methods, especially LLMAO 4.
+
+4.2 Models 
+
+To include a variety of model sizes we used the strong open source family of Qwen models (Qwen et al., 2025; Yang et al., 2025). The model types we were able to include running on our hardware were: Qwen2.5-Coder-7B, Qwen3-1.7B, Qwen3-4B, Qwen3-8B. Additionally, to show results com-parable to previous work we included CodeGen (Nijkamp et al., 2023), we included CodeGen 2B, 6B and 16B as it works on our hardware. Notably 
+
+> 4We will release the exact chunked dataset for reproducibil-ity upon acceptance.
+
+the CodeGen family of models has only a context length of 2048; therefore our datasets had to be filtered to this length for the CodeGen models. All other experiments ran at a context length of 8000 tokens. Generally, we train either in BF16 (only possible when we do not do PEFT and only train the decod-ing head) or 4bit quantization, (4bit is necessary for any PEFT fine-tuning). Inference happens in the BF16 datatype. Additionally all inference hap-pens with default ‘transformers’ (Wolf et al., 2020) settings for all models, see Appendix E. 
+
+4.3 Baselines 
+
+In addition to previous work we compare our re-sults to the classical supervised fine-tuning (SFT) paradigm. This baseline is similar to (Wu et al., 2023). The training setup (for comparison) follows the exactly same setup as our method. The main impact is the prompt, which can be found in Ap-pendix C. For the SFT phases we use LORA (Hu et al., 2021) and 4bit quantization of the models to fit into memory. During inference we run the models in BF16. As software we use the Unsloth and VLLM libraries. 
+
+4.4 Metrics 
+
+Inline with previous work we use the TopK Ac-curacy. As in (Yang et al., 2023; Ji et al., 2024) we use K=1,3,5. Specifically, TopK Accuracy is calculated by: Top-K = 1
+
+N
+
+> N
+
+X
+
+> i=1
+
+max 
+
+> K
+
+[
+
+> i=1
+
+{ˆyi,j k == y∗ 
+
+> i,j k
+
+}
+
+!
+
+(5) Where jk is the line j with the k-highest proba-bility predicted by the model, e.g. for k=1 it is the line with the 1st highest predicted probability of a bug occurring. y∗ 
+
+> i,j k
+
+is the true answer for file i and line jk (i.e. either buggy or not buggy); and ˆyi,j k
+
+is the prediction (after argmax) for the i-th file and 
+
+jk-th line. In the case of the SFT model which predicts a list of predicted lines; we do a beam search with beam width of k. 
+
+4.5 Hardware setup 
+
+All our experiments are conducted on 1 x L40S GPUs with 48GB of VRAM running on Ubuntu 22.04. The total GPU hours used was around 384 hours. 55 Results 
+
+We present two main results tables Table 1 and Table 2. We report Top1, Top3, and Top5 Accuracy in line with previous work. This setting indicates our most realistic setting and the baselines follow the most similar setup. The setting is that: i) the full file is given for prediction, ii) the context length of 8K covers most of the datasets. 
+
+5.1 Defects4J results 
+
+Looking at Table 1 we can see results on Defects4J. Firstly, we observe that for this comparable setting our approach produces the strongest results on De-fect4J, we are able to identify 16.3% of all bugs with Top1 with our PEFT trained model and 39.5% with Top5. This is a very significant result as the model has only 1.7B parameters and allows for a context length of 8K on our setup. Inference time is the same as only predicting a single output token (so it is the same to Time to First Token). Another interesting observation is that for De-fects4J just using a decoding head (without fine-tuning, e.g. DeepFL or PEFT) does not produce strong TOP 1 results. This indicates that the projects are complex and require specialized fea-ture vectors to make successful predictions. Interestingly, we can also see that the SFT ap-proach does not yield strong results. In fact SFT is among the worst approaches and achieves 0% with Top1 on the test set. Note the SFT approach achieves a Top1 performance 21.7% on the train-ing set. Therefore the SFT method ‘learns’ very effectively, however, is unable to go beyond memo-rization. This is particularly significant as this goes against the common wisdom of "SFT on a specific domain will produce good results". 
+
+5.2 PypiBugs results 
+
+Looking at Table 2 we can see results on PypiBugs 5
+
+Firstly, we observe comparable results to De-fects4J indicating that the benchmark has similar difficulty for the models. We also observe that again our PEFT model is the best performing. Inter-estingly, in this case Qwen2.5-Coder has stronger relative performance vs. Qwen3 than on Defects4J. This indicates that perhaps Qwen2.5-Coder was more exposed to Python than Java. Finally, we again observe the poor performance of the classical SFT approach. 
+
+> 5We note that previous work has not used this dataset for evaluation purposes on the line level, we therefore use only
+> Table 1: Comparison of Fault Localization Methods on Defects4J Benchmark. Results are taken from existing work for Ochiai and DeepFL (Yang et al., 2023); all other results are single run. QwenCode7B=Qwen2.5, all other Qwen Models are Qwen3.
+
+Method Top-1 Top-3 Top-5 Existing Work 
+
+Ochiai 4.8% 16.5% 25.1% DeepFL 14.4% 24.1 % 34.2% 
+
+Baseline 
+
+SFT QwenCode7B 0.0% 7.4 % 14.3% 
+
+Our Method 
+
+MLC Qwen-Code7B 9.3% 18.6% 27.9% MLC Qwen1.7B 4.7% 14.0% 25.6% MLC Qwen4B 7.0% 20.1% 30.2% MLC Qwen8B 7.0% 20.1% 34.9% 
+
+Ours + PEFT 
+
+MLC Qwen1.7B 16.3 % 23.3% 39.5 %
+
+5.3 Comparison against function-level and shorter context 
+
+As discussed in Section 4.1.1, we introduce this sec-tion to try and bridge the gap between our proposed method and methods that predict on the function level (agentic state-of-the-art methods) and line-level methods that use much smaller context sizes and therefore are also akin to ‘function’ level gran-ularity. We accumulate results in Table 3. The able can be seen as having two distinct set of results. Firstly, we have three agentic systems, which constitute the latest work and strongest results. These scores are based on the ‘function-level’ granularity of predict-ing bugs. Secondly, the table then presents LLM based approaches that focus on line-level granu-larity. LLMAO, being the only LLM based work that has this approach besides ours, has a shorter context (2048 tokens). Therefore we produce two more sets of results using our MLC method using a reduced context also. Firstly, we can see that the agentic setup MemFL using GPT-4.1 achieves an impressive 50% Top1 score and 73.9% Top5 score on the function-level. LLMAO achieves 46.3% Top5 with CodeGen 16B. 
+
+> our own baselines.
+
+6Table 2: Comparison of Fault Localization Methods on Pypi Benchmark. All results are single run. Qwen-Code7B=Qwen2.5, all other Qwen Models are Qwen3. 
+
+Method Top-1 Top-3 Top-5 Baseline 
+
+SFT Qwen-Code7B 2.0% 10.0% 14.0% 
+
+Our Method 
+
+MLC Qwen-Code7B 6.3% 21.7% 28.6% MLC Qwen1.7B 6.3% 21.7% 26.9% MLC Qwen4B 9.1% 21.7% 34.3% MLC Qwen8B 10.3 % 26.3% 36.6% 
+
+Ours + PEFT 
+
+MLC Qwen1.7B 8.6% 27.4 % 37.1 %Our results on the other hand indicate a very strong performance and impressive performance. With out best model CodeGen16B we are able to produce a Top5 score of 72% which is in line with the best agentic method out there. Interestingly, we observe that our Top1 performance for the 6B model is 12.4%, which is relatively low, while having a high Top5 performance of 42.9% indicating an inherent ambiguity of the task. We hypothesize that this is due to the chunking of the data and that it can introduce additional ambiguity to the task. 
+
+5.4 Summary of results 
+
+In this section we saw that our method is signifi-cantly better than comparable methods in the full setting of line-level granularity and long-context full files on Defects4J. Additionally, we established new scores on the PypiBugs dataset. Interestingly we observed that the classical LLM SFT approach performs terribly for Fault Localization, indicating that alternatives like our multi-task paradigm are needed. Finally, we also demonstrated superior and comparable performance to previous state-of-the art models in comparable settings, while using much smaller models and orders of magnitude less computation. 
+
+6 Analysis & ablations 
+
+In this section we further want to study the effec-tiveness of our method by analyzing generalization of our method as well as the effect of the various hyper-parameters in our setup. 
+
+> Table 3: Investigation of TOP-1 and Top-5 results on De-fects4J v.1.2.0 for function-level granularity and short-context approaches. AgentFL is taken from (Qin et al., 2024), it uses GPT-3.5-turbo. FlexFL is taken from (Xu et al., 2025) and uses GPT-4. MemFL is taken from (Yeo et al., 2025), it uses GPT-4.1-mini. CG6B,CG16B = refer to CodeGen 6B and 16B respectively.
+
+Method Top-1 Top-5 Function-Level (<1K) AgentFL (gpt-3.5) 39.7% 47.3% FlexFL (gpt-4) 49.9% 66.9% MemFL (gpt-4.1) 50.9% 73.9 %
+
+Short-Context (2K) 
+
+LLMAO CG6B 21.5% 40.5% LLMAO CG16B 22.3% 46.3% 
+
+Ours Short (2K) 
+
+MLC CG2B 14.3% 42.9% MLC CG6B 12.5% 42.9% MLC CG16B 28.6% 71.4 %
+
+6.1 Generalization 
+
+We investigate how well our method generalizes. This is particularly important for real-world scenar-ios where training data may not fully represent the target environment. To this end we evaluate our models by training them on PypiBugs and evaluat-ing on our own BugsEval. The settings remain the same as for the main experiments. In Table 4 one can see that while Top3 and Top5 performance drop from in-domain scores (see Ta-ble 2), Top1 performance is actually higher in some cases. This is an interesting observation and indi-cates that core features of bug localization gener-alize well to new tasks, while capturing the full breadth of new tasks becomes harder. Again, we also observe that Qwen2.5-Code has a relatively higher performance vs. the Qwen3 model fami-lies on this task, again indicating that Qwen2.5 has seen more exposure to python. Finally, we also again observe that PEFT fine-tuning produces even stronger results (Top5 + 5% points). 
+
+6.2 Analysis of key hyper-parameters 
+
+We examine the main hyper-parameters and their effect on the score. 6 We examined the three most important parameters: 1) Number of Decoding Lay-      
+
+> 6Note, the main experiments followed the hyper-parameters as seen in Appendix A.
+
+7Table 4: Investigating the generalization from Pypi to BugsEval. 
+
+Method Top-1 Top-3 Top-5 Our Method 
+
+MLC QwenCode7B 13.8 % 21.5% 27.7% MLC Qwen1.7B 10.8% 21.5% 24.6% MLC Qwen4B 13.8 % 18.5% 26.2 % MLC Qwen8B 13.8 % 23.1 % 29.2 %
+
+Ours + PEFT 
+
+MLC Qwen1.7B 9.2% 21.5% 29.2 %ers, 2) Aggregation method and 3) Activation func-tion for the Decoding Head. The results can be found in Table 5, 6 The observations are quite interesting. Firstly, we noted that increasing the number of layers was not necessarily an improvement of the score, in-dicating that the features from the LLM are rich enough for effective classification. Secondly, we observed that the ‘last’ aggregation method often worked well, which surprised us at first, but makes sense in light of causal language modeling. Fur-thermore, the mean option was very competitive and sometimes better too, indicating that causal language modeling sometimes does not capture all the pertinent information. Finally, we observed the sigmoid outperformed softmax on most setups. This is very surprising to us; as softmax is usu-ally chosen for next token prediction. While this requires further investigation in future work, we hypothesize that this might be due to an inherent ambiguity in bug classification. 
+
+6.3 Summary of analysis 
+
+Overall, we demonstrated that our method is able to generalize to unseen projects. Interestingly, we observed that Top1 generalization was good, while Top5 generalization was weaker, indicating that rec-ognizing bugs generalizes, but catching all / more bugs is hard. Additionally, we also investigated hyper-parameters. It was surprising to see that of-ten the ‘last’ token aggregation was the best, while sigmoid performed better than ‘softmax’ indicating perhaps an intrinsic ambiguity about bug classifica-tion. 
+
+> Table 5: Hyperparameter tuning Top5 results for the Qwen1.7B + PEFT model on Defects4J.
+
+Setting Max Mean Std Layers 
+
+0 0.349 0.126 0.115 1 0.395 0.169 0.122 
+
+Aggregation 
+
+last 0.395 0.160 0.111 mean 0.372 0.196 0.127 sum 0.326 0.082 0.091 
+
+Activation 
+
+sigmoid 0.395 0.163 0.122 softmax 0.349 0.131 0.116  
+
+> Table 6: Hyperparameter tuning Top5 results for Qwen8B on Defects4J.
+
+Setting Max Mean Std Layers 
+
+0 0.349 0.119 0.095 1 0.302 0.137 0.093 
+
+Aggregation 
+
+last 0.349 0.164 0.097 mean 0.279 0.142 0.080 sum 0.302 0.077 0.083 
+
+Activation 
+
+sigmoid 0.349 0.141 0.090 softmax 0.302 0.115 0.096 
+
+7 Conclusion 
+
+In our work we investigated efficient bug classi-fication methods and presented Multi-task Fault Localization (MLC) that is orders of magnitude more efficient that state-of-the-art agent based sys-tem and more granular in their prediction. We demonstrated that for the only other similar ap-proach LLMAO ours is more efficient and produces better predictions and better motivated due to the way actual tokenization works (and the wrong as-sumptions that being made by existing work). Our results show very competitive performance despite being a very light-touch method. We also solve the tokenization alignment problem by proposing a concrete token line alignment algorithm, which can benefit the community more broadly for any line 8level classification or prediciton tasks for LLMs. 
+
+Limitations 
+
+Our paper proposes a multi-channel LLM that is able to both do the next token prediction as well as bug classification. Multi-channel LLMs can form a powerful new paradigm for future research as a way of efficiently capturing multiple tasks with conflict-ing distributions, while sharing many parameters for general purpose knowledge. A conference pa-per as this one is unable to capture a full study of such multi-channel LLMs, therefore one limitation of our paper is that we are unable to provide a com-prehensive analysis of what multi-channel LLMs can really do and what their effect is. We believe such a study would be better suited over several works in any case. Another limitation of our work, due to practical compute limitations is that we are unable to study much larger LLMs for this particular multi-channel LLM adaptation. This would require a large com-pute budget which unfortunately we cannot afford. Overall, we expect the efficiency gains to remain as we require a single forward pass only; additionally stronger LLMs will likely have stronger classifica-tion performance as well. Finally, another limitation we identify in our pa-per is that function-level granularity (i.e. coarser than our study), which is more common with agen-tic bug identification approaches, requires future work for the study as it requires a different token alignment algorithm that can efficiently capture function boundaries for different programming lan-guages. Therefore, we believe this is an interesting study, yet a study best suited for future work. 
+
+Ethical considerations 
+
+Dataset privacy we used previously published datasets and public repositories that contain code only and no personally identifiable information. 
+
+Acknowledgments 
+
+To be included in the camera-ready version. 
+
+References 
+
+Miltiadis Allamanis, Henry Jackson-Flux, and Marc Brockschmidt. 2021. Self-supervised bug detection and repair. Preprint , arXiv:2105.12787. Moumita Asad, Rafed Muhammad Yasir, and Sam Malek. 2026. Towards explorative irbl: Combin-ing semantic retrieval with llm-driven iterative code exploration. Preprint , arXiv:2508.00253. Wachiraphan Charoenwet, Patanamon Thongtanunam, Van-Thuan Pham, and Christoph Treude. 2024. An empirical study of static analysis tools for secure code review. Preprint , arXiv:2407.12241. Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique Ponde de Oliveira Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph, Greg Brockman, Alex Ray, Raul Puri, Gretchen Krueger, Michael Petrov, Heidy Khlaaf, Girish Sastry, Pamela Mishkin, Brooke Chan, Scott Gray, and 39 others. 2021. Evaluating large language models trained on code. Preprint , arXiv:2107.03374. Zhaoling Chen, Xiangru Tang, Gangda Deng, Fang Wu, Jialong Wu, Zhiwei Jiang, Viktor Prasanna, Arman Cohan, and Xingyao Wang. 2025. Locagent: Graph-guided llm agents for code localization. Preprint ,arXiv:2503.09089. Michael Han Daniel Han and Unsloth team. 2023. Un-sloth. DeepSeek-AI, Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu, Shirong Ma, Peiyi Wang, Xiao Bi, Xiaokang Zhang, Xingkai Yu, Yu Wu, Z. F. Wu, Zhibin Gou, Zhi-hong Shao, Zhuoshu Li, Ziyi Gao, and 181 others. 2025. Deepseek-r1: Incentivizing reasoning capa-bility in llms via reinforcement learning. Preprint ,arXiv:2501.12948. Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. 2021. Lora: Low-rank adaptation of large language models. Preprint , arXiv:2106.09685. Neetha Jambigi, Bartosz Bogacz, Moritz Mueller, Thomas Bach, and Michael Felderer. 2025. Fault localization via fine-tuning large language models with mutation generated stack traces. Preprint ,arXiv:2501.18005. Suhwan Ji, Sanghwa Lee, Changsup Lee, Hyeonseung Im, and Yo-Sub Han. 2024. Impact of large lan-guage models of code on fault localization. Preprint ,arXiv:2408.09657. René Just, Darioush Jalali, and Michael D. Ernst. 2014. Defects4j: a database of existing faults to enable controlled testing studies for java programs. In Pro-ceedings of the 2014 International Symposium on Software Testing and Analysis , ISSTA 2014, page 437–440, New York, NY, USA. Association for Com-puting Machinery. Mohammed Kharma, Soohyeon Choi, Mohammed AlKhanafseh, and David Mohaisen. 2025. Security and quality in llm-generated code: A multi-language, multi-model analysis. Preprint , arXiv:2502.01853. 
+
+9Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph E. Gonzalez, Hao Zhang, and Ion Stoica. 2023. Effi-cient memory management for large language model serving with pagedattention. In Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles .Sahar Mehrpour and Thomas D. LaToza. 2022. Can static analysis tools find more defects? Empirical Software Engineering , 28(1):5. Erik Nijkamp, Bo Pang, Hiroaki Hayashi, Lifu Tu, Huan Wang, Yingbo Zhou, Silvio Savarese, and Caiming Xiong. 2023. Codegen: An open large language model for code with multi-turn program synthesis. 
+
+ICLR .Anne Ouyang, Simon Guo, Simran Arora, Alex L. Zhang, William Hu, Christopher Ré, and Azalia Mirhoseini. 2025. Kernelbench: Can llms write effi-cient gpu kernels? Preprint , arXiv:2502.10517. Yihao Qin, Shangwen Wang, Yiling Lou, Jinhao Dong, Kaixin Wang, Xiaoling Li, and Xiaoguang Mao. 2024. Agentfl: Scaling llm-based fault localization to project-level context. ArXiv , abs/2403.16362. Qwen, :, An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jingren Zhou, and 25 oth-ers. 2025. Qwen2.5 technical report. Preprint ,arXiv:2412.15115. Gemini Team. 2025. Gemini: A family of highly capa-ble multimodal models. Preprint , arXiv:2312.11805. Xingyao Wang, Boxuan Li, Yufan Song, Frank F. Xu, Xiangru Tang, Mingchen Zhuge, Jiayi Pan, Yueqi Song, Bowen Li, Jaskirat Singh, Hoang H. Tran, Fuqiang Li, Ren Ma, Mingzhang Zheng, Bill Qian, Yanjun Shao, Niklas Muennighoff, Yizhe Zhang, Binyuan Hui, and 5 others. 2025. Openhands: An open platform for ai software developers as generalist agents. Preprint , arXiv:2407.16741. Thomas Wolf, Lysandre Debut, Victor Sanh, Julien Chaumond, Clement Delangue, Anthony Moi, Pier-ric Cistac, Tim Rault, Rémi Louf, Morgan Funtowicz, Joe Davison, Sam Shleifer, Patrick von Platen, Clara Ma, Yacine Jernite, Julien Plu, Canwen Xu, Teven Le Scao, Sylvain Gugger, and 3 others. 2020. Trans-formers: State-of-the-art natural language processing. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing: System Demonstrations , pages 38–45, Online. Association for Computational Linguistics. W. Eric Wong, Ruizhi Gao, Yihao Li, Rui Abreu, and Franz Wotawa. 2016. A survey on software fault localization. IEEE Transactions on Software Engi-neering , 42(8):707–740. Yonghao Wu, Zheng Li, J Zhang, Mike Papadakis, Mark Harman, and Yong Liu. 2023. Large language mod-els in fault localisation. ArXiv , abs/2308.15276. Chunqiu Steven Xia, Yinlin Deng, Soren Dunn, and Lingming Zhang. 2024. Agentless: Demystifying llm-based software engineering agents. Preprint ,arXiv:2407.01489. Chuyang Xu, Zhongxin Liu, Xiaoxue Ren, Gehao Zhang, Ming Liang, and David Lo. 2025. Flexfl: Flexible and effective fault localization with open-source large language models. Preprint ,arXiv:2411.10714. Aidan Z. H. Yang, Ruben Martins, Claire Le Goues, and Vincent J. Hellendoorn. 2023. Large language models for test-free fault localization. Preprint ,arXiv:2310.01726. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Day-iheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, and 41 others. 2025. Qwen3 technical report. Preprint ,arXiv:2505.09388. Inseok Yeo, Duksan Ryu, and Jong-Chan Baik. 2025. Improving llm-based fault localization with external memory and project context. ArXiv , abs/2506.03585. Zhongming Yu, Hejia Zhang, Yujie Zhao, Hanxian Huang, Matrix Yao, Ke Ding, and Jishen Zhao. 2025. Orcaloca: An llm agent framework for software issue localization. ArXiv , abs/2502.00350. 
+
+A Model hyper-parameters 
+
+The below hyper-parameters are the ones we actu-ally chose for all our main experiments in the paper. Note, that a later ablation study revealed certain parameters to be superior in some cases, however, to have a standardized approach we used the same hyper-parameters across models and setttings. The hyper-parameters are described below in more detail. • Layers - indicates the number of layers in the final decoding head. • Bug weighting - indicates the ratio between buggy lines vs. non-buggy lines, specifically the actual weight is computed in the recipro-cal. • Learning rates - are the learning rate for AdamW optimizer. • The batch-size - is how many files are used (i.e. all the lines from a single file). 10 Table 7: Hyperparameter search space used for model optimization. The selected values for the final model based are also shown. 
+
+Hyperparameter Values Tested Selected 
+
+LAYERS {0, 1} 1
+
+BUG_WEIGHTINGS {25.0, 50.0, 100.0, 150.0} 100.0 
+
+LEARNING_RATES {0.0005, 0.0001, 0.00005, 0.00001} 0.0001 
+
+BATCH_SIZES {1, 2, 4} 1
+
+AGGREGATORS {"mean" , "last" , "sum" } "mean" ACTIVATIONS {"softmax" , "sigmoid" } "sigmoid" PEFT_RS {32, 64, 128} 32 
+
+PEFT_ALPHAS {32, 64, 128} 32 • Aggregators - indicates how the line token embeddings are aggregated into a single line embedding. • The Actviations - hyper-parameter indicates which activation the final decoding head has. • PEFT Rs and PEFT alphas indicate Paramter Efficient Finetuning Rank and Alpha for the LORA adapters. 
+
+B Token alignment algorithm 
+
+The below is the full implementation of the token alignment algorithm.  
+
+> 1
+
+def find_token_indexes(matches, offset_mapping, return_char_indexes= False):  
+
+> 2
+
+"""  
+
+> 3
+
+finds the CONTIGUOUS matches indexes in offset_mapping.  
+
+> 45
+
+I.e. token_index collation based on character_index matches in the original string.  
+
+> 67
+
+E.g. '\n ' was discoverd in a string at char offset 61. this function  
+
+> 8
+
+should return, [[x]] , [[y],[z]]  
+
+> 9
+
+- where x all the token_ids are that contain char 61 token (i.e. only one token likely)  
+
+> 10
+
+- where y is all the token_ids that are before char 61 token  
+
+> 11
+
+- where z is all the token_ids that are after char 61 token  
+
+> 12 13
+
+INPUT:  
+
+> 14
+
+# matches == (type: List[int]) list of char_offsets for the matched chars  
+
+> 15
+
+# offset_mapping == (type: List[List_2( int)]) list of list(size=2) of ints that represent the char_offsets  
+
+> 16 17
+
+OUTPUT:  
+
+> 18
+
+token_sequence that does not contain the matches 
+
+Algorithm 1 Token-Line Alignment Algorithm 
+
+Input: N lines of code. M total tokens. S total bugs. Token start char index and end char in-dex: T = [( t1,start , t 1,end ), (t2,start , t 2,end ),. . . , (tn,start , t M,end )] , line breaks char index 
+
+L = [ l1, l 2, . . . , l N ] where li is char index for line start, bug lines B ⊆ { 1, 2, . . . , S }
+
+Output: List of lists Token indexes correspond-ing to each line (excluding the newline char-acter) T L = [[ i11 , ..., i n1 ], . . . , [i1N , ..., i nM ]] 
+
+where inj corresponds to the token index i 
+
+∈ { 1, 2, . . . , M } which is included in the j-th row. 
+
+1: Initialize yi ← 0 for i = 1 , 2, . . . , n 
+
+2: Initialize token pointer p ← 1, line pointer 
+
+q ← 1
+
+3: while p ≤ n and q ≤ m do 
+
+4: line _start ← lq
+
+5: line _end ←
+
+(
+
+lq+1 − 1 if q < m n otherwise 
+
+6: if q ∈ B then 
+
+7: for i = line _start to line _end do 
+
+8: yi ← 1 {Mark token as buggy} 
+
+9: end for 
+
+10: end if 
+
+11: p ← line _end + 1 
+
+12: q ← q + 1 
+
+13: end while 
+
+14: return Y 
+
+> 19
+
+token_sequence that does contain the matches  
+
+> 20 21
+
+NOTE:  
+
+> 22
+
+If there is not a perfect overlap.  
+
+> 23
+
+E.g.  
+
+> 24
+
+- matches = [1,2,3],  
+
+> 25
+
+- offset_mapping = [[0,1],[1,6]] 
+
+11 26 27 The return will be:  
+
+> 28
+
+[[1]], [[0]]  
+
+> 29
+
+"""  
+
+> 30 31
+
+char_indexes_matched = []  
+
+> 32
+
+char_indexes_not_matched = []  
+
+> 33
+
+ind_char_matched = []  
+
+> 34
+
+ind_char_not_matched = []  
+
+> 35 36
+
+matched_token_sequences = []  
+
+> 37
+
+individual_matched_token_sequences = []  
+
+> 38 39
+
+not_matched_token_sequences = []  
+
+> 40
+
+individual_not_matched_token_sequence = []  
+
+> 41 42
+
+total_sequence_length = len( offset_mapping)  
+
+> 43
+
+# print(len(offset_mapping))  
+
+> 44
+
+# print(total_sequence_length)  
+
+> 45
+
+total_matches = len(matches)  
+
+> 46 47
+
+if total_matches == 0: 
+
+> 48
+
+individual_not_matched_token_sequence = list(range(total_sequence_length))  
+
+> 49
+
+not_matched_token_sequences.append( individual_not_matched_token_sequence)  
+
+> 50
+
+# print("exit 1")  
+
+> 51
+
+return matched_token_sequences, not_matched_token_sequences  
+
+> 52 53 54
+
+matches_idx = 0  
+
+> 55
+
+sequence_started = True #of unmatched tokens  
+
+> 56 57
+
+# Kind of like a line-sweep algorithm with double indexing.  
+
+> 58
+
+for token_idx, (low, high) in enumerate (offset_mapping):  
+
+> 59
+
+# print(f"total_tokens:{ total_sequence_length} token_idx:{ token_idx} | total_matches: { total_matches} match_idx:{matches_idx }")  
+
+> 60
+
+curr_val = matches[matches_idx] # curr_val is the char index of the matched string inside the original string (e.g. newline)  
+
+> 61
+
+if curr_val >= low and curr_val < high: #char_index "curr_val" is inside the char range of this token..  
+
+> 62 63
+
+# means we matched a "our desired token/string" (eg newline) and are now skipping those tokens.  
+
+> 64
+
+if individual_not_matched_token_sequence:  
+
+> 65
+
+not_matched_token_sequences. append( individual_not_matched_token_sequence)  
+
+> 66
+
+char_indexes_not_matched. append(ind_char_not_matched)  
+
+> 67 68
+
+# token id matched 
+
+> 69
+
+individual_matched_token_sequences. append(token_idx)  
+
+> 70
+
+ind_char_matched.append((low, high))  
+
+> 71 72
+
+# reset  
+
+> 73
+
+sequence_started = False 
+
+> 74
+
+individual_not_matched_token_sequence = [] #reset for the next unmatched group  
+
+> 75
+
+ind_char_not_matched = []  
+
+> 76 77
+
+# now find all the other matches for this token range.  
+
+> 78
+
+while curr_val >= low and curr_val < high:  
+
+> 79
+
+matches_idx += 1  
+
+> 80
+
+if matches_idx >= total_matches: #no more matches. 
+
+> 81
+
+individual_not_matched_token_sequence = list(range(token_idx+1, total_sequence_length))  
+
+> 82
+
+if token_idx+1 < total_sequence_length: 
+
+> 83
+
+ind_char_not_matched = [(offset_mapping [token_idx+1][0], (offset_mapping[ total_sequence_length-1][1]))]  
+
+> 84 85
+
+if individual_not_matched_token_sequence: #could be empty 
+
+> 86
+
+not_matched_token_sequences.append( individual_not_matched_token_sequence) 
+
+> 87
+
+char_indexes_not_matched.append( ind_char_not_matched)  
+
+> 88 89
+
+matched_token_sequences. append( individual_matched_token_sequences)  
+
+> 90
+
+char_indexes_matched. append(ind_char_matched)  
+
+> 91
+
+# print("exit 2")  
+
+> 92
+
+if return_char_indexes:  
+
+> 93
+
+return return_clean_chars(char_indexes_matched ), return_clean_chars( char_indexes_not_matched)  
+
+> 94
+
+else:  
+
+> 95
+
+return matched_token_sequences, not_matched_token_sequences  
+
+> 96 97
+
+curr_val = matches[ matches_idx]  
+
+> 98 99
+
+else: #case where there is no match 
+
+> 100
+
+individual_not_matched_token_sequence. append(token_idx)  
+
+> 101
+
+ind_char_not_matched.append(( low,high))  
+
+> 102 103
+
+if not sequence_started:  
+
+> 104
+
+matched_token_sequences. append( individual_matched_token_sequences)  
+
+> 105
+
+char_indexes_matched.append (ind_char_matched) 
+
+12 106 107 sequence_started = True 
+
+> 108
+
+individual_matched_token_sequences = [] #resetting group of matched tokens.  
+
+> 109
+
+ind_char_matched = []  
+
+> 110
+
+# at the end we still need to add the last token sequence.  
+
+> 111
+
+if individual_not_matched_token_sequence:  
+
+> 112
+
+not_matched_token_sequences.append( individual_not_matched_token_sequence)  
+
+> 113
+
+char_indexes_not_matched.append( ind_char_not_matched)  
+
+> 114
+
+# print("exit 3")  
+
+> 115
+
+if return_char_indexes:  
+
+> 116
+
+return return_clean_chars( char_indexes_matched), return_clean_chars( char_indexes_not_matched)  
+
+> 117
+
+else:  
+
+> 118
+
+return matched_token_sequences, not_matched_token_sequences 
+
+Listing 1: Function to find contiguous token indexes based on character matches 
+
+C SFT prompt 
+
+For the SFT fine-tuning we use this simple prompt and output format.  
+
+> 1
+
+def prompt_v1(file_source):  
+
+> 2
+
+return f"""Please analyze the following code for bugs. Respond only with 'Bug Identified: Yes/No; Lines: <line numbers> ' if bugs exist, or 'Bug Identified: No ' if no bugs exist.  
+
+> 34
+
+Code:  
+
+> 5
+
+``` python  
+
+> 6
+
+{file_source}  
+
+> 7
+
+```  
+
+> 89
+
+Now produce the prediction:"""  
+
+> 10 11
+
+def output_v1(bug_present, lines=None):  
+
+> 12
+
+if bug_present:  
+
+> 13
+
+gold_output = f"""Bug Identified: Yes; Lines: {lines}"""  
+
+> 14
+
+else:  
+
+> 15
+
+gold_output = f"""Bug Identified: No"""  
+
+> 16
+
+return gold_output 
+
+Listing 2: Functions to produce the SFT prompt 
+
+D Dataset statistics 
+
+Previous works have not published their exact data splits, or have included fragmented datasets; our splits will be released on acceptance of the paper. See Table 8 for exact splits. 
+
+E Inference settings 
+
+Additionally to model hyper-parameters we ini-tialize models as follows using the ‘transformer’ library. The model settings were loaded automati-cally and the software version was 4.57.2.  
+
+> 1
+
+def load_model_and_tokenizer(  
+
+> 2
+
+model_name="Qwen/Qwen2.5-Coder-7B-Instruct",  
+
+> 3
+
+dtype="auto",  
+
+> 4
+
+use_flash_attention=False,  
+
+> 5
+
+use_memory_efficient_training=False,  
+
+> 6
+
+):  
+
+> 7
+
+"""  
+
+> 8
+
+Loading HF model (optionally as PEFT)  
+
+> 9
+
+"""  
+
+> 10
+
+print(f"[model loading] Loading: { model_name}")  
+
+> 11
+
+tokenizer = AutoTokenizer. from_pretrained(model_name, trust_remote_code=True)  
+
+> 12 13
+
+if use_memory_efficient_training:  
+
+> 14
+
+quantization_config = BitsAndBytesConfig(  
+
+> 15
+
+load_in_4bit=True,  
+
+> 16
+
+bnb_4bit_quant_type="nf4",  
+
+> 17
+
+bnb_4bit_compute_dtype=torch. bfloat16,  
+
+> 18
+
+bnb_4bit_quant_storage=torch. bfloat16,  
+
+> 19
+
+) 
+
+> 20
+
+else:  
+
+> 21
+
+quantization_config = None  
+
+> 22 23
+
+if use_flash_attention:  
+
+> 24
+
+model = AutoModelForCausalLM. from_pretrained(  
+
+> 25
+
+model_name,  
+
+> 26
+
+dtype=dtype,  
+
+> 27
+
+device_map="auto",  
+
+> 28
+
+attn_implementation=" flash_attention_2", #trying to reduce OOM and increase speed.  
+
+> 29
+
+quantization_config= quantization_config,  
+
+> 30
+
+trust_remote_code=True,  
+
+> 31
+
+) 
+
+> 32
+
+else:  
+
+> 33
+
+model = AutoModelForCausalLM. from_pretrained(  
+
+> 34
+
+model_name,  
+
+> 35
+
+dtype=dtype,  
+
+> 36
+
+device_map="auto",  
+
+> 37
+
+quantization_config= quantization_config,  
+
+> 38
+
+trust_remote_code=True  
+
+> 39
+
+) 
+
+> 40
+
+return model, tokenizer 
+
+Listing 3: Functions to produce the SFT prompt 
+
+F Reproducibility 
+
+• Code Availability: Our code and models will be available on Publication. 13 Dataset Train samples Validation samples Test samples Defect4J v1.2 1499 187 188 PypiBugs 288 19 78 BugsEval - - 68 
+
+> Table 8: Dataset statistics for all datasets. The number of files is reported.
+
+• Data: We use publicly available datasets: De-fects4J and Pypi Bugs. Our exact splits will be released on publication for full reproducibil-ity. • Compute: Experiments were run on L40S (48GB) with Ubuntu 22.04 (code require-ments are released in the code). • Hyperparameters: All hyperparameters are detailed in Table 7. 
+
+G Licenses 
+
+All datasets and software was used with intended purposes. On release we will release our license as well and clarify usage. 
+
+G.1 Dataset 
+
+Defects4J (Just et al., 2014) is licensed under open source license “MIT”. 
+
+PypiBugs (Allamanis et al., 2021) we could not find the license, however the repository and down-loads are freely available from Github and Mi-crosoft. 
+
+G.2 Software 
+
+All software is installable from the Pypi repository 7
+
+Unsloth (Daniel Han and team, 2023) licensed under open source licenses “Apache 2.0” and “APGL v3”. 
+
+vLLM (Kwon et al., 2023) licensed under open source license “Apache 2.0”. 
+
+transformers (Wolf et al., 2020) licenced under open source license “Apache 2.0”. 
+
+Python (v3.10 and v3.11) licenced under open source license “Python Software Foundation Li-cense”. 
+
+H Annotator instructions 
+
+Two of our direct colleagues, who are domain ex-perts, were instructed to annotate each file with all 
+
+> 7https://pypi.org/ , last accessed May 2026.
+
+the lines that contain a bug. No specific instruc-tion sheet or software was provided as the task is ‘self-explanatory’ to domain experts. The work conducted by the colleagues was done as part of the normal employment. 
+
+I Impact and risk discussion 
+
+This paper presents work whose goal is to advance the field of machine learning. There are many po-tential societal consequences of our work, none of which we feel must be specifically highlighted here. The only exception to the above statement is a minor positive impact that we hope this work might have, which a reduction of energy consumption and thus CO2 consumption through the promotion of better, faster and more efficient machine learning methods. 
+
+J AI usage disclosure 
+
+During the preparation of this work, the authors used LLMs for language polishing and editing as-sistance. After using the LLMs, the authors re-viewed and edited the content as needed and take full responsibility for the content of the publication. LLMs were additionally used to find content, but not to create new content or ideas. Finally, small coding assistance was used from LLMs, however, most of the is original and written solely by humans. 
+
+K BugsEval dataset 
+
+The dataset will be released upon publication. The projects used were: fastapi, ollama, tqdm, textual, manim, core, localstack, OpenHands, aider, bugtest-web-app, squash, fullstack-fastapi-template 
+
+L Future work 
+
+We believe our work is a stepping stone for a few interesting future research directions. Firstly, it would be interesting to extend our tokenization 14 alignment algorithm to the function level granu-larity to have a direct comparison against existing (very expensive) agent based methods. Secondly, the multi-channel paradigm opens whole new di-rection of LLM research where the LLM is trained to predict more than just one next token via multi-ple decoding heads at the same time. Finally, an-other future direction is to investigate larger models, which requires a more significant compute budget. 15
