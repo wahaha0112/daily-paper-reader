@@ -1,0 +1,704 @@
+Title: Interpreting Learning Under Competing Models: Joint and Stepwise Approaches for Dynamic Cognitive Diagnosis
+
+URL Source: https://arxiv.org/pdf/2606.06804v1
+
+Published Time: Mon, 08 Jun 2026 00:23:32 GMT
+
+Number of Pages: 40
+
+Markdown Content:
+# Interpreting Learning Under Competing Models: Joint and Stepwise Approaches for Dynamic Cognitive Diagnosis 
+
+# Yawen Ma 1, Sahoko Ishida 2, Kate Cain 3, and Gabriel Wallin ∗11School of Mathematical Sciences, Lancaster University, Lancaster, LA1 4YF, Lancashire, United Kingdom 
+
+2Department of Computer Science, University of Oxford, Oxford, United Kingdom 
+
+3Department of Psychology, Lancaster University, Lancaster, LA1 4YF, Lancashire, United Kingdom 
+
+Abstract 
+
+Digital learning environments record learners’ responses to individual items, making it possible to study the development of specific skills rather than overall scores. Drawing conclusions about learning from these data requires a model that links responses to latent skills and tracks how mastery changes over time. When the skills measured by each item are unknown, the analyst must decide whether to estimate this structure, the Q-matrix, jointly with the learning process, or to establish it first and study learning afterwards. We show that this decision can change substantive conclusions about how learners develop. Using dynamic cognitive diagnostic models, we analyse data from two reading games measuring vocabulary and comprehension from Grade 2 to Grade 3, with item-text embeddings providing prior information for the unknown Q-matrix. A joint analysis and a bias-corrected stepwise analysis agree that most learners move toward mastering both skills, but disagree about how many remain only partially proficient at Grade 3, changing how reading progress would be reported. A simulation study identifies when the two analyses diverge and shows that joint analysis is more reliable when the item-skill structure is uncertain and the item pool changes between grades. We provide R code for both analyses. 
+
+Keywords: Cognitive Diagnostic Models; Dynamic Cognitive Diagnosis; Q-matrix Estimation; Bayesian Inference; Learning Transitions; Natural Language Processing. 
+
+> ∗
+
+Corresponding author. School of Mathematical Sciences, Lancaster University, Lancaster, LA1 4YF, United Kingdom. 
+
+g.wallin@lancaster.ac.uk 
+
+1
+
+> arXiv:2606.06804v1 [cs.LG] 5 Jun 2026
+
+# 1 Introduction 
+
+A single test score says little about which skills a learner has and has not mastered. Learning involves changes in how component skills are acquired and coordinated over time, and a total score cannot reveal them. Reading is a good example. Skilled reading depends on more than accurate and fluent word recognition; it also requires listening comprehension (Language and Reading Research Consortium (LARRC), 2015; Gough and Tunmer, 1986), which itself is based on vocabulary, sentence processing, and the identification of ideas within prose (Language and Reading Research Consortium (LARRC) and Logan, 2017; Oakhill and Cain, 2012). Digital learning environments make it possible to observe these component skills at the level of individual items. As learners interact with an educational tool, the tool produces log files that record not only whether each item was answered correctly, but also timestamps, actions, response times, repeated attempts, and early exit behaviour. These records allow researchers to move beyond aggregated performance and to study how a learner’s knowledge develops through repeated interaction with the measurement instrument. This richness creates an interpretive problem: how should these records be translated into statements about latent skills and their development? Because learners are observed repeatedly as they progress, the data describe a mastery profile that changes over time rather than a fixed one, and how that change is described depends on the statistical model. The model does more than determine estimation accuracy; it shapes the substantive account of what was learned, by whom, and when. Cognitive diagnostic models (CDMs) are well suited to this task, because they classify learners by mastery or non-mastery of several latent attributes rather than placing them on a single scale (Haertel, 1984; Junker and Sijtsma, 2001; Templin et al., 2010). Dynamic extensions of CDMs allow mastery to change across occasions, which makes them appropriate for longitudinal digital data (Wang et al., 2018, 2020; Zhan et al., 2018, 2019; Liang et al., 2023). Applying them to real data, however, forces several decisions: how to use the response data, how to specify or estimate the item-attribute structure (the Q-matrix), how to incorporate external information, and whether learning transitions are estimated jointly with the measurement model or in separate steps. This article treats the last of these decisions as a substantive question rather than a technical one. Using data from two digital reading games, we ask whether estimating the measurement model and the learning process jointly, or in separate steps, leads to different conclusions about learners’ mastery, their transitions between mastery states, and the variables associated with learning. A joint analysis estimates the measure-ment model, the Q-matrix, the mastery trajectories, and the transition model together. A bias-corrected stepwise analysis estimates the measurement model first and then fits the transition model from the resulting classifications, with a correction for classification error. We find that the two analyses agree on the broad direction of learning but differ in how confidently learners are assigned to full rather than partial mastery, and that this difference is largest when the measurement structure is uncertain, as in our data. Because the games were not designed around a predefined item-attribute structure, the attributes each item measures are not known in advance, and the Q-matrix must be estimated. We use item text to inform this estimation: sentence embeddings of the item content provide prior information about the item-attribute 
+
+2structure, which the response data can then revise. Text-informed priors of this kind are a recent addition to cognitive diagnosis rather than a standard component. Ma et al. (2026a) introduced them within a jointly estimated CDM. Implementing them within a bias-corrected stepwise procedure, as we do here, has not to our knowledge been done before, and it is what allows the comparison to be fair: the joint and stepwise analyses then draw on the same item text, response data, and covariates, so any difference between them reflects the estimation strategy and not the information available to each model. The remainder of the article is organised as follows. We first review the use of response data for modelling learning, including dynamic extensions and the role of the Q-matrix, and describe how item text can inform the measurement structure when the Q-matrix is unknown. We then discuss how log-derived covariates and learner characteristics support interpretation, and set out the joint and stepwise strategies. We apply the framework to the reading-game data and examine how the modelling choice affects conclusions about learning, and we use simulations to establish when the two strategies recover the Q-matrix, the mastery profiles, and the transition parameters. The article closes with the implications and limitations of the approach. 
+
+# 1.1 Using Response Data to Model Learning Processes 
+
+Response data have long been the primary source of evidence in educational and psychological measurement. In traditional applications, item responses are often summarized by total scores or modeled using item response theory to estimate a general proficiency level. Such approaches are useful when the goal is to locate students on a common ability scale, but they provide limited information about the specific skills that students have or have not mastered. This limitation is important in learning environments where the goal is not only to evaluate performance but also to provide diagnostic information that can guide feedback, instruction, and intervention. CDMs address this problem by linking observed responses to a vector of latent attribute mastery indicators (Haertel, 1984; Junker and Sijtsma, 2001; Templin et al., 2010). Instead of representing students using a single continuous trait, CDMs classify students into mastery profiles that describe their status on multiple skills. This makes CDMs especially useful for educational applications where interpretable information about component skills is needed. For reading data, such a framework is appealing because reading development involves multiple related but distinct skills, and students may show different patterns of mastery across decoding, fluency, vocabulary, and other comprehension-related attributes. When data are collected repeatedly over time, static CDMs are insufficient because they do not directly model changes in mastery. Dynamic CDMs and related longitudinal variants extend the CDM framework by allowing latent attribute profiles to evolve across time (Wang et al., 2018, 2020; Zhan et al., 2018, 2019, 2020; Liang et al., 2023). These models provide a way to study learning transitions rather than only cross-sectional mastery status. In digital learning environments, this dynamic perspective is crucial because students interact with tasks repeatedly and may acquire skills during the period of observation. However, the interpretation of such learning transitions depends on the measurement structure, the available external information, and the 
+
+3estimation strategy used to connect observed responses to latent mastery states. 
+
+# 1.2 Using Item Text to Inform the Measurement 
+
+A central component of CDMs is the Q-matrix, which specifies which latent attributes are required by each item. The Q-matrix determines the meaning of the latent attributes and directly affects item parameter estimation, mastery profiles, and conclusions about student learning. Misspecification of the Q-matrix can therefore lead to biased inferences about both items and learners (Rupp and Templin, 2008; Chen et al., 2015). This issue becomes even more consequential in dynamic CDMs, because uncertainty in the measurement structure can influence the interpretation of learning transitions. In many real-world digital learning environments, the Q-matrix is not fully known, and different domain experts may provide inconsistent specifications. As a result, the relation between item content and latent diagnostic attributes may remain uncertain. A growing body of research has therefore treated the Q-matrix as an object of inference rather than as a fixed input. Bayesian and data-driven approaches have been proposed to estimate, validate, or revise the Q-matrix using response data (Chen et al., 2018; Culpepper, 2016; Gu and Xu, 2021; Fang et al., 2019). These developments are important because they recognize that measurement structure is itself uncertain in many applied settings. At the same time, response data alone may not always identify the item-attribute structure with sufficient certainty. This problem is especially likely in short assessments, sparse adaptive trajectories, or settings in which items are heterogeneous in content. Digital learning environments often provide additional informa-tion that can help reduce this uncertainty. In particular, item text and response options contain semantic information about what an item asks students to do. Recent developments in natural language processing make it possible to represent such text using embedding-based methods that capture semantic relationships among words, sentences, or item components (Vaswani et al., 2017; Devlin et al., 2019; Reimers and Gurevych, 2019). For CDMs, text-derived information need not determine the Q-matrix directly. Instead, text-derived information serves as structured prior information, allowing item content to inform the estimation of plausible item-attribute relations. Among embedding-based approaches, Sentence-BERT (SBERT) is particularly useful for representing as-sessment text because it produces sentence-level embeddings that can be efficiently compared using similarity measures such as cosine similarity or Euclidean distance (Reimers and Gurevych, 2019). SBERT extends the BERT network to generate semantically meaningful vector representations, allowing semantically similar texts to be located close to one another in a shared embedding space. Compared with standard BERT rep-resentations, SBERT substantially improves computational efficiency for large-scale semantic similarity and clustering tasks while maintaining strong performance on semantic textual similarity benchmarks (Reimers and Gurevych, 2019). In the context of educational assessment, these properties make SBERT especially suitable for quantifying semantic relationships among items and response options. Such semantic similarities may provide useful information about the complexity and potential attribute requirements of items, which 
+
+4can then be incorporated into the prior structure of the Q-matrix estimation process. Recent work by (Ma et al., 2026a) used SBERT-derived information to construct informative priors for Q-matrix estimation and demonstrated its effectiveness on a different dataset. 
+
+# 1.3 Incorporating External Information for Interpreting Learning Pro-cesses 
+
+Digital learning data contain more than item responses. They may also include log-based summaries, re-sponse times, number of attempts, success frequencies, early exit behaviors, learner demographics, and prior achievement. These sources of information are useful because they describe aspects of the learning process that are not fully captured by binary correctness. For example, two students may produce the same response pattern but differ substantially in time spent, persistence, number of attempts, or prior literacy ability. Such differences may affect how learning trajectories should be interpreted. The present study analysed log files to understand student learning on two games in a supplementary digital reading support. In addition, an out-of-game assessment, the Dynamic Indicators of Basic Early Literacy Skills (University of Oregon, 2018), was administered to measure each student’s initial literacy ability. Students were classified into four performance levels: well below benchmark, below benchmark, at benchmark, and above benchmark. These categories were used to place students at an appropriate starting level in the app. Additional categorical covariates included race, special educational needs (SEN), English language learner status (ELL), and gender. Continuous log-based covariates included the average number of attempts, the number of correctly answered questions, and average response time. Descriptive statistics for the continuous and categorical covariates are summarized in Tables 2 and 1, respectively. Including such information can improve the substantive interpretation of learning trajectories by connecting latent changes to observable features of students and their learning environments. However, incorporating external information also creates methodological challenges. If covariates are measured with error, unevenly observed, or strongly related to the adaptive item selection process, then their inclusion may affect both estimation and interpretation. For this reason, external information should be treated not merely as additional predictors, but as part of an interpretive framework. In applied educational settings, researchers often want to know not only whether students learned, but under what conditions learning occurred and whether different groups of students followed different developmental patterns. Dynamic CDMs provide a structured way to address these questions, but the conclusions depend on how response data, item information, and external covariates are combined. 
+
+# 1.4 Joint and Stepwise Strategies for Dynamic CDMs 
+
+A final modeling decision concerns whether the measurement and structural components of a dynamic CDM should be estimated jointly or in separate steps. Stepwise approaches have a long history in latent class, latent transition, latent profile, growth mixture, and related finite mixture models. In these approaches, researchers 
+
+5first estimate a measurement model and then relate estimated latent classes or profiles to covariates, transitions, or distal outcomes (Bakk et al., 2013; Clark and Muthén, 2009; Asparouhov and Muthén, 2014; Bakk and Kuha, 2018; Bolck et al., 2004; Vermunt, 2010). The main advantage of stepwise methods is flexibility. They allow researchers to establish a measurement model before adding structural components and to modify covariate or transition models without refitting the full model. However, simple stepwise procedures may treat assigned latent classes as if they were observed without error. This can bias structural parameter estimates when classification uncertainty is ignored (Croon, 2002). Bias-adjusted three-step methods address this problem by incorporating information about classification error into subsequent structural analyses (Asparouhov and Muthén, 2014; Bakk et al., 2013; Bakk and Kuha, 2018; Bolck et al., 2004; Vermunt, 2010). These developments are highly relevant for dynamic CDMs because learning trajectories are usually inferred from uncertain latent mastery classifications rather than directly observed. Joint approaches represent a different strategy. They estimate measurement parameters, latent mastery profiles, transition parameters, and covariate effects within a single model. By accounting for uncertainty across model components, joint estimation may provide more stable inference when tests are short, sample sizes are modest, latent states are difficult to distinguish, or the Q-matrix is uncertain (Ma et al., 2026b). This feature is especially relevant for transition parameters, which are often difficult to estimate accurately when transition models are fitted after latent profile classification (Liang et al., 2023). Related one-step approaches have been used in latent variable modeling and cognitive diagnosis to estimate measurement and structural components simultaneously (de la Torre and Douglas, 2004; Ayers et al., 2013; Park and Lee, 2014; Wang et al., 2019). However, joint estimation can also be less convenient when researchers wish to modify parts of the structural model or compare alternative measurement specifications. The distinction between joint and stepwise strategies is therefore not only computational, but also in-terpretive. A stepwise analysis asks how learning conclusions change after a measurement model has first been established and then linked to transitions and external variables. A joint analysis asks which learning trajectories are most coherent with the measurement model, transition model, covariates, and observed re-sponses simultaneously. These two inferential pathways can agree when the measurement model is strong and classification uncertainty is limited, but they may diverge when the Q-matrix is unknown, item informa-tion is sparse, or latent states are difficult to distinguish. This article studies that difference as an applied measurement problem. 
+
+# 2 Methods 
+
+# 2.1 Cognitive Diagnostic Measurement Model 
+
+Cognitive diagnostic models (CDMs) are widely used in educational, psychological, and behavioral measure-ment to analyze item response data and provide fine-grained classifications of individuals’ mastery or non-mastery of discrete latent attributes (Huff and Goodman, 2007; Zenisky and Hambleton, 2012; Roussos et al., 
+
+62007). In this paper, an attribute refers to a specific skill or ability required for answering items correctly. CDMs provide a framework for identifying which attributes are likely to have been mastered by each individual and examining which attributes are required by each item. In this framework, the relationship between items and attributes is commonly represented by a Q-matrix, whose entries indicate whether a given item requires a given attribute (Tatsuoka, 1983; de la Torre, 2009). Different CDMs make different assumptions about how required attributes combine to produce a correct response. Non-compensatory models assume that all re-quired attributes must be mastered, whereas compensatory models allow mastery of some required attributes to compensate for non-mastery of others. More general models, such as the generalized DINA model, relax the assumptions of the deterministic inputs, noisy “and” gate (DINA) and deterministic inputs, noisy “or” gate (DINO) models by allowing the effects of required attributes to vary across items (de la Torre, 2011). In this paper, the response of student i to item j at time t is denoted by Yijt ∈ { 0, 1}, where i = 1 , . . . , N 
+
+denotes students, t = 1 , . . . , T denotes time points, j = 1 , . . . , J t denotes items administered at time t, and 
+
+k = 1 , . . . , K denotes latent attributes. The latent mastery profile of student i at time t is 
+
+αit = ( αi1t, . . . , α iKt )⊤, αikt ∈ { 0, 1},
+
+where αikt = 1 indicates that student i has mastered attribute k at time t. The item-attribute relationship at time t is represented by a Jt × K Q -matrix, 
+
+Qt = ( qjkt ), qjkt ∈ { 0, 1}.
+
+The entry qjkt = 1 indicates that item j at time t requires attribute k.A commonly used non-compensatory CDM is the DINA model (Junker and Sijtsma, 2001; de la Torre, 2009). Under the DINA model, the ideal response indicator is 
+
+ηijt =
+
+> K
+
+Y
+
+> k=1
+
+αqjkt  
+
+> ikt
+
+. (2.1) Thus, ηijt = 1 only when student i has mastered all attributes required by item j at time t. Let gjt 
+
+denote the guessing parameter and sjt denote the slipping parameter. The guessing parameter represents the probability of a correct response when the ideal response is incorrect, and the slipping parameter represents the probability of an incorrect response when the ideal response is correct. The item response probability is 
+
+P (Yijt = 1 | αit , Q t, g jt , s jt ) = (1 − sjt )ηijt g1−ηijt  
+
+> jt
+
+. (2.2) Although the proposed Bayesian framework can be implemented with different CDM measurement compo-nents, the empirical and simulation analyses in this paper use the DINA model. This choice is made for three reasons. First, the DINA model has a simple non-compensatory structure, which is straightforward to inter-
+
+7pret when an item is assumed to require mastery of all specified attributes. Second, its guessing and slipping parameters provide a computationally efficient measurement component for joint estimation with an unknown 
+
+Q-matrix and dynamic latent mastery trajectories. Third, using the DINA model maintains consistency with previous applications of this modeling framework (Ma et al., 2026b). For simplicity, however, without loss of generality, we present the proposed approach under the DINA measurement model 1.Under the DINA measurement component, the likelihood contribution at time t is 
+
+p(Yt | αt, Q t, gt, st) = 
+
+> N
+
+Y
+
+> i=1
+> Jt
+
+Y
+
+> j=1
+
+n
+
+(1 − sjt )ηijt g1−ηijt 
+
+> jt
+
+oYijt sηijt  
+
+> jt
+
+(1 − gjt )1−ηijt 1−Yijt . (2.3) 
+
+# 2.2 Unknown Q-matrix and Text-informed Prior 
+
+In practice, such as in educational technology applications, the Q-matrix is not known with certainty. An expert-specified item-attribute structure may not always be available, and different experts may disagree about which attributes are required for a given item. To address this uncertainty, we propose estimating Qt
+
+from the response data while incorporating item-level text information as prior information. Let τjt denote a standardized text-derived signal for item j at time t. The τjt is standardized before entering the prior for Qt. Let πjkt ∈ (0 , 1) denote the prior probability that item j at time t requires attribute 
+
+k, that is, the prior inclusion probability that qjkt = 1 . We model this probability as: 
+
+logit( πjkt ) = logit( θ) − λτ jt , (2.4) 
+
+qjkt | θ, λ, τ jt ∼ Bernoulli( πjkt ). (2.5) Here, θ ∈ (0 , 1) controls the overall sparsity of the Q-matrix, and λ ∈ R controls how strongly the text-derived signal modifies this prior inclusion probability. When λ = 0 , the prior reduces to a Bernoulli prior in which each qjkt equals one with probability θ. The negative sign reflects the working assumption that items with stronger text-based specificity tend to require fewer attributes, although the posterior distribution can override this prior when the response data provide contrary evidence. In this application, the text-derived signal is used as auxiliary information about the likely complexity of each item. Because the available text information is summarised at the item level, the prior modifies the overall probability that an item requires an attribute but does not, by itself, determine which attribute is required. Attribute-specific Q-matrix structure is therefore informed by the combination of response data, admissibility constraints, and the dynamic model. This choice reflects the information available in the empirical application and is intended to provide a text-informed prior rather than a standalone NLP-based Q-matrix estimation procedure. 
+
+> 1An R package has been developed to allow switching between different measurement models and will be made available upon acceptance of the manuscript.
+
+8To ensure identifiability, the Q-matrices are restricted to satisfy three conditions. First, each item must require at least one attribute, so zero rows in the Q-matrix are not allowed. Second, each attribute must be measured by at least three items at each time point. Third, each attribute must have at least one single-attribute item, meaning that for every attribute there is at least one item that requires that attribute and no other attributes (Gu and Xu, 2021). The prior distributions are specified using weakly informative ranges that reflect the scale of each parameter. The baseline inclusion probability satisfies θ ∈ (0 , 1) and is assigned a beta prior, 
+
+θ ∼ Beta( aθ , b θ ). (2.6) We specified a Beta(6 , 4) prior for θ, which has a mean of 0.6 and a variance of approximately 0.0218 .The text effect λ is a real-valued coefficient and is assigned a normal prior, 
+
+λ ∼ N (0 , σ 2
+
+> λ
+
+). (2.7) In the empirical analyses, we set σλ = 0 .5, so that λ ∼ N (0 , 0.52).The DINA item parameters satisfy gjt ∈ (0 , 1) and sjt ∈ (0 , 1) . They are assigned beta priors, in line with previous works (Ma et al., 2026b), 
+
+gjt ∼ Beta(1 , 1) , (2.8) 
+
+sjt ∼ Beta(1 , 1) . (2.9) 
+
+# 2.3 Dynamic Structural Model 
+
+The structural component describes students’ initial mastery and subsequent learning transitions over time. Let Zi0 denote covariates measured before the first assessment occasion, and let Zi,t −1 denote covariates available before the transition from time t−1 to time t. These covariates may include student-level background variables, initial language ability measures, or time-varying learning process variables. For the initial time point, mastery of attribute k is modeled using a logistic regression: 
+
+logit {P (αik 1 = 1 | Zi0)} = β0k + Z⊤
+
+> i0
+
+βk . (2.10) Here, β0k denotes the intercept for initial mastery of attribute k, and βk denotes the corresponding regression coefficients. For transitions between time points, the main parameter of interest is the acquisition probability from 
+
+9non-mastery to mastery. For t = 2 , . . . , T , this probability is modeled as 
+
+logit {P (αikt = 1 | αik,t −1 = 0 , Z i,t −1)} = γ01 ,k, 0 + Z⊤
+
+> i,t −1
+
+γ01 ,k . (2.11) Here, γ01 ,k, 0 denotes the intercept for acquiring attribute k, and γ01 ,k denotes the effect of covariates on the acquisition probability. When loss of mastery is allowed, the transition from mastery to non-mastery is modeled as 
+
+logit {P (αikt = 0 | αik,t −1 = 1 , Z i,t −1)} = γ10 ,k, 0 + Z⊤
+
+> i,t −1
+
+γ10 ,k . (2.12) The empirical and simulation analyses focus primarily on γ01 ,k because these parameters directly describe learning, which describes the probability of acquiring an attribute among students who had not previously mastered it. The loss parameters γ10 ,k are included when the application allows mastery status to decline over time. The acquisition and loss probabilities for one attribute and two time points can be written as 
+
+P (αik 2 = 1 | αik 1 = 0 , Z i1) = exp  γ01 ,k, 0 + Z⊤
+
+> i1
+
+γ01 ,k 
+
+
+
+1 + exp  γ01 ,k, 0 + Z⊤
+
+> i1
+
+γ01 ,k 
+
+ , (2.13) 
+
+P (αik 2 = 0 | αik 1 = 1 , Z i1) = exp  γ10 ,k, 0 + Z⊤
+
+> i1
+
+γ10 ,k 
+
+
+
+1 + exp  γ10 ,k, 0 + Z⊤
+
+> i1
+
+γ10 ,k 
+
+ . (2.14) The regression parameters are assigned normal priors. Continuous covariates were standardized before model fitting. In the joint empirical analysis, the initial mastery parameters and transition parameters were assigned as: 
+
+β0k , βk ∼ N (0 , 1) , (2.15) 
+
+γ01 ,k, 0, γ01 ,k , γ 10 ,k, 0, γ10 ,k ∼ N (0 , 1) . (2.16) For the loss transition, the intercept was assigned γ10 ,k, 0 ∼ N (−2, 1) , while the covariate coefficients γ10 ,k 
+
+were assigned N (0 , 1) .
+
+# 2.4 Joint Bayesian Estimation 
+
+The joint Bayesian procedure estimates the measurement model, the unknown Q-matrix, the latent mastery trajectories, item parameters, and structural regression parameters simultaneously. Let Y = {Y1, . . . , Y T }
+
+denote the observed item responses across all time points, and let Z denote the collection of covariates used in the initial mastery and transition models. Let τ = {τ1, . . . , τT } denote the item-level text-derived signals, 
+
+10 where τt = ( τ1t, . . . , τ Jtt)⊤ at time t. The joint posterior distribution is proportional to 
+
+p(Q1: T , α1: T , g1: T , s1: T , β, γ, θ, λ | Y, Z, τ )
+
+∝
+
+> T
+
+Y
+
+> t=1
+
+p(Yt | αt, Q t, gt, st)p(Qt | θ, λ, τt)
+
+×
+
+> N
+
+Y
+
+> i=1
+
+p(αi1 | Zi0, β)
+
+> T
+
+Y
+
+> t=2
+
+p(αit | αi,t −1, Z i,t −1, γ)
+
+× p(g1: T )p(s1: T )p(β)p(γ)p(θ)p(λ). (2.17) The first product contains the measurement likelihood and the text-informed prior for the unknown Q-matrix at each time point. The measurement likelihood is defined by the DINA response model, whereas 
+
+p(Qt | θ, λ, τt) denotes the constrained text-informed prior described above. The second line describes the structural model for initial mastery and subsequent transitions. Specifically, p(αi1 | Zi0, β) gives the initial mastery distribution, and p(αit | αi,t −1, Z i,t −1, γ) gives the transition distribution from time t − 1 to time t.Posterior inference is conducted using Markov chain Monte Carlo sampling. At each iteration, the algo-rithm updates the latent mastery profiles, item parameters, structural regression parameters, text-informed prior parameters, and admissible Q-matrices. The admissibility restrictions on Qt are enforced throughout sampling, so posterior draws of the Q-matrix always satisfy the structural conditions described above. Posterior summaries, including posterior means, credible intervals, and classification probabilities, are used to evaluate item-attribute relationships, student mastery trajectories, and covariate effects on learning transitions. 
+
+# 2.5 Bias-Corrected Stepwise Estimation 
+
+The stepwise strategy separates measurement estimation from structural estimation. The first step estimates the measurement model separately at each time point. The second step converts posterior mastery probabil-ities into hard classifications and estimates classification error probabilities. The third step fits the dynamic structural model using those hard classifications while correcting for classification error. 
+
+2.5.1 Step 1: Measurement Model Estimation 
+
+At each time point, the following measurement posterior is estimated independently: 
+
+p(αt, Q t, gt, st, θ, λ | Yt, Tt) ∝ p(Yt | αt, Q t, gt, st)p(Qt | θ, λ, Tt)
+
+× p(αt)p(gt)p(st)p(θ)p(λ). (2.18) The first-step measurement model is estimated independently of the longitudinal structural model. This step can be understood as fitting a cross-sectional cognitive diagnostic model. A cognitive diagnostic model is a restricted latent class model in which each latent class corresponds to an attribute mastery profile. For example, with K binary attributes, student i’s mastery profile αit belongs to one of 2K possible latent classes. 
+
+11 In a standard latent class formulation, the measurement model requires a population distribution over these latent classes, such as 
+
+P (αit = c) = πct , c = 1 , . . . , 2K .
+
+This latent class distribution describes how likely each mastery profile is in the student population at time t. In the present implementation, we use an attribute-wise version of this idea. Instead of assigning a probability to each full mastery profile, we assign a marginal mastery probability to each attribute: 
+
+αikt | ρkt ∼ Bernoulli( ρkt ), (2.19) 
+
+ρkt ∼ Beta( aρ, b ρ). (2.20) In the empirical stepwise analysis, we set aρ = 1 and bρ = 1 . The parameter ρkt ∈ (0 , 1) represents the marginal probability that a student has mastered attribute k at time t in the first-step measurement model. This parameter is not interpreted as a learning, acquisition, or transition parameter. The learning process is modeled later through the corrected structural model. 
+
+2.5.2 Step 2: Hard Classification and Classification Error Probabilities 
+
+Let 
+
+bpikt = P (αikt = 1 | Yt) (2.21) denote the posterior probability of mastery from the first-step measurement model. The hard assigned class is 
+
+Wikt = I(bpikt ≥ 0.5) . (2.22) The assigned class Wikt is treated as an observed but error-prone indicator of the unobserved true mastery state, denoted Likt .For each attribute k and time t, the classification error probability matrix is 
+
+Mkt (w, l ) = P (Wikt = w | Likt = l), w, l ∈ { 0, 1}. (2.23) Its entries are estimated from the posterior probabilities obtained in Step 1: 
+
+cMkt (w, l ) = 
+
+PNi=1 P (Likt = l | Yt)I(Wikt = w)
+
+PNi=1 P (Likt = l | Yt) . (2.24) Thus, if a student is assigned Wikt = 0 , the structural model evaluates how compatible that assignment is with both possible true states through cMkt (0 , 0) and cMkt (0 , 1) . If a student is assigned Wikt = 1 , the corresponding correction probabilities are cMkt (1 , 0) and cMkt (1 , 1) .
+
+12 2.5.3 Step 3: Corrected Structural Model 
+
+In the third step, the structural model is fitted to the assigned classifications W , but the likelihood marginalizes over the possible true latent states L. For two occasions and one attribute, the corrected likelihood contribution is 
+
+P (Wik 1 = w1, W ik 2 = w2 | Zi) = 
+
+> 1
+
+X
+
+> l1=0 1
+
+X
+
+> l2=0
+
+P (Lik 1 = l1 | Zi0, βk )
+
+× P (Lik 2 = l2 | Lik 1 = l1, Z i1, γk ) cMk1(w1, l 1) cMk2(w2, l 2). (2.25) For example, when the observed assigned trajectory is (Wik 1, W ik 2) = (1 , 1) , the likelihood is the sum of four possible true trajectories: 
+
+P (Wik 1 = 1 , W ik 2 = 1 | Zi) = P (Lik 1 = 0 | Zi0)P (Lik 2 = 0 | Lik 1 = 0 , Z i1) cMk1(1 , 0) cMk2(1 , 0) + P (Lik 1 = 0 | Zi0)P (Lik 2 = 1 | Lik 1 = 0 , Z i1) cMk1(1 , 0) cMk2(1 , 1) + P (Lik 1 = 1 | Zi0)P (Lik 2 = 0 | Lik 1 = 1 , Z i1) cMk1(1 , 1) cMk2(1 , 0) + P (Lik 1 = 1 | Zi0)P (Lik 2 = 1 | Lik 1 = 1 , Z i1) cMk1(1 , 1) cMk2(1 , 1) . (2.26) For multiple time points, this correction generalizes to 
+
+P (Wik 1, . . . , W ikT | Zi) = 
+
+> 1
+
+X
+
+> l1=0
+
+· · · 
+
+> 1
+
+X 
+
+> lT=0
+
+P (Lik 1 = l1 | Zi0, βk )
+
+×
+
+> T
+
+Y
+
+> t=2
+
+P (Likt = lt | Lik,t −1 = lt−1, Z i,t −1, γk )
+
+> T
+
+Y
+
+> t=1
+
+cMkt (Wikt , l t). (2.27) The stepwise posterior for the structural parameters is therefore 
+
+p(β, γ | W, Z, cM ) ∝
+
+> N
+
+Y
+
+> i=1
+> K
+
+Y
+
+> k=1
+
+P (Wik 1, . . . , W ikT | Zi, cMk1, . . . , cMkT )p(β)p(γ). (2.28) 
+
+# 2.6 Comparison of the Two Strategies 
+
+The two approaches differ in how they condition on the measurement model. The joint approach targets 
+
+p(α1: T , Q 1: T , g1: T , s1: T , β, γ | Y, Z, T ), (2.29) so learning parameters are estimated while accounting for posterior uncertainty in the latent states, item parameters, and Q-matrix. The stepwise approach targets 
+
+p(β, γ | W, Z, cM ), (2.30) where W and cM are functions of the first-step measurement posterior. Thus, the stepwise approach pre-serves the separation between measurement and structural modeling, while the joint approach estimates all 
+
+13 components simultaneously. This distinction is important for interpretation. In the joint strategy, an estimated acquisition effect reflects evidence from the full response process, the text-informed Q-matrix prior, item-level uncertainty, and the dynamic structural model at the same time. In the stepwise strategy, an estimated acquisition effect reflects the association between covariates and the corrected assigned mastery trajectories after the measurement model has already been established. When the measurement model is strong and classification error is small, the two approaches should provide similar conclusions. When the Q-matrix is uncertain, tests are short, or classifications are unstable, the two strategies may lead to different interpretations of learning. 
+
+2.6.1 Implementation 
+
+The stepwise procedure was implemented in three stages. First, the DINA measurement model was estimated separately at each time point using nimble . The Q-matrix was treated as unknown and estimated jointly with the item parameters and latent attribute indicators in the first-step measurement model. Second, posterior mastery probabilities from the first-step model were used to obtain hard classifications and to estimate the classification error probability matrices. Third, the structural transition model was fitted using a Bayesian implementation of the corrected marginal likelihood. This implementation preserves the bias-corrected logic of the original stepwise approach (Liang et al., 2023). The measurement and structural components remain separated, and classification error is corrected through the estimated classification error probability matrices. Compared with the earlier work, the present implementation extends the stepwise procedure to the case where the Q-matrix is unknown. The measurement model is estimated in nimble with the Q-matrix treated as unknown, and the structural parameters are estimated using Bayesian posterior sampling rather than maximum likelihood optimization. The joint procedure was implemented by estimating the measurement model, unknown Q-matrix, latent mastery trajectories, item parameters, and structural transition parameters simultaneously within a single Bayesian model. Unlike the stepwise procedure, the joint procedure does not fix first-step mastery classifica-tions or rely on a separate classification error correction. Instead, uncertainty in the Q-matrix, item parameters, and latent mastery states is estimated directly into posterior inference for the structural transition parameters. The code for implementing the proposed framework is available on the Open Science Framework (OSF) 2, and an accompanying R package is under development. 
+
+# 3 Empirical Study 
+
+The empirical study used log files provided by Amplify from the Boost Reading platform ( https://amplify. com/programs/boost-reading/ ). We focused on two reading-related games: Punchline and Field Observer .These two games were selected because they target different reading skills and provide repeated item responses that can be linked to specific attributes. Punchline mainly targets vocabulary knowledge, whereas Field Ob- 
+
+> 2Code is available at: https://osf.io/tjqbp/overview?view_only=b3672f24ba8f43ebb99f86f2d0ec8ef4 .
+
+14 server mainly targets comprehension skills related to key ideas and details. These games also focus on critical comprehension-related skills that predict reading comprehension in this age group, when word recognition skills are becoming fluent (Garcia and Cain, 2014; Oakhill and Cain, 2012). 
+
+# 3.1 Game Description and Item Selection 
+
+Punchline is a vocabulary game based on jokes and word meanings. The game contains 11 levels. Each level includes several questions related to words with multiple meanings. In the original game design, students complete two response steps. First, they choose between two sentence options and identify the option whose meaning is most consistent with the question. Second, after selecting the sentence, they identify the target word that carries two different meanings. The game also includes an instructional component in which students are shown explanations of the two meanings of the target word. For the present analysis, only the first response step was used. That is, each analyzed response corresponded to choosing the correct option from two alternatives. The second response step, in which students selected the word with two meanings from the chosen sentence, was not included in the scored item responses because this learning step was not consistently represented in the scoring structure used for the analysis. Each level contained six analyzed questions, with every two questions associated with one relevant topic. Thus, each level covered three target words, and the analytic responses reflected whether students selected the sentence option that matched the intended meaning in context. 
+
+Field Observer is a comprehension game focused on key ideas and details. The game contains 12 levels. In this game, students search for hidden animals and answer comprehension questions. The order in which animals are found is not fixed, so the order of questions may vary across students. For each question, students are presented with a question and a set of evidence statements. They select an answer option and then map the answer back to the corresponding evidence. In the original game design, a correct response requires both selecting the correct answer and identifying the corresponding supporting evidence. In the present analysis, the item was represented using the question together with the true evidence as the item stem, and the response reflected whether the student selected the correct answer. Distractor evidence was not used in constructing the item text for the text-informed prior. Therefore, for Field Observer , each analyzed item was defined by the combination of the question and the true supporting evidence. For both games, we analyzed item responses from the same cohort of students at two time points: U.S. Grade 2 and Grade 3. To ensure that the same students had sufficient participation at both time points, we conducted exploratory data analysis to balance sample size and item length (6). Based on this trade-off, the final sample contained 1,978 students. At each time point, the model used 12 selected items: six Punchline 
+
+items and six Field Observer items. Across the two time points, this corresponded to 24 items. These items were used to estimate the latent mastery profiles and learning transitions in the proposed framework. 
+
+15 3.2 Descriptive Statistics 
+
+The descriptive statistics for the categorical and continuous covariates are summarized in Tables 1 and 2. As shown in Table 1, a large proportion of students were classified as “Above Benchmark” or “At Benchmark” based on their initial DIBELS benchmark level. This pattern is partly consistent with the selected item set, which consisted of Grade 2 and Grade 3 content. Students classified as “Below Benchmark” or “Well Below Benchmark” may have been less likely to encounter these items if the adaptive platform placed them in earlier or below-grade content. The categorical covariates contained substantial not-specified responses for several demographic variables, particularly race, SEN, and ELL. The gender distribution included a higher proportion of male students than female students. The sample also included students from diverse racial and ethnic backgrounds, including White, Asian, Black or African-American, Multiracial, American Indian or Alaska Native, Native Hawaiian or Other Pacific Islander, Other, and not specified categories. Table 2 presents summary statistics for the log-derived behavioral variables. On average, students used more attempts in Punchline than in Field Observer . Performance on Punchline showed greater variability, whereas students answered nearly all selected Field Observer items correctly on average. Average response time was shorter for Punchline than for Field Observer , which is consistent with the comprehension-based structure of Field Observer , where students needed to process both a question and supporting evidence. 
+
+Table 1: Summary of Categorical Variables. 
+
+Note: SEN = special educational needs; ELL = English language learner. Missing indicates students without matched demographic records 
+
+Variable Summary 
+
+Demographic Variables 
+
+Race White: 624 (31.55%); Asian: 198 (10.01%); Black or African-American: 182 (9.20%); Multiracial: 143 (7.23%); American Indian or Alaska Native: 7 (0.35%); Native Hawaiian or Other Pacific Islander: 3 (0.15%); Other: 44 (2.22%); Not specified: 770 (38.93%); Missing: 7 (0.35%) SEN Non-SEN: 915 (46.26%); SEN: 69 (3.49%); Not specified: 987 (49.90%); Missing: 7 (0.35%) ELL Not ELL: 932 (47.12%); ELL: 155 (7.84%); Not specified: 884 (44.69%); Missing: 7 (0.35%) Gender Female: 710 (35.89%); Male: 1021 (51.62%); Not specified: 240 (12.13%); Missing: 7 (0.35%) 
+
+Initial Literacy Ability from DIBELS Scores 
+
+Initial Literacy Ability Above Benchmark: 1374 (69.46%); At Benchmark: 459 (23.21%); Below Benchmark: 83 (4.20%); Well Below Benchmark: 62 (3.13%) 
+
+# 3.3 Empirical Comparison of Joint and Stepwise Results 
+
+The empirical comparison focuses on the text-informed Q-matrix prior because the main inferential question is how the joint and stepwise strategies support different interpretations of learning when the measurement 
+
+16 Table 2: Summary of Continuous Variables. 
+
+Note: Response time is summarized using the transformed response-time variable used in the analysis 
+
+Covariate Mean SD Median Min, Max 
+
+Average Attempts ( Punchline ) 1.84 1.14 2.00 1.00, 14.00 Average Attempts ( Field Observer ) 1.39 1.01 1.00 1.00, 16.00 Correct Answers ( Punchline ) 4.26 1.49 4.00 0.00, 6.00 Correct Answers ( Field Observer ) 5.75 0.52 6.00 2.00, 6.00 Response Time ( Punchline ) 2.00 1.18 1.79 0.76, 23.33 Response Time ( Field Observer ) 5.05 2.25 4.64 1.27, 45.44 
+
+structure is uncertain. The goal of the empirical analysis is not to isolate the incremental contribution of the text-derived prior relative to a non-text prior. Rather, the text-informed prior provides a common measurement framework under which the joint and stepwise strategies can be compared using the same available item-level information. Both empirical analyses used three Markov chains with 10,000 burn-in iterations and 10,000 monitored iterations. In the joint text-prior model, the posterior mean of λ was 0.075, with posterior standard deviation 0.264 and a 95% credible interval of (−0.440 , 0.561) . In the stepwise text-prior measurement models, the estimated λ was -0.164 at time 1 and 0.170 at time 2. Table 3 places the text-prior joint and stepwise Q-matrix and item-parameter estimates in the same table. The two approaches agree on several item-attribute patterns, especially for high-performing items at Time 2, but they also produce different Q-matrix rows for a number of items. These differences are important because they show that the interpretation of the latent attributes can depend on whether measurement uncertainty is incorporated jointly through the dynamic model or resolved first in separate measurement steps. 
+
+Table 3: Text-prior empirical estimates of the Q-matrix, guessing ( g), and slipping ( s) parameters from the joint and stepwise approaches. Stepwise estimates are from the first-step measurement models fitted separately at each time point.                                                                                                                                                                                                                    
+
+> Item
+> Time 1 Time 2 Joint Stepwise Joint Stepwise
+> A1A2gsA1A2gsA1A2gsA1A2gs
+> 1010.191 0.045 110.232 0.032 110.586 0.030 110.543 0.022 2010.208 0.019 110.252 0.013 010.557 0.026 110.615 0.023 3010.252 0.084 110.288 0.072 010.732 0.046 100.706 0.047 4100.172 0.034 010.141 0.054 110.753 0.029 110.756 0.033 5100.258 0.026 010.229 0.042 100.865 0.012 110.885 0.013 6100.342 0.013 010.325 0.036 110.867 0.010 110.866 0.011 7010.954 0.024 110.953 0.020 010.640 0.025 010.554 0.030 8100.914 0.048 010.911 0.045 010.825 0.014 010.777 0.015 9110.850 0.089 110.849 0.083 010.580 0.042 010.483 0.047 10 100.909 0.043 110.911 0.039 010.708 0.039 010.678 0.045 11 100.904 0.048 010.903 0.049 010.848 0.010 010.818 0.010 12 100.936 0.039 110.937 0.039 010.613 0.063 110.670 0.064
+
+Table 4 reports the profile transition summaries for the text-prior joint and stepwise approaches. Both approaches indicate movement toward full mastery of both attributes at time 2. The joint model assigns 1,730 students to profile (1 , 1) at time 2, whereas the stepwise classification summary assigns 1,659 students to this profile. The stepwise summary also places more students in the time 2 profile (0 , 1) than the joint model. Because the stepwise transition table is based on hard classifications from the separate first-step measurement 
+
+17 models, these differences should be interpreted as differences in the empirical classification pathway rather than as direct discrepancies in a single common posterior distribution. Substantively, both analyses suggest that most students showed evidence of broad mastery by the second time point. The difference between the two approaches is therefore not a disagreement about whether students generally moved toward mastery, but about how confidently students should be assigned to full mastery rather than partial mastery at Grade 3. Under the joint model, the interpretation is broad consolidation of both attributes. Under the stepwise model, a larger subgroup remains classified as having mastered only one of the two attributes. This distinction matters because it affects whether the empirical learning process is interpreted primarily as general movement toward full mastery or as a more heterogeneous pattern in which some students remain partially mastered at the second occasion. 
+
+Table 4: Text-prior transition matrices of attribute profiles from Time 1 to Time 2 under the joint and stepwise approaches. Each cell reports count (percentage). Stepwise counts are based on first-step hard classifications before the third-step CEP correction is applied to structural estimation. Profile labels: 00 = no mastery, 10 = 
+
+A1 only, 01 = A2 only, and 11 = mastery of both attributes.                                                         
+
+> Method Time 1 Time 2 Totals
+> 00 10 01 11 Joint 00 68 (3.44%) 42 (2.12%) 39 (1.97%) 537 (27.15%) 686 (34.68%) 10 13 (0.66%) 39 (1.97%) 4 (0.20%) 439 (22.19%) 495 (25.03%) 01 13 (0.66%) 5 (0.25%) 11 (0.56%) 114 (5.76%) 143 (7.23%) 11 1 (0.05%) 11 (0.56%) 2 (0.10%) 640 (32.36%) 654 (33.06%)
+> Totals 95 (4.80%) 97 (4.90%) 56 (2.83%) 1730 (87.46%) 1978 (100.00%) Stepwise 00 10 (0.51%) 40 (2.02%) 101 (5.11%) 430 (21.74%) 581 (29.37%) 10 1 (0.05%) 13 (0.66%) 27 (1.37%) 135 (6.83%) 176 (8.90%) 01 3 (0.15%) 22 (1.11%) 58 (2.93%) 527 (26.64%) 610 (30.84%) 11 3 (0.15%) 6 (0.30%) 35 (1.77%) 567 (28.67%) 611 (30.89%)
+> Totals 17 (0.86%) 81 (4.10%) 221 (11.17%) 1659 (83.87%) 1978 (100.00%)
+
+For an applied reading programme, this difference is more than statistical. The two analyses would support different summaries of the same cohort. Under the joint model, most children appear to have consolidated both vocabulary and comprehension by Grade 3, and a progress report based on it would describe near-uniform mastery. Under the stepwise model, a larger group is credited with only one of the two skills, and a report based on it would flag a sizeable minority as still developing one component. The underlying data are identical; what differs is whether uncertainty in the measurement model is carried into the classification or resolved before it. A programme deciding who to target for additional instruction would identify a different set of children under each analysis. Table 5 summarizes statistically credible covariate effects for initial mastery and acquisition transitions under both approaches. For initial mastery, both methods identify the number of correctly answered Punchline 
+
+questions as a strong positive predictor and the number of attempts in Punchline as a negative predictor. For acquisition transitions, both methods identify the number of correctly answered Field Observer questions as a positive predictor and “Well Below Benchmark” status as a negative predictor. The stepwise model additionally identifies negative effects for the number of correctly answered Punchline questions and the number of attempts in Field Observer on acquisition of comprehension skill, as well as a positive effect of “Above Benchmark” status for comprehension skill. These results suggest that the most stable empirical 
+
+18 signals are associated with behavioural indicators from the learning environment and initial literacy benchmark status, rather than with demographic variables. For initial mastery, the positive effect of correctly answered 
+
+Punchline questions and the negative effect of Punchline attempts are consistent with the interpretation that students who answered more vocabulary-related items correctly and required fewer attempts were more likely to begin the observed period with stronger mastery. For acquisition transitions, the positive effect of correctly answered Field Observer questions and the negative effect of “Well Below Benchmark” status indicate that comprehension-related task performance and baseline literacy status are the clearest markers of subsequent mastery acquisition. The additional effects identified only by the stepwise model should be interpreted cautiously. Because the stepwise approach first converts posterior mastery probabilities into hard classifications and then corrects for classification error, some covariate effects may reflect the specific classification pathway induced by the first-stage measurement models. These stepwise-only effects may indicate that the stepwise model distinguishes more sharply between students who were already high performing and students whose response patterns provide evidence of transition into mastery. In contrast, the joint model carries uncertainty in the Q-matrix, item parameters, and latent states directly into the transition model, leading to a smaller set of acquisition effects that are supported across the full dynamic measurement process. 
+
+Table 5: Significant covariates for initial mastery ( βz ) and acquisition transition probability ( γ01 ) under the text-prior joint and stepwise approaches. Only covariates with 95% credible intervals for odds ratios excluding 1 are shown. Note . OR = odds ratio; RT = response time; NLM = number of correctly answered questions; NRA = number of attempts; WB = well below benchmark.                                                                             
+
+> Initial mastery Initial mastery Joint Stepwise
+> KCovariate OR KCovariate OR 1RT Punchline 1.319 1NLM Punchline 11.918
+> 1NLM Field Observer 1.198 1NRA Punchline 0.069
+> 1NLM Punchline 9.392 2RT Punchline 1.613
+> 1NRA Punchline 0.297 2NLM Field Observer 1.290
+> 1Benchmark-WB 0.465 2NLM Punchline 9.045
+> 2NLM Punchline 8.440 2NRA Punchline 0.270
+> 2NRA Punchline 0.094 2Benchmark-WB 0.445 Transition probability Transition probability Joint Stepwise
+> KCovariate OR KCovariate OR 1NLM Field Observer 1.361 1NLM Field Observer 1.330
+> 1Benchmark-WB 0.404 1Benchmark-WB 0.292
+> 2RT Punchline 1.412 2NLM Field Observer 1.424
+> 2NLM Field Observer 1.456 2NLM Punchline 0.673
+> 2Benchmark-WB 0.382 2NRA Field Observer 0.691
+> 2Benchmark-AB 2.723
+
+Detailed posterior odds ratios and 95% credible intervals are reported in Tables 6-9. Tables 6 and 7 report covariate effects on initial mastery, with joint rows followed by stepwise rows. Tables 8 and 9 report acquisition transition effects in the same format. Across these detailed tables, the strongest empirical signals are concentrated in log-derived behavioral variables and benchmark categories, while demographic effects are generally more uncertain. 
+
+19 Table 6: Posterior means of odds ratios (OR) for initial mastery covariate effects  βz under the text-prior joint and stepwise approaches, with 95% credible intervals. Statistically significant results are shown in  bold . Part 1 of 2. 
+
+> Note : RT = response time; NLM = number of correctly answered questions; NRA = number of attempts.
+> Method  K Measure  RT Field Observer RT Punchline  NLM Field Observer NLM Punchline NRA Field Observer NRA Punchline Gender (male) Joint  1 OR  1.029  1.319  1.198  9.392  0.925  0.297  1.809 CI  (0.892, 1.168)  (1.063, 1.719)  (1.054, 1.384)  (7.464, 12.206)  (0.755, 1.129)  (0.213, 0.385)  (0.159, 7.620) 2 OR  1.035  0.955  1.098  8.440  0.868  0.094  1.717 CI  (0.881, 1.193)  (0.803, 1.124)  (0.878, 1.339)  (6.365, 11.490)  (0.666, 1.120)  (0.063, 0.136)  (0.129, 8.131) Stepwise  1 OR  1.004  0.928  1.340  11.918  0.956  0.069  1.447 CI  (0.797, 1.214)  (0.681, 1.234)  (0.977, 1.750)  (7.609, 18.095)  (0.634, 1.392)  (0.037, 0.112)  (0.179, 5.563) 2 OR  1.002  1.613  1.290  9.045  0.924  0.270  1.835 CI  (0.865, 1.161)  (1.203, 2.138)  (1.103, 1.510)  (6.580, 11.937)  (0.737, 1.126)  (0.192, 0.360)  (0.127, 9.043)
+
+20 Table 7: Posterior means of odds ratios (OR) for initial mastery covariate effects  βz under the text-prior joint and stepwise approaches, with 95% credible intervals. Statistically significant results are shown in  bold . Part 2 of 2. 
+
+> Note : SEN = special educational needs; ELL = English language learner; WB = well below benchmark; BB = below benchmark; AB = above benchmark. Race effects are relative to White students.
+> Method  K Measure  SEN  ELL  Benchmark-WB Benchmark-BB Benchmark-AB Race (Asian)  Race (URM) Joint  1 OR  1.650  1.521  0.465  0.723  1.134  1.622  0.903 CI  (0.111, 6.292)  (0.132, 6.748)  (0.209, 0.929)  (0.350, 1.386)  (0.760, 1.634)  (0.161, 7.227)  (0.214, 2.960) 2 OR  1.544  2.041  0.531  0.578  0.763  1.697  0.499 CI  (0.126, 6.244)  (0.159, 8.871)  (0.211, 1.116)  (0.224, 1.153)  (0.507, 1.160)  (0.141, 7.013)  (0.165, 1.143) Stepwise  1 OR  1.566  1.564  0.493  0.516  0.707  1.539  0.646 CI  (0.143, 6.974)  (0.145, 6.899)  (0.138, 1.144)  (0.190, 1.101)  (0.379, 1.220)  (0.165, 6.436)  (0.151, 1.641) 2 OR  1.693  1.557  0.445  0.689  1.019  1.624  2.762 CI  (0.127, 7.302)  (0.118, 7.694)  (0.180, 0.924)  (0.292, 1.417)  (0.711, 1.513)  (0.133, 7.010)  (0.366, 10.585)
+
+21 Table 8: Posterior means of odds ratios (OR) for acquisition transition effects  γ01  under the text-prior joint and stepwise approaches, with 95% credible intervals. Statistically significant results are shown in  bold . Part 1 of 2. 
+
+> Note : RT = response time; NLM = number of correctly answered questions; NRA = number of attempts.
+> Method  K Measure  RT Field Observer RT Punchline  NLM Field Observer NLM Punchline NRA Field Observer NRA Punchline Gender (male) Joint  1 OR  0.979  1.312  1.361  0.968  0.878  1.157  1.581 CI  (0.622, 1.448)  (0.795, 2.283)  (1.068, 1.731)  (0.663, 1.326)  (0.659, 1.235)  (0.870, 1.527)  (0.122, 7.113) 2 OR  1.105  1.412  1.456  0.990  0.843  1.011  1.670 CI  (0.851, 1.551)  (1.027, 2.043)  (1.194, 1.829)  (0.618, 1.437)  (0.627, 1.091)  (0.837, 1.257)  (0.136, 6.487) Stepwise  1 OR  0.988  1.306  1.330  1.252  0.870  1.112  1.409 CI  (0.754, 1.321)  (0.921, 2.028)  (1.089, 1.627)  (0.918, 1.679)  (0.683, 1.122)  (0.845, 1.524)  (0.153, 5.267) 2 OR  1.149  1.495  1.424  0.673  0.691  1.111  1.528 CI  (0.710, 2.190)  (0.763, 2.686)  (1.056, 1.883)  (0.415, 0.958)  (0.517, 0.871)  (0.857, 1.442)  (0.125, 6.247)
+
+22 Table 9: Posterior means of odds ratios (OR) for acquisition transition effects  γ01  under the text-prior joint and stepwise approaches, with 95% credible intervals. Statistically significant results are shown in  bold . Part 2 of 2. 
+
+> Note : SEN = special educational needs; ELL = English language learner; WB = well below benchmark; BB = below benchmark; AB = above benchmark. Race effects are relative to White students.
+> Method  K Measure  SEN  ELL  Benchmark-WB Benchmark-BB Benchmark-AB Race (Asian)  Race (URM) Joint  1 OR  1.774  1.642  0.404  0.953  2.542  1.449  1.284 CI  (0.149, 7.525)  (0.160, 6.814)  (0.110, 0.963)  (0.324, 2.458)  (0.824, 5.485)  (0.167, 4.919)  (0.365, 3.836) 2 OR  1.702  1.648  0.382  0.635  1.502  1.577  2.572 CI  (0.142, 8.193)  (0.162, 6.763)  (0.138, 0.783)  (0.223, 1.534)  (0.490, 3.365)  (0.127, 7.236)  (0.352, 6.300) Stepwise  1 OR  1.595  1.702  0.292  0.470  0.633  1.509  3.511 CI  (0.136, 6.300)  (0.143, 7.961)  (0.087, 0.763)  (0.168, 1.010)  (0.358, 1.052)  (0.118, 5.979)  (0.634, 10.474) 2 OR  1.831  1.784  0.431  0.942  2.723  1.681  2.608 CI  (0.157, 8.089)  (0.148, 7.815)  (0.104, 1.061)  (0.257, 2.463)  (1.252, 5.279)  (0.130, 7.755)  (0.526, 8.219)
+
+23 4 Simulations 
+
+# 4.1 Simulation Design 
+
+The simulation study was designed to reflect the scale of the empirical application while also evaluating the model under varying levels of measurement information. For each simulation condition, we conducted 100 independent replications. We considered a dynamic CDM with two attributes measured across two time points. Sample size varied across conditions as N ∈ { 1000 , 2000 , 4000 }, and the number of items administered at each time point t varied as Jt ∈ { 6, 12 , 24 }. The middle condition, N = 2000 and Jt = 12 at each time point, was chosen to approximate the empirical setting. The true Q-matrices used under each simulation condition are provided in Table 16 in the Appendix. The prior for θ was specified as Beta(6 , 4) , with a prior mean of 
+
+0.6. The prior for λ was specified as N (0 , 0.52).
+
+# 4.2 Simulation Results 
+
+The simulation results are summarized in Tables 10-13. Each fit used three independent Markov chains, with 3,000 burn-in iterations followed by 3,000 monitored iterations. Standard errors in the tables were computed using 1,000 nonparametric bootstrap resamples over successful replications. The average running time per text-prior fit was approximately 33.1 to 216.0 minutes for the joint approach and 21.5 to 119.4 minutes for the stepwise approach across different simulation settings. These runs were conducted on a MacBook Pro (13-inch, M1, 2020) equipped with an Apple M1 chip (8-core: 4 performance and 4 efficiency cores) and 16 GB of unified memory. Table 10 reports recovery of the time-specific Q-matrices. The joint model recovered the Q-matrix nearly perfectly across the successful conditions, with entry-level ACC values equal or close to one and very small PIP errors. The stepwise approach also recovered Q1 well, with ACC ranging from 0.917 to 1.000, but recovery of Q2 was less stable. Stepwise Q2 ACC ranged from 0.593 to 0.843 across reported conditions, indicating that uncertainty in the second time point was more difficult to recover in the separate first-stage measurement models. 
+
+24 Table 10: Recovery of the  Q-matrix under the joint and stepwise approaches. Values are reported as mean (bootstrap SE) 
+
+> Joint  Stepwise
+> N Jt T ACC  FPR  FNR  PIP RMSE  PIP MAE  ACC  FPR  FNR  PIP RMSE  PIP MAE 1000  6 1 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.014 (0.006) 0.005 (0.002) 2 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.750 (0.064) 0.327 (0.077) 0.195 (0.056) 0.362 (0.044) 0.327 (0.041) 2000  6 1 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.009 (0.006) 0.003 (0.002) 2 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.593 (0.080) 0.500 (0.098) 0.341 (0.064) 0.444 (0.042) 0.404 (0.039) 4000  6 1 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.008 (0.008) 0.003 (0.003) 2 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.608 (0.100) 0.494 (0.122) 0.319 (0.084) 0.491 (0.065) 0.439 (0.064) 1000 12 1  1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.030 (0.029) 0.028 (0.027) 0.993 (0.007) 0.017 (0.016) 0.000 (0.000) 0.071 (0.023) 0.057 (0.019) 2 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.024 (0.022) 0.017 (0.016) 0.714 (0.043) 0.589 (0.087) 0.185 (0.029) 0.369 (0.039) 0.257 (0.028) 2000 12 1  1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.030 (0.029) 0.028 (0.026) 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.041 (0.022) 0.038 (0.020) 2 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.843 (0.041) 0.402 (0.100) 0.076 (0.025) 0.291 (0.035) 0.203 (0.025) 4000 12 1  1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.121 (0.054) 0.103 (0.046) 2 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.714 (0.095) 0.571 (0.187) 0.190 (0.062) 0.377 (0.078) 0.266 (0.057) 1000 24 1  1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.029 (0.028) 0.025 (0.024) 0.917 (0.047) 0.111 (0.060) 0.067 (0.036) 0.180 (0.037) 0.155 (0.032) 2 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.738 (0.039) 0.630 (0.093) 0.166 (0.025) 0.351 (0.038) 0.226 (0.023) 2000 24 1  1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.024 (0.022) 0.021 (0.019) 0.932 (0.067) 0.091 (0.088) 0.055 (0.052) 0.131 (0.055) 0.114 (0.049) 2 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.744 (0.057) 0.636 (0.143) 0.156 (0.037) 0.368 (0.038) 0.237 (0.026) 4000 24 1  1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.965 (0.040) 0.045 (0.038) 0.028 (0.024) 0.095 (0.048) 0.081 (0.041) 2 1.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.000 (0.000) 0.820 (0.072) 0.420 (0.160) 0.110 (0.041) 0.255 (0.055) 0.171 (0.038)
+> Note.  PIP RMSE and PIP MAE summarize posterior inclusion probability accuracy.
+
+25 Table 11 presents recovery of latent attribute profiles. The joint model achieved high profile agreement rates at both time points, with PAR values ranging from 0.926 to 0.989 for α1 and from 0.923 to 0.954 for 
+
+α2 among reported conditions. The stepwise approach gave comparable recovery for α1 in some conditions, but recovery of α2 was consistently weaker, with PAR ranging from 0.668 to 0.779. These results suggest that classification error from the separate measurement steps can affect the transition stage, whereas the joint model stabilizes the two time points by estimating measurement and transition components simultaneously. 
+
+Table 11: Recovery of attribute profiles under the joint and stepwise approaches. Values are reported as mean (bootstrap SE) 
+
+Joint Stepwise 
+
+N Jt T PAR AAR 1 AAR 2 PAR AAR 1 AAR 2
+
+1000 6 1 0.925 (0.006) 0.976 (0.003) 0.949 (0.004) 0.891 (0.004) 0.958 (0.002) 0.930 (0.004) 2 0.918 (0.005) 0.974 (0.002) 0.942 (0.005) 0.750 (0.029) 0.850 (0.032) 0.785 (0.029) 2000 6 1 0.934 (0.003) 0.975 (0.002) 0.958 (0.003) 0.899 (0.003) 0.960 (0.002) 0.935 (0.003) 2 0.918 (0.005) 0.975 (0.003) 0.942 (0.004) 0.687 (0.040) 0.772 (0.038) 0.727 (0.038) 4000 6 1 0.937 (0.005) 0.976 (0.004) 0.960 (0.002) 0.899 (0.005) 0.960 (0.003) 0.935 (0.004) 2 0.930 (0.004) 0.969 (0.003) 0.959 (0.002) 0.693 (0.047) 0.767 (0.051) 0.739 (0.047) 1000 12 1 0.976 (0.001) 0.996 (0.001) 0.979 (0.001) 0.959 (0.008) 0.992 (0.001) 0.967 (0.008) 2 0.943 (0.006) 0.992 (0.001) 0.950 (0.007) 0.673 (0.036) 0.735 (0.038) 0.699 (0.037) 2000 12 1 0.971 (0.002) 0.994 (0.001) 0.976 (0.003) 0.969 (0.002) 0.992 (0.001) 0.977 (0.002) 2 0.938 (0.006) 0.988 (0.002) 0.948 (0.007) 0.779 (0.040) 0.872 (0.030) 0.809 (0.038) 4000 12 1 0.978 (0.001) 0.995 (0.001) 0.982 (0.001) 0.963 (0.003) 0.992 (0.001) 0.971 (0.003) 2 0.951 (0.003) 0.989 (0.001) 0.960 (0.003) 0.684 (0.081) 0.735 (0.080) 0.704 (0.079) 1000 24 1 0.989 (0.001) 0.998 (0.001) 0.991 (0.001) 0.945 (0.025) 0.952 (0.025) 0.951 (0.022) 2 0.954 (0.015) 0.996 (0.000) 0.958 (0.015) 0.668 (0.038) 0.701 (0.044) 0.717 (0.030) 2000 24 1 0.981 (0.002) 0.999 (0.000) 0.983 (0.002) 0.946 (0.034) 0.963 (0.034) 0.950 (0.033) 2 0.946 (0.007) 0.995 (0.001) 0.951 (0.007) 0.669 (0.059) 0.711 (0.065) 0.700 (0.053) 4000 24 1 0.974 (0.007) 0.999 (0.000) 0.975 (0.007) 0.950 (0.033) 0.967 (0.032) 0.954 (0.031) 2 0.950 (0.007) 0.995 (0.001) 0.955 (0.008) 0.670 (0.055) 0.715 (0.060) 0.705 (0.052) 
+
+Note. PAR denotes profile agreement rate; AAR denotes attribute-wise agreement rate. 
+
+Table 12 summarizes guessing and slipping parameter recovery. Both approaches recovered item parameters accurately when the stepwise model converged. Item-parameter RMSE and MAE were small across conditions, and they generally decreased as sample size increased. Differences between the joint and stepwise approaches were much smaller for item parameters than for transition-related quantities. This suggests that the largest practical distinction between the two frameworks is not in estimating the DINA measurement parameters once the measurement model is identifiable, but rather in how uncertainty about the Q-matrix and latent classifications is incorporated into later components of the dynamic model. 
+
+26 Table 12: Estimation accuracy of item parameters under the joint and stepwise approaches. Values are reported as mean (bootstrap SE) Joint  Stepwise 
+
+> N Jt Metric  gt1 gt2 st1 st2 gt1 gt2 st1 st2
+> 1000  6 RMSE 0.013 (0.001) 0.019 (0.002) 0.028 (0.003) 0.015 (0.001) 0.032 (0.008) 0.041 (0.008) 0.052 (0.008) 0.032 (0.006) MAE  0.011 (0.001) 0.016 (0.001) 0.022 (0.003) 0.013 (0.001) 0.023 (0.005) 0.030 (0.005) 0.041 (0.006) 0.025 (0.004) 2000  6 RMSE 0.009 (0.000) 0.013 (0.001) 0.021 (0.002) 0.011 (0.001) 0.024 (0.008) 0.028 (0.008) 0.042 (0.010) 0.021 (0.005) MAE  0.008 (0.000) 0.009 (0.001) 0.018 (0.002) 0.009 (0.000) 0.019 (0.006) 0.020 (0.005) 0.034 (0.009) 0.016 (0.003) 4000  6 RMSE 0.007 (0.001) 0.009 (0.001) 0.015 (0.002) 0.008 (0.001) 0.009 (0.002) 0.035 (0.012) 0.022 (0.006) 0.026 (0.007) MAE  0.005 (0.001) 0.007 (0.001) 0.013 (0.002) 0.007 (0.001) 0.007 (0.001) 0.023 (0.007) 0.017 (0.004) 0.020 (0.005) 1000 12 RMSE 0.013 (0.001) 0.022 (0.002) 0.023 (0.002) 0.015 (0.001) 0.014 (0.001) 0.022 (0.003) 0.039 (0.006) 0.017 (0.001) MAE  0.010 (0.001) 0.016 (0.001) 0.019 (0.001) 0.012 (0.001) 0.011 (0.001) 0.017 (0.002) 0.031 (0.005) 0.014 (0.001) 2000 12 RMSE 0.010 (0.002) 0.020 (0.005) 0.018 (0.001) 0.013 (0.001) 0.009 (0.000) 0.033 (0.004) 0.020 (0.001) 0.014 (0.001) MAE  0.008 (0.001) 0.013 (0.003) 0.014 (0.001) 0.010 (0.001) 0.007 (0.000) 0.021 (0.002) 0.015 (0.001) 0.011 (0.001) 4000 12 RMSE 0.007 (0.000) 0.013 (0.002) 0.016 (0.001) 0.009 (0.001) 0.012 (0.003) 0.021 (0.008) 0.046 (0.016) 0.013 (0.002) MAE  0.006 (0.000) 0.009 (0.001) 0.012 (0.001) 0.007 (0.001) 0.009 (0.002) 0.014 (0.005) 0.033 (0.012) 0.009 (0.001) 1000 24 RMSE 0.014 (0.002) 0.029 (0.006) 0.024 (0.002) 0.016 (0.002) 0.015 (0.001) 0.031 (0.002) 0.026 (0.001) 0.016 (0.000) MAE  0.011 (0.002) 0.020 (0.003) 0.019 (0.001) 0.012 (0.001) 0.012 (0.001) 0.021 (0.001) 0.020 (0.001) 0.013 (0.000) 2000 24 RMSE 0.016 (0.002) 0.034 (0.003) 0.019 (0.001) 0.012 (0.001) 0.010 (0.001) 0.023 (0.003) 0.019 (0.001) 0.013 (0.001) MAE  0.013 (0.002) 0.021 (0.002) 0.015 (0.001) 0.010 (0.001) 0.008 (0.001) 0.016 (0.002) 0.014 (0.001) 0.010 (0.000) 4000 24 RMSE 0.019 (0.004) 0.032 (0.004) 0.014 (0.000) 0.010 (0.001) 0.008 (0.001) 0.019 (0.003) 0.016 (0.001) 0.011 (0.001) MAE  0.014 (0.003) 0.018 (0.002) 0.011 (0.000) 0.008 (0.001) 0.006 (0.001) 0.013 (0.002) 0.012 (0.001) 0.009 (0.001)
+> Note.  g and  s denote guessing and slipping parameters at Time 1 and Time 2.
+
+27 Table 13 reports estimation accuracy for the initial mastery parameters β0 and βZ and the acquisition transition parameters γ01 . The joint model consistently produced smaller errors for γ01 than the stepwise approach in the reported conditions. For example, under N = 2000 , J t = 12 , the joint γ01 RMSE was 0.080, compared with 0.326 for the stepwise model. Under N = 2000 , J t = 24 , the corresponding RMSE values were 0.099 and 0.428. Differences for β0 and βZ were smaller, but the transition parameters showed a clear advantage for joint estimation. This is consistent with the expectation that transition effects are particularly sensitive to classification uncertainty in latent mastery profiles. 
+
+Table 13: Estimation accuracy of regression parameters under the joint and stepwise approaches. Values are reported as mean (bootstrap SE). 
+
+Joint Stepwise 
+
+N Jt Metric β0 βZ γ01 β0 βZ γ01 
+
+1000 6 RMSE 0.088 (0.014) 0.096 (0.008) 0.095 (0.006) 0.202 (0.035) 0.127 (0.014) 0.414 (0.033) MAE 0.077 (0.013) 0.080 (0.007) 0.076 (0.006) 0.167 (0.026) 0.101 (0.010) 0.322 (0.025) 2000 6 RMSE 0.087 (0.014) 0.062 (0.004) 0.072 (0.003) 0.099 (0.009) 0.115 (0.030) 0.395 (0.035) MAE 0.080 (0.013) 0.051 (0.003) 0.058 (0.002) 0.092 (0.009) 0.082 (0.015) 0.316 (0.027) 4000 6 RMSE 0.070 (0.017) 0.044 (0.003) 0.052 (0.003) 0.080 (0.028) 0.049 (0.001) 0.362 (0.037) MAE 0.062 (0.016) 0.035 (0.003) 0.045 (0.003) 0.066 (0.021) 0.039 (0.001) 0.285 (0.031) 1000 12 RMSE 0.089 (0.020) 0.096 (0.015) 0.116 (0.005) 0.168 (0.030) 0.139 (0.025) 0.431 (0.033) MAE 0.075 (0.017) 0.077 (0.012) 0.091 (0.006) 0.148 (0.025) 0.106 (0.018) 0.339 (0.026) 2000 12 RMSE 0.090 (0.018) 0.057 (0.005) 0.080 (0.013) 0.081 (0.009) 0.072 (0.007) 0.326 (0.033) MAE 0.075 (0.015) 0.047 (0.004) 0.060 (0.007) 0.071 (0.007) 0.058 (0.005) 0.246 (0.023) 4000 12 RMSE 0.061 (0.010) 0.042 (0.003) 0.050 (0.006) 0.217 (0.073) 0.132 (0.047) 0.409 (0.068) MAE 0.052 (0.008) 0.034 (0.003) 0.041 (0.004) 0.186 (0.061) 0.101 (0.034) 0.324 (0.058) 1000 24 RMSE 0.100 (0.029) 0.073 (0.004) 0.117 (0.019) 0.189 (0.030) 0.262 (0.050) 0.408 (0.020) MAE 0.088 (0.025) 0.056 (0.004) 0.083 (0.010) 0.169 (0.026) 0.201 (0.037) 0.322 (0.017) 2000 24 RMSE 0.140 (0.027) 0.084 (0.011) 0.099 (0.009) 0.154 (0.045) 0.211 (0.075) 0.428 (0.029) MAE 0.121 (0.024) 0.069 (0.009) 0.075 (0.006) 0.140 (0.039) 0.157 (0.059) 0.333 (0.024) 4000 24 RMSE 0.148 (0.040) 0.054 (0.005) 0.074 (0.007) 0.165 (0.050) 0.190 (0.065) 0.390 (0.035) MAE 0.120 (0.028) 0.042 (0.002) 0.054 (0.007) 0.145 (0.042) 0.140 (0.050) 0.305 (0.028) 
+
+Note. β0 denotes initial mastery intercepts, βZ denotes initial mastery covariate effects, and γ01 denotes acquisition transition parameters. 
+
+Overall, the simulation results indicate that joint estimation is more robust when the Q-matrix is unknown and measurement information is limited. The stepwise procedure can give reasonable item-parameter estimates when the first-step measurement model is identified by the data, but it performs worse than the joint strategy for the second time point and for transition parameters. This pattern is consistent with the role of the joint model in carrying uncertainty about Q-matrix recovery and latent mastery classifications directly into the dynamic transition component. 
+
+# 5 Discussion 
+
+This study compared joint and stepwise estimation strategies for longitudinal CDMs when the Q-matrix is unknown and informed by item text information. Across the simulation conditions, the joint approach generally produced more stable recovery of latent attribute profiles, transition parameters, and covariate effects, particularly when the number of items was limited or when classification uncertainty increased over 
+
+28 time. By contrast, the stepwise approach often produced reasonable recovery for measurement parameters at the first time point, but the performance is weaker than that of the joint approach for the second time point and for the longitudinal transition components. The distinction between the two strategies is therefore not merely computational, but also interpretive. The joint approach treats the measurement model, latent transitions, covariate effects, and observed responses as components of a single probabilistic system that are estimated simultaneously. In contrast, the stepwise approach separates measurement from longitudinal modelling by first estimating latent profiles and then using those identified profiles in later stages of analysis. When measurement information is sufficiently strong, both approaches can lead to similar conclusions. However, the two strategies may diverge because uncertainty from earlier measurement stages affects subsequent transition estimation differently. The results further suggest that the largest practical distinction between the two frameworks is not primar-ily in estimating DINA item parameters themselves, but rather in how uncertainty surrounding the Q-matrix and latent mastery profiles is incorporated into later components of the longitudinal model. Under the stepwise framework, classification decisions from earlier stages may introduce instability into transition and regression parameters estimation when those classifications are uncertain. The joint framework instead allows measure-ment and transition information to inform one another simultaneously, leading to more coherent estimation across time points. For applied reading assessment, both strategies agree that children in this cohort generally progress toward mastering vocabulary and comprehension between Grade 2 and Grade 3. They differ in how many children are reported as having fully consolidated both skills, and that difference is largest exactly where digital reading data are weakest: short item sets, item pools that change between grades, and an unknown attribute structure. In such settings, a programme that classifies children for targeted support should be aware that a stepwise approach can place more children in partial-mastery categories than a joint analysis of the same data, not because more children are struggling, but because uncertainty resolved early is read as a definite gap. Where the measurement model is strong the choice is inconsequential; where it is not, the joint analysis gives the more defensible basis for reporting and for deciding who needs further support. These findings also highlight the importance of carefully interpreting the Q-matrix in longitudinal settings. In many educational applications, the assumption that the same attributes are measured identically over time may not fully hold because items, task formats, or instructional emphases can change across grades or school years. In the present study, the item pools differed across time points, making the recovery of attribute structures particularly important for maintaining interpretability of longitudinal transitions. This issue becomes increasingly relevant in digital learning environments, where item content evolves dynamically and item pools may be continuously updated. In the empirical analysis, item text contributed little to the estimated structure. It entered as a prior on the Q-matrix, and the posterior for λ was close to zero, so the response data effectively determined the estimated structure. We do not read this as evidence that item text is uninformative. The responses in these data were strong enough to identify the Q-matrix on their own, leaving the prior with little to do. The value 
+
+29 of the text component here is that it lets the joint and stepwise strategies draw on the same item information, so the two can be compared on equal terms. Ma et al. (2026a) show that the text-informed prior contributes more when the item response signal is weaker. Several limitations should also be noted. First, the proposed Bayesian estimation procedure relies on Markov chain Monte Carlo sampling and can be computationally intensive, particularly under the joint frame-work and larger item pools. Second, the empirical application was based on a selected subset of frequently administered items rather than the full item pool. Consequently, the findings may depend partly on the characteristics of the selected items and the resulting sample restrictions. Third, the current study focused on the DINA model with binary attributes. Future research could extend the framework to higher-order or more complex CDMs that allow hierarchical or continuous latent structures. Finally, the log-derived behavioural covariates used in the empirical study may themselves contain measurement error, which was not explicitly modelled in the current analysis. Incorporating uncertainty in process-based covariates may further improve inference in longitudinal diagnostic modelling. Overall, the results suggest that joint estimation provides a more robust framework for longitudinal cog-nitive diagnosis when the Q-matrix is uncertain and measurement information is limited. Although stepwise procedures may remain attractive because of their flexibility and lower computational burden, the joint frame-work offers a more coherent representation of uncertainty across measurement and learning processes over time. 
+
+30 References 
+
+Asparouhov, T. and Muthén, B. (2014). Auxiliary Variables in Latent Class Analysis: Three-Step Approaches. 
+
+Structural Equation Modeling: A Multidisciplinary Journal , 21(3):329–341. Ayers, E., Rabe-Hesketh, S., and Nugent, R. (2013). Incorporating Student Covariates in Cognitive Diagnosis Models. Journal of Classification , 30(2):195–224. Bakk, Z. and Kuha, J. (2018). Two-Step Estimation of Models Between Latent Classes and External Variables. 
+
+Psychometrika , 83(4):871–892. Bakk, Z., Tekle, F. B., and Vermunt, J. K. (2013). Estimating the Association between Latent Class Mem-bership and External Variables Using Bias-Adjusted Three-Step Approaches. Sociological Methodology ,43(1):272–311. Bolck, A., Croon, M., and Hagenaars, J. (2004). Estimating Relationships Between Latent Class Membership and External Variables Using Stepwise Latent Class Analysis. Political Analysis , 12(1):3–20. Chen, Y., Culpepper, S. A., Chen, Y., and Douglas, J. (2018). Bayesian estimation of the dina Q matrix. 
+
+Psychometrika , 83:89–108. Chen, Y., Liu, J., Xu, G., and Ying, Z. (2015). Statistical analysis of Q-matrix based diagnostic classification models. Journal of the American Statistical Association , 110(510):850–866. Clark, S. and Muthén, B. (2009). Relating latent class analysis results to variables not included in the analysis. Technical report, Muthén & Muthén. Retrieved from http://www.statmodel.com/download/relatinglca.pdf. Croon, M. A. (2002). Using Predicted Latent Class Membership in Subsequent Analyses. In Hagenaars, J. A. and McCutcheon, A. L., editors, Applied Latent Class Analysis , pages 194–223. Cambridge University Press, Cambridge. Culpepper, S. A. (2016). Revisiting the 4-parameter item response model: Bayesian estimation and application. 
+
+Psychometrika , 81(4):1142–1163. de la Torre, J. (2009). Dina model and parameter estimation: A didactic. Journal of Educational and Behavioral Statistics , 34(1):115–130. de la Torre, J. (2011). The generalized dina model framework. Psychometrika , 76(2):179–199. de la Torre, J. and Douglas, J. A. (2004). Higher-order Latent Trait Models for Cognitive Diagnosis. Psy-chometrika , 69(3):333–353. Devlin, J., Chang, M.-W., Lee, K., and Toutanova, K. (2019). Bert: Pre-training of deep bidirectional transformers for language understanding. In Proceedings of the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies, volume 1 (long and short papers) , pages 4171–4186. 
+
+31 Fang, G., Liu, J., and Ying, Z. (2019). On the identifiability of diagnostic classification models. Psychometrika ,84(1):19–40. Garcia, J. R. and Cain, K. (2014). Decoding and reading comprehension: A meta-analysis to identify which reader and assessment characteristics influence the strength of the relationship in english. Review of Edu-cational Research , 84:74–111. Gough, P. B. and Tunmer, W. E. (1986). Decoding, reading, and reading disability. Remedial and Special Education , 7:6–10. Gu, Y. and Xu, G. (2021). Sufficient and necessary conditions for the identifiability of the Q-matrix. Statistica Sinica , 31(1):449–472. Haertel, E. (1984). An application of latent class models to assessment data. Applied Psychological Measure-ment , 8(3):333–346. Huff, K. and Goodman, D. (2007). The demand for cognitive diagnostic assessment. In Leighton, J. P. and Gierl, M. J., editors, Cognitive Diagnostic Assessment for Education: Theory and Applications , pages 19–50. Cambridge University Press. Junker, B. W. and Sijtsma, K. (2001). Cognitive assessment models with few assumptions, and connections with nonparametric item response theory. Applied Psychological Measurement , 25(3):258–272. Language and Reading Research Consortium (LARRC) (2015). Learning to read: Should we keep things simple? Reading Research Quarterly , 50:151–169. Language and Reading Research Consortium (LARRC) and Logan, J. A. R. (2017). Pressure points in reading comprehension: A quantile multiple regression analysis. Journal of Educational Psychology , 109(4):451–464. Liang, Q., la Torre, J. d., and Law, N. (2023). Latent transition cognitive diagnosis model with covariates: A three-step approach. Journal of Educational and Behavioral Statistics , 48(6):690–718. Ma, Y., Ishida, S., Cain, K., and Wallin, G. (2026a). NLP-informed dynamic cognitive diagnosis modelling. 
+
+arXiv preprint arXiv:2604.07179 .Ma, Y., Ushakova, A., Cain, K., and Wallin, G. (2026b). A statistical framework for dynamic cognitive diagnosis in digital learning environments. arXiv preprint arXiv:2506.14531 .Oakhill, J. and Cain, K. (2012). The precursors of reading ability in young readers: Evidence from a four-year longitudinal study. Scientific Studies of Reading , 16(2):91–121. Park, Y. S. and Lee, Y.-S. (2014). An Extension of the DINA Model Using Covariates: Examining Factors Affecting Response Probability and Latent Classification. Applied Psychological Measurement , 38(5):556– 570. 
+
+32 Reimers, N. and Gurevych, I. (2019). Sentence-bert: Sentence embeddings using siamese bert-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing (EMNLP-IJCNLP) , pages 3982–3992. Association for Computational Linguistics. Roussos, L. A., Templin, J. L., and Henson, R. A. (2007). Skills diagnosis using irt-based latent class models. In Leighton, J. P. and Gierl, M. J., editors, Cognitive Diagnostic Assessment for Education: Theory and Applications , pages 213–255. Cambridge University Press. Rupp, A. A. and Templin, J. (2008). The effects of Q-matrix misspecification on parameter estimates and classification accuracy in the dina model. Educational and Psychological Measurement , 68(1):78–96. Tatsuoka, K. K. (1983). Rule space: An approach for dealing with misconceptions based on item response theory. Journal of Educational Measurement , 20(4):345–354. Templin, J., Henson, R. A., et al. (2010). Diagnostic measurement: Theory, methods, and applications .Guilford press. University of Oregon (2018). 8th edition of dynamic indicators of basic early literacy skills (dibels). https: //dibels.uoregon.edu . Accessed: 2025-05-29. Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A. N., Kaiser, Ł., and Polosukhin, I. (2017). Attention is all you need. Advances in neural information processing systems , 30. Vermunt, J. K. (2010). Latent Class Modeling with Covariates: Two-Step Estimation Revisited. Political Analysis , 18(4):450–469. Wang, S., Hu, Y., Wang, Q., Wu, B., Shen, Y., and Carr, M. (2020). The development of a multidimensional diagnostic assessment with learning tools to improve 3-d mental rotation skills. Frontiers in Psychology ,11:305. Wang, S., Yang, Y., Culpepper, S. A., and Douglas, J. A. (2018). Tracking skill acquisition with cognitive diag-nosis models: A higher-order, hidden markov model with covariates. Journal of Educational and Behavioral Statistics , 43(1):57–87. Wang, S., Zhang, S., and Shen, Y. (2019). A joint modeling framework of responses and response times to assess learning outcomes. Multivariate Behavioral Research , 55:49–68. Zenisky, A. L. and Hambleton, R. K. (2012). Developing test score reports that work: The process and best practices for effective communication. Educational Measurement: Issues and Practice , 31(2):21–26. Zhan, P., Jiao, H., and Liao, D. (2018). Cognitive diagnosis modelling incorporating item response times. 
+
+British Journal of Mathematical and Statistical Psychology , 71(2):262–286. Zhan, P., Jiao, H., Man, K., and Wang, L. (2019). Using jags for bayesian cognitive diagnosis modeling: A tutorial. Journal of Educational and Behavioral Statistics , 44(4):473–503. 
+
+33 Zhan, P., Wang, W.-C., and Li, X. (2020). A partial mastery, higher-order latent structural model for poly-tomous attributes in cognitive diagnostic assessments. Journal of Classification , 37:328–351. 
+
+34 6 Appendix A. Data Preprocessing 
+
+The empirical data were obtained from four game-grade combinations: Grade 2 Punchline , Grade 3 Punchline ,Grade 2 Field Observer , and Grade 3 Field Observer . The total number of students in each dataset was as follows: 27,649 for Grade 2 Punchline , 4,593 for Grade 3 Punchline , 13,044 for Grade 2 Field Observer , and 18,220 for Grade 3 Field Observer . To construct a longitudinal sample, we identified students who appeared in both Grade 2 and Grade 3 datasets. We conducted item selection separately for each game and grade based on student participation. For each game and grade, we computed (a) the number of students who attempted each item and (b) the proportion of participating students. Items were then ranked according to their frequency of appearance to identify those with the highest coverage. For each game-grade combination, we selected the six most frequently attempted items after balancing the trade-off between including more items and retaining a larger sample size. This produced 12 selected items at each grade, with six items from Punchline and six items from Field Observer .The selected items were: 
+
+• Grade 2 Punchline : 1,2,3,7,8,9 
+
+• Grade 3 Punchline : 1,2,3,31,32,33 
+
+• Grade 2 Field Observer : 1,3,5,7,9,11 
+
+• Grade 3 Field Observer : 31,33,35,37,39,41 We then restricted the dataset to students who completed all selected items across both games and both time points (Grade 2 and Grade 3). This resulted in a final analytic sample of 1,978 students and ensured a balanced longitudinal structure for subsequent modelling. To identify the most informative subset of items, we conducted an exploratory data analysis (EDA) on question usage frequency. For each question, the number and proportion of students who attempted the item were computed. The top 30 most frequently used questions in each game are shown in Figures 1 and 2. Based on these distributions, a subset of high-frequency questions was selected to maximize sample size while maintaining sufficient coverage across levels. The covariates were derived from students’ gameplay data across the two games. The number of attempts was computed as the average number of attempts per level for each student, and then averaged across the two games. The number of questions correct was defined as the total number of questions answered correctly across both games. Response time (RT) was calculated as the average response time per level for each student and subsequently averaged across the two games. These definitions and computation procedures are consistent with those used in the previous study by Ma et al. (2026b). 
+
+35 Question 49 Question 56 Question 55 Question 63 Question 62 Question 61 Question 27 Question 26 Question 21 Question 25 Question 20 Question 19 Question 15 Question 14 Question 13 Question 45 Question 44 Question 43 Question 39 Question 38 Question 37 Question 33 Question 32 Question 31 Question 9 Question 8 Question 7 Question 3 Question 2 Question 1 
+
+0 10000 20000 30000 40000 
+
+Number of Students 
+
+> Question Label
+
+Grade 
+
+Grade 3 
+
+Grade 2 
+
+Top 30 Most Frequently Used Questions in punchline: Grade 2 vs Grade 3 Figure 1: Top 30 most frequently attempted questions in punchline, separately for Grade 2 and Grade 3. Counts represent the number of students who attempted each question. Questions selected for the analysis are among the highest-frequency items 36 Question 25 Question 27 Question 29 Question 23 Question 21 Question 55 Question 53 Question 57 Question 59 Question 51 Question 35 Question 33 Question 39 Question 37 Question 31 Question 7 Question 3 Question 5 Question 9 Question 1 Question 13 Question 17 Question 19 Question 15 Question 11 Question 49 Question 47 Question 41 Question 45 Question 43 
+
+0 20000 40000 60000 
+
+Number of Students 
+
+> Question Label
+
+Grade 
+
+Grade 3 
+
+Grade 2 
+
+Top 30 Most Frequently Used Questions in field_observer: Grade 2 vs Grade 3 Figure 2: Top 30 most frequently attempted questions in field observer, separately for Grade 2 and Grade 3. Counts represent the number of students who attempted each question. Questions selected for the analysis are among the highest-frequency items 37 7 Appendix B: Example of Questions 
+
+Table 14: Example items from Punchline 
+
+Item Component Content 
+
+1Question Why are pop stars so cool? Correct answer They have lots of fans. Distractor answer They make great music. Definition 1 machines that make you cooler Definition 2 people who are excited about someone or something 2Question Why did the little kitten run away from the tree? Correct answer Because she saw the tree bark. Distractor answer Because she thought the tree moved. Definition 1 the rough outside of a tree trunk Definition 2 the noise a dog makes 3Question How did Cinderella ruin the basketball game? Correct answer She kept running away from the ball. Distractor answer She left early. Definition 1 a round object used to play games and sports Definition 2 a big party where there is dancing  
+
+> Note: Each Punchline item requires students to select the correct answer and identify the relevant meaning of the ambiguous word.
+
+Table 15: Example items from Field Observer 
+
+Item Component Content 
+
+1Question What might happen if you asked this Curioso to carry a tray of water glasses? Relevant evidence Coldocs always trip over furniture, fall down, and drop things. Distractor evidence Coldocs only eat red foods, such as apples and red potatoes. Correct answer He would likely break all the glasses. Distractor answer He’d drink the water and wash the glasses. Distractor answer He’d take it away without an accident. 2Question Should you leave anything in the Coldoc’s cave? Relevant evidence She puts any unused items in a giant fire outside her cave. Distractor evidence The Coldoc cleans everything in her cave three times a day. Correct answer No, because it might get burned. Distractor answer She probably won’t notice, so go ahead. Distractor answer No, it might get lost in her messy cave. 3Question Which feeling did the Anpert have at school? Relevant evidence The Anpert ran to the cafeteria and piled her plate with four pizza slices and a salad. Distractor evidence The Anpert skipped and danced as she walked out of the principal’s office. Correct answer Hungry Distractor answer Angry Distractor answer Tired  
+
+> Note: Each item requires students to select both a correct answer and the supporting evidence sentence.
+
+38 Item Pool Histogram of ττ                   
+
+> Frequency
+> −0.4 −0.2 0.0 0.2 0.4 0 10  20  30  40
+> −0.4 −0.2 0.0 0.2 0 1 2 3 4
+> Item Pool Density of τ: punchline vs field observer
+> τ
+> Density
+> punchline field observer
+> −3 −2 −1 0123−0.4  −0.2  0.0  0.2
+> Item Pool QQ Plot of T τ
+> Theoretical Quantiles Sample Quantiles
+> 050 100 150 −0.4  −0.2  0.0  0.2
+> Item Pool Sorted τ
+> Sorted item index
+> τ
+
+Figure 3: Distribution of τ values in the item pool 
+
+# 8 Appendix C. Distribution of Text Information 
+
+The distribution of the item pool is shown in Figure 3, and the standardized version is shown in Figure 4. Because both Grade 2 and Grade 3 were drawn from the same underlying item pool, the distribution of item-level τ is identical across grades. Differences between grades arise only from the item sampling process and subsequent student responses. The histogram and QQ plot indicate that τ is approximately normally distributed, with only mild deviations in the tails. The density panel shows that the two games differ in shape: Punchline items form a single peak near zero, whereas Field Observer items are bimodal, with one mode just below zero and a second above it. The sorted values reveal a smooth distribution, providing no evidence of extreme outliers. 
+
+# 9 Appendix D. True Q-matrix in Simulation 
+
+The shorter test forms were constructed as nested subsets of the full 24-item test. The true Q-matrices for the simulation with J = 24 and K = 2 are shown in Table 16. The Q-matrices were held fixed across all simulation replicates. 
+
+39 Item Pool Histogram of Standardised τ
+
+Standardised τ           
+
+> Frequency
+> −3 −2 −1 01230 5 10  15
+> −2 −1 01230.0  0.1  0.2  0.3  0.4  0.5  0.6
+
+Density of τ : Standardised punchline vs field observer Standardised τ      
+
+> Density
+> punchline field observer
+> −3 −2 −1 0123−2  −1  0 1 2 3
+
+QQ Plot of Standardised τ
+
+Theoretical Quantiles Sample Quantiles    
+
+> 050 100 150 −2  −1  0 1 2 3
+
+Sorted Standardised τ
+
+Sorted item index Standardised  τFigure 4: Distribution of standardised τ values in the item pool Table 16: True Q-matrices for J = 24 at Time 1 and Time 2 
+
+Item Time 1 Time 2 Item Time 1 Time 2 
+
+A1 A2 A1 A2 A1 A2 A1 A2
+
+1 1 0 1 0 13 1 0 1 12 1 0 0 1 14 0 1 1 13 0 1 1 0 15 1 1 1 14 0 1 0 1 16 1 0 1 15 1 0 1 1 17 1 1 1 16 1 1 1 0 18 1 1 0 17 0 1 1 0 19 1 1 1 18 0 1 1 1 20 0 1 0 19 1 0 1 1 21 0 1 1 110 0 1 1 1 22 1 0 1 011 1 0 1 1 23 0 1 0 112 1 0 0 1 24 0 1 1 1
+
+40
