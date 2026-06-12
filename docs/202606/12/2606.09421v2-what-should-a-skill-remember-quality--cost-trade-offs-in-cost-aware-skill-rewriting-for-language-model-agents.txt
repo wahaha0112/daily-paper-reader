@@ -1,0 +1,1158 @@
+Title: What Should a Skill Remember? Quality–Cost Trade-offs in Cost-Aware Skill Rewriting for Language Model Agents
+
+URL Source: https://arxiv.org/pdf/2606.09421v2
+
+Published Time: Wed, 10 Jun 2026 00:28:38 GMT
+
+Number of Pages: 23
+
+Markdown Content:
+# What Should a Skill Remember? Quality-Cost Trade-offs in Cost-Aware Skill Rewriting for Language Model Agents 
+
+Qinghua Xing 1* Yinda Chen 1 Yaping Jin 2 Zhenhe Wu 2 Bohan Lin 1
+
+Hang Zhou 3 Xinghao Chen 2 Hanting Chen 2† Zhiwei Xiong 1
+
+1University of Science and Technology of China 
+
+2Huawei Technologies 3Tianjin University 
+
+Abstract 
+
+Large language model agents increasingly rely on skills: reusable procedural documents en-coding workflows, tool use, implementation patterns, validation checks, and domain rules. Skill rewriting is often treated as prompt com-pression, but shorter skills can make agents more expensive by removing sparse operational anchors that prevent exploration, debugging, and recovery. We study skill rewriting through this economic lens. Our controlled framework profiles skill structure, rewrites skills using information-preservation strategies, and evalu-ates the rewrites under fixed task instructions, environments, and verifiers. Experiments on SkillsBench reveal distinct quality–cost trade-offs across strategies: API/code anchoring, workflow guarding, and rule/formula anchoring benefit different task families, with no univer-sally dominant template. In the main held-out evaluation, the learned policy reduces total cost by 7.0% and downstream agent-token cost by 6.0%; in frozen cross-model transfer, the corre-sponding reductions average 14.7% and 13.7%, while verifier quality is preserved. These re-sults position skill design as cost-aware op-erational knowledge engineering rather than prompt compression. Resources: SkillEE. 
+
+1 Introduction 
+
+Large language model (LLM) agents increasingly solve tasks by combining model reasoning with external tools, code execution, web interfaces, and environment feedback (Yao et al., 2023; Schick et al., 2023; Qin et al., 2024; Yang et al., 2024). In these systems, performance depends not only on the base model, but also on the operational con-text, interfaces, and procedural knowledge supplied to the agent (Liu et al., 2024; Zhou et al., 2024; Jimenez et al., 2024; Yao et al., 2025). A grow-ing abstraction for providing such knowledge is 
+
+> *
+
+This work was done during Qinghua Xing’s internship at Huawei Technologies. 
+
+> †
+
+Corresponding author: chenhanting@huawei.com .Uniform compression Cost-aware rewriting               
+
+> Compressed
+> rewrite R a
+> </> …
+> …
+> Compression
+> rule:
+> shorten every
+> Section
+> uniformly
+> </> API
+> Workflow
+> Validation
+> ∑Formula
+> </>
+> Original skills Sτ
+> </> API
+> Workflow
+> Validation
+> ∑Formula
+> ∑
+> √
+> Some anchors
+> thinned out
+> Missing anchors
+> Search Run
+> >_
+> Search Run
+> >_
+> !
+> Cskill
+> $
+> Cagent
+> $$$
+> q
+> Which
+> Information
+> should a skill
+> remember?
+> Profile φτ
+> •task domain
+> •code density
+> •validation load
+> •…
+> selector π θ
+> </> API
+> Workflow
+> Validation
+> ∑Formula
+> Operational
+> anchors
+> Rewrite R a
+> </> API
+> Workflow
+> Validation
+> ∑Formula
+> Verifier
+> </> ∑√
+> Cskill
+> $
+> Cagent
+> $$$
+> q
+
+Figure 1: Skill rewriting as cost-aware preservation rather than text compression. Uniform compression may remove operational anchors and increase downstream execution cost, whereas policy-selected rewriting retains task-relevant anchors to better balance quality and total execution cost. 
+
+the skill : a reusable procedural document or bun-dle that encodes workflows, tool usage, code pat-terns, examples, validation checks, and domain rules (Wang et al., 2024; Anthropic, 2025; OpenAI, 2026; Li et al., 2026). Skills can substantially af-fect agent behavior, yet we still lack a systematic understanding of how their written structure should be revised when the goal is to reduce cost with-out degrading execution. A natural approach is to shorten skills, especially because long prompts, re-trieved contexts, and interaction histories increase inference cost (Li et al., 2023b; Jiang et al., 2023, 2024; Li et al., 2025; Xiao et al., 2026). Prompt-optimization systems further show that instructions and LLM pipelines can often be improved through search, feedback, or compilation (Pryzant et al., 2023; Fernando et al., 2023; Khattab et al., 2024). However, skills are not ordinary prompts or re-trieved contexts. Their usefulness often depends on sparse operational anchors : an API construc-tor, a command-line flag, a validation threshold, a file-format convention, a formula, or a recov-ery rule. Removing surrounding explanation may reduce direct skill-token cost, but removing the wrong anchor can increase downstream exploration, 
+
+> arXiv:2606.09421v2 [cs.CL] 9 Jun 2026
+
+debugging, tool calls, or recovery. In our held-out evaluation, for example, a fixed workflow-oriented rewrite shortens skill documents but raises down-stream agent-token usage to 1.14 × the original-skill baseline. Thus, skill rewriting poses an eco-nomic question: which information should a skill remember? 
+
+We argue that the answer is task-dependent. Implementation-heavy skills may require API sig-natures, imports, object construction patterns, and code snippets; validation-heavy workflows may require ordered checks and failure-recovery cues; rule-governed tasks may require formulas, thresh-olds, schemas, and tie-breaking conventions. Prior skill benchmarks and analyses show that skill util-ity varies across domains, task structures, and mod-els (Li et al., 2026; Liu et al., 2026; Zhong et al., 2026). These differences imply that a single fixed rewrite template is unlikely to be uniformly opti-mal. Instead, skill rewriting should identify which operational anchors are predictive of quality and execution cost for a given task, and preserve those anchors accordingly. This trade-off requires measuring rewriting at the level of agent execution, not only at the level of input length. Cost-aware LLM systems reduce ex-pense through prompt adaptation, model cascades, and routing (Chen et al., 2023a; Yue et al., 2024; Ong et al., 2025; Shirkavand et al., 2025), while agent-cost work highlights that execution trajecto-ries themselves can dominate token usage (Xiao et al., 2026). Skill rewriting sits between these regimes: removing text saves direct skill tokens, but removing the wrong details may shift cost into API exploration, code repair, tool reruns, or verifier recovery. We therefore view skill rewriting as cost-aware knowledge preservation, where the objective is to preserve the procedural details that matter for both quality and total execution cost. We study this problem in SkillsBench (Li et al., 2026) by rewriting only the skill documents while keeping task instructions, environments, and ver-ifiers fixed. We compare preservation strategies that emphasize API/code details, workflow guards, and rules or formulas, and measure task quality together with direct skill-token, downstream agent-token, and total cost. Experiments show that no single rewrite structure is uniformly best; instead, different task and skill profiles favor different pre-served anchors. On the primary held-out panel, a lightweight task-conditioned policy selects among these strategies and maintains verifier quality while reducing both direct skill-token and downstream agent-token cost. In the main held-out evaluation, the learned policy reduces total execution cost by 7.0% and downstream agent-token cost by 6.0%. When the same frozen policy is transferred across additional agent stacks, these reductions average 14.7% and 13.7%, respectively, while verifier qual-ity is maintained or slightly improved. Our main contributions are: 1. We formulate skill rewriting as a cost-aware preservation problem and introduce a con-trolled framework for profiling, rewriting, au-diting, and evaluating agent skills under fixed task instructions, environments, and verifiers. 2. We define economic metrics for agent skills that separate task quality, direct skill-token cost, downstream agent-token cost, total exe-cution cost, and execution overrun, enabling analysis beyond skill length alone. 3. We show that effective rewrite strategies de-pend on task and skill structure, and learn a task–skill-conditioned selector that chooses preservation strategies from structural features to improve the quality–cost trade-off. 
+
+2 Related Work 
+
+Agents, tools, and procedural skills. LLM agents extend language models from single-turn prediction to interactive execution, where mod-els reason, call tools, execute code, browse web interfaces, or operate in software-engineering en-vironments. Early work such as ReAct formal-ized the reasoning–action loop (Yao et al., 2023), while Toolformer, API-Bank, and ToolLLM study tool/API use as a learnable and evaluable capa-bility (Schick et al., 2023; Li et al., 2023a; Qin et al., 2024). This shift has led to benchmarks and systems that evaluate agents through environ-ment interaction, including multi-domain agent tasks (Liu et al., 2024), web navigation (Zhou et al., 2024), software repair and agent-computer inter-faces (Jimenez et al., 2024; Yang et al., 2024), and tool-agent-user transactions (Yao et al., 2025). Be-yond tool access itself, recent work increasingly ex-ternalizes reusable procedural knowledge as skills .Voyager stores executable code skills for embodied exploration (Wang et al., 2024), and recent agent platforms package skills as bundles of instructions, scripts, examples, and resources (Anthropic, 2025; Agent Skills, 2026; OpenAI, 2026). SkillsBench further formalizes Agent Skills as structured proce-dural documents evaluated with deterministic veri-fiers across diverse tasks (Li et al., 2026), while recent surveys frame skill acquisition, retrieval, composition, and governance as central problems for skill-centric agents (Xu and Yan, 2026; Jiang et al., 2026; Zhou et al., 2026). These studies estab-lish skills as an important interface for procedural knowledge, but they largely treat skill content as given or evaluate skills after creation. Our work in-stead studies the internal writing structure of skills: which operational anchors should be preserved dur-ing rewriting, and how those choices affect task quality, downstream execution, and total cost. 
+
+Prompt compression and prompt optimization. 
+
+Prompt compression reduces LLM inference cost by removing or re-encoding less salient input con-tent. Early methods prune low-information context (Li et al., 2023b), while LLMLingua, LongLLM-Lingua, and LLMLingua-2 estimate token impor-tance or learn task-agnostic compression objec-tives for prompts and long contexts (Jiang et al., 2023, 2024; Pan et al., 2024). Other work com-presses contexts into learned memory representa-tions (Ge et al., 2024). In parallel, prompt opti-mization methods search, edit, or compile prompts and LLM pipelines using textual feedback, evolu-tionary search, or task-level supervision (Pryzant et al., 2023; Fernando et al., 2023; Khattab et al., 2024). These approaches mainly optimize input length, semantic retention, or task accuracy for prompts and contexts, leaving less explored how compression affects procedural documents whose value may reside in sparse but execution-critical details. 
+
+Cost-aware LLM and agent systems. Cost-aware LLM systems optimize quality–cost trade-offs through prompt adaptation, model cascades, and routing (Chen et al., 2023a; Yue et al., 2024; Ong et al., 2025; Shirkavand et al., 2025). Prompt-compression surveys further distinguish hard token-level compression from soft representation-based compression (Li et al., 2025). In agent settings, however, cost is also trajectory-dependent. Inter-face design has been shown to affect agents’ ability to navigate repositories, edit files, and execute tests (Yang et al., 2024). Rewriting a skill can reduce direct skill-token cost while increasing downstream execution cost. Structured skills can substantially change agent performance across tasks (Li et al., 2026); and recent trajectory-reduction work identi-fies growing interaction histories as a major source of input-token cost (Xiao et al., 2026). These find-ings broaden cost-aware design from model routing to the operational artifacts that shape agent execu-tion. 
+
+3 Skill Rewriting as Cost-Aware Knowledge Engineering 
+
+3.1 Overview and Notation 
+
+We formulate skill rewriting as a cost-aware preser-vation problem. An agent task is τ = ( x, e, v, Sτ ),where x is the instruction, e is the execution envi-ronment, v is the verifier, and Sτ = {s1, . . . , s m}
+
+is the skill set. A rewrite strategy a ∈ A pro-duces rewritten skills eSaτ = Ra(Sτ ). Throughout rewriting and evaluation, the task instruction, envi-ronment, and verifier are fixed; only the skill docu-ments are changed. This controlled setup isolates skill wording and structure as the experimental vari-able. Running an agent with eSaτ produces a verifier outcome and token-usage logs. These outcomes are converted into the economic utility used for strategy learning, with the metric definitions given in Section 4. The method below specifies how skills are profiled, rewritten, audited, and selected by a task-conditioned policy. 
+
+3.2 Skill Profiling and Rewrite Strategies 
+
+We compute a structural profile ϕτ = ϕ(τ, Sτ ) for each task-skill pair. The profile includes skill count, total skill tokens, code-token ratio, API usage, examples, validation rules, constraints, formulas, dominant skill archetype, and task domain. Based on these profiles, we define a set of information-preservation strategies A. Each strategy specifies which class of operational anchors should remain salient after rewriting, rather than enforcing a fixed surface template. Table 1 summarizes the strategy families. For each strategy a, the rewriter produces esai =
+
+Ra(si) for every skill si. Rewrites are constrained to preserve factual content and task requirements, and are audited with lightweight checks such as token ratio, code-term coverage, code-block re-tention, and missing-anchor detection. When pro-tected anchors are missing, the rewrite is repaired with a compact source-derived anchor block. This makes rewriting a controlled preservation proce-dure rather than unconstrained summarization. </> APl/code  
+
+> Workflow
+> Check
+> ∑Rule/formula
+
+Strategy bank 
+
+Candidate rewrites 1
+
+> instruction | environment | verifier
+> Skills S τ
+> …
+
+Skill Profile 
+
+a1
+
+a2
+
+am
+
+> …
+
+Candidate rewrites    
+
+> a1API Flow
+> a2API
+> am
+> …
+> Rule
+> Check
+> Check
+
+Evaluation 2
+
+Audit and repair 
+
+> √
+> √
+> √
+
+Agent + verifier 
+
++
+
+> same x,e,and v for every rewrite
+> only skill document change
+
+Observed outcomes 
+
+> quality
+> skill-token cost
+> agent-token cost
+
+Economic metrics 
+
+Learning and selection 3
+
+Calibration tuples 
+
+collected from 
+
+evaluated tasks 
+
+Sparse utility model 
+
+> feature weights
+> over rewrite
+> strategies
+
+Task-conditioned selector 
+
+> choose the anchor family with
+> highest predicted utility
+
+Selected rewrite     
+
+> task-specific preserved
+> anchors
+> quality-cost feedback
+> 𝐀 𝐀
+> θj
+> …
+> a
+> 𝐀
+> πθ=arg max 𝐀 𝐀
+> a
+> API Flow Check
+> √
+> token-radio check
+> code-term coverage
+> code-block retention
+> missing-anchor
+> tool use & API calls
+> code snippets
+> workflow steps
+> formulas /rules
+> …
+
+q a    
+
+> 
+> ,,
+> aaa
+> s k ill a g e n t
+
+C C C
+
+> 
+
+ 
+
+> ,
+> a
+> skill C
+> 
+> ,
+> a
+> agent C
+> 
+> 
+
+                                                 
+
+> max( ,)
+> a
+> a
+> a
+> q
+> QR q
+> 
+> 
+> 0
+> max( ,)
+> a
+> aC
+> C
+> 
+> 
+> 
+> 
+> ,
+> 0
+> ,
+> rmax( ,)
+> a
+> agent r
+> a
+> agent r
+> C
+> C
+> 
+> max(0, 1) a
+> aEO r
+> 
+> [1] max(0,1 )aaa
+> NLD I QR
+> 
+> 
+> (1 )aaaaa
+> save over nld UQR EO NLD
+> 
+> 
+> #skills
+> tokens
+> formulas
+> code ratio
+> API/tool
+> domain
+> archetype
+> validation
+> (,,,)x e v S
+> 
+
+ 
+
+Task and skills 
+
+A                 
+
+> (,,)a
+> a U
+> 
+> (,)()T
+> aaabw z
+> 
+> ()
+> (,)a
+> 
+> Total cost
+
+↓ 14.7% 
+
+> Agent cost
+
+↓ 13.7% Figure 2: Overview of cost-aware skill rewriting. The pipeline profiles task skills, generates strategy-conditioned rewrites, evaluates them under fixed task conditions, and learns a task-conditioned strategy selector from quality–cost feedback. Arrows denote rewritten-skill flow, evaluation signals, and policy feedback. 
+
+Strategy Preserved anchors Intended use 
+
+Source-native compacting Original structure, local terminology, author organization Skills whose structure already encodes a useful workflow. Workflow guarding Ordered steps, validation checks, constraints, pitfalls Tasks prone to missing checks or procedural drift. API/code anchoring Imports, API calls, object construction, commands, snippets Code- or tool-heavy skills where API details prevent debugging. Rule/formula anchoring Definitions, formulas, thresholds, schemas, conventions Scientific, optimization, and rule-governed tasks requiring exact invariants. 
+
+Table 1: Skill rewriting strategies, preserved anchors, and intended use cases. 
+
+3.3 Task-Conditioned Strategy Learning 
+
+Different tasks benefit from different preservation strategies, so we learn a task-conditioned strategy selector. The context is the task-skill profile ϕτ ,the candidate actions are the final policy strategies 
+
+a ∈ A π ⊆ A , and the supervision signal is an economic utility U aτ . This utility summarizes the quality–cost outcome of applying strategy a to task 
+
+τ ; its exact definition is given in Section 4. For each training task τ ∈ T train and evaluated strategy a, we observe U aτ . In our experiments, 
+
+Ttrain contains the template-calibration and policy-adaptation splits described in Section 4; held-out tasks are excluded. We fit an action-conditioned utility model 
+
+bUθ(ϕτ , a ) = ba + w⊤
+
+a z(ϕτ ), (1) where z(ϕτ ) is the numeric feature vector derived from the task-skill profile. The parameter set θ =
+
+{ba, wa : a ∈ A π} contains a strategy-specific intercept ba and feature weights wa.The parameters are estimated by sparse utility regression: 
+
+bθ = arg min 
+
+> θ
+
+X 
+
+> τ∈T train
+
+X
+
+> a∈A τ
+
+
+
+U aτ − ba − w⊤ 
+
+> a
+
+z(ϕτ )
+
+2
+
++ λsparse 
+
+X
+
+> a∈A π
+
+∥wa∥1.
+
+(2) 
+
+Here, Aτ denotes the strategies evaluated for train-ing task τ . The sparsity penalty encourages the selector to rely on a small number of interpretable feature–strategy associations. At inference time, the learned policy selects the strategy with the highest predicted utility: 
+
+πbθ(ϕτ ) = arg max 
+
+a∈A π
+
+bUbθ(ϕτ , a ). (3) The selected strategy is then used to rewrite the task skills. Thus, the policy chooses which class of op-Stage Tasks Use           
+
+> Corpus profil-ing 88 Static skill features only; without agent outcomes or verifier scores. Runnable pool 86 Tasks passing environment and ver-ifier checks; used for execution. Template cali-bration 28 Compare fixed rewrite families and refine rewrite prompts. Policy adapta-tion 38 Learn the task-conditioned strategy selector from economic feedback. Held-out evalu-ation 20 Balanced test panel; policy and util-ity weights are frozen. Cross-model transfer 86 Frozen-policy evaluation across ad-ditional agent stacks; no feedback to training.
+> Table 2: Data usage and leakage control in the evalua-tion protocol.
+
+erational anchors to preserve, rather than selecting the shortest rewrite. 
+
+4 Experimental Setup 
+
+We evaluate cost-aware skill rewriting on Skills-Bench, where each task provides natural-language instructions, an executable environment, human-written skills, and an automatic verifier. Following Section 3, we rewrite only the skill documents un-der environment/skills/ ; task instructions, en-vironments, and verifiers are kept fixed. This de-sign isolates the effect of skill wording and struc-ture from changes in the task itself, allowing dif-ferences in quality and cost to be attributed to the skill condition rather than task variation. 
+
+4.1 Benchmark and Task Panel 
+
+We separate unlabeled corpus profiling from performance-based evaluation. The full corpus con-tains 88 tasks and is used only to characterize skill structure, including skill length, number of skills, code-token ratio, validation markers, API/tool us-age, formulas, and dominant archetype. This pro-filing stage does not use verifier scores or agent outcomes. For agent execution, we use 86 runnable tasks after excluding tasks with environment or verifier issues. We split this runnable pool into 28 template-calibration tasks, 38 policy-adaptation tasks, and a 20-task held-out evaluation panel. Tem-plate families and utility hyperparameters are se-lected only on the 28 template-calibration tasks. With these choices fixed, the final strategy-selection policy is fit using economic feedback from the template-calibration and policy-adaptation splits, then frozen before held-out and cross-model evalu-ation. The held-out panel is stratified across six task families: data analysis and visualization, scientific computing, software debugging and build tasks, control and optimization, spreadsheet or office workflows, and web or visual interaction. Ap-pendix A reports the full task list, domain labels, failure categories, and operational-section distribu-tion of the human-written skills. 
+
+4.2 Agent Stacks 
+
+Our primary policy-learning and main evaluation setting is Gemini CLI with Gemini 3 Flash Pre-view, chosen for efficient large-scale tool-use eval-uation. To test whether the learned skill-rewrite policy transfers beyond the model used for learn-ing, we evaluate the frozen policy with three ad-ditional stacks: Gemini CLI with Gemini 3 Pro, Codex with GPT-5.4, and Claude Code with Opus 4.6. These settings cover high-throughput tool use, stronger reasoning, code-oriented file editing, and long-context agent execution. Rewritten skill variants are generated once and cached. The same task variants are then evaluated across all agent stacks. We do not retune rewrite prompts, utility weights, or the policy for differ-ent models. Thus, cross-model comparisons mea-sure whether the rewritten skills and frozen strategy policy transfer across agents, rather than whether the method can be specialized separately to each model. Detailed model settings, harness config-urations, and aggregate run costs are reported in Appendix E. 
+
+4.3 Skill Conditions 
+
+We compare original human-written skills (Skills-Bench baseline), fixed rewrite strategies, and policy-selected rewrites. The fixed strategies are API/code anchoring, rule/formula anchoring, and workflow guarding, corresponding to the preservation families in Table 1. Source-native compacting is included only in diagnostic analyses because pilot runs showed weaker validity and quality. Thus, the policy action space is Aπ =
+
+{API/ CODE , RULE /FORMULA , WORKFLOW }.The policy-selected condition uses the task-conditioned strategy learner from Section 3. Utility weights are fixed after template calibration; the selector is then trained on calibration and adaptation tasks and frozen for held-out and cross-model evaluation. 4.4 Metrics and Utility 
+
+We report both task quality and execution econ-omy. A run is considered valid if the environment launches, the agent completes the attempt, the veri-fier executes, and token logs are recorded. Infras-tructure, harness, or verifier-execution failures are excluded from metric averages and counted sepa-rately; agent failures on the task itself remain valid runs and receive the verifier score returned by the task. When multiple trials are available for the same task, agent stack, and skill condition, we first average over valid trials within that task. We then macro-average the resulting task-level values across tasks, so that each task has equal weight. The Valid column reports the number of tasks with at least one valid trial under the corresponding con-dition. For cost, we separately count direct skill tokens and downstream agent tokens. Direct skill tokens are computed from rewritten SKILL.md files, while downstream cost is computed from API input and output token logs collected during agent execution. For each agent stack and task, cost ratios are nor-malized by the original-skill baseline, denoted by 
+
+a = 0 , before macro-averaging across tasks. Let qaτ be the verifier score, Ca 
+
+> skill ,τ
+
+the direct skill-token cost, Ca 
+
+> agent ,τ
+
+the downstream agent-token cost, and Caτ = Ca 
+
+> skill ,τ
+
++ Ca 
+
+> agent ,τ
+
+the total cost. We report quality retention and total cost ratio: 
+
+QR aτ = qaτ
+
+max( q0 
+
+> τ
+
+, ϵ ) , ρaτ = Caτ
+
+max( C0 
+
+> τ
+
+, ϵ ) . (4) We also report direct skill-token and downstream agent-token ratios: 
+
+ras,τ = Ca
+
+> skill ,τ
+
+max( C0skill ,τ , ϵ ) ,raa,τ = Ca
+
+> agent ,τ
+
+max( C0agent ,τ , ϵ ) .
+
+(5) The execution-cost change is ∆aτ = raa,τ − 1,and the execution-overrun penalty is EO aτ =max(0 , ∆aτ ). Thus, ρ < 1 indicates lower total cost, while ∆ > 0 indicates that rewritten skills cause more downstream agent-token usage than the original skills. We define near-lossless dividend as 
+
+NLD aτ = IQR aτ ≥ 1 − δ max(0 , 1 − ρaτ ), (6) which rewards cost savings when quality remains within tolerance δ of the original-skill baseline. For strategy learning, we use the scalar economic utility 
+
+U aτ = QR aτ + λsave (1 − ρaτ )
+
+− λover EO aτ + λnld NLD aτ . (7) The utility rewards quality retention, total cost reduction, and near-lossless savings, while penal-izing downstream execution cost that exceeds the original-skill baseline. The utility is an experimen-tal selection objective for this benchmark rather than a universal measure of skill quality. We choose the utility weights and tolerance δ using only the 28 template-calibration tasks; they are then fixed before policy adaptation, held-out evaluation, and cross-model transfer. Nonlinear quantities such as QR, ρ, EO, NLD, and U are computed from task-level aggregates and then macro-averaged across tasks. Exact values and selection details are given in Appendix F. Full token logs and auxiliary eco-nomic diagnostics are reported in Appendix B. 
+
+5 Results and Analysis 
+
+5.1 Main Quality–Cost Results 
+
+Table 3 shows that policy-selected rewriting im-proves the quality–cost trade-off. In the primary 20-task held-out setting, the frozen policy preserves verifier quality while reducing direct skill-token cost ( rs = 0 .62 ), downstream agent-token cost (ra = 0 .94 ), and total cost ( ρ = 0 .93 ), corre-sponding to 7.0% total-cost and 6.0% downstream-token savings. Under frozen transfer to Gemini Pro, Codex, and Claude stacks, the corresponding re-ductions average 14.7% and 13.7%; we treat these full-pool results as robustness evidence because some tasks were used during calibration or policy adaptation. The fixed strategies explain why skill rewriting cannot be reduced to choosing the shortest text. API/code anchoring gives a strong quality–cost balance, rule/formula anchoring is economical but loses quality when applied broadly, and workflow guarding shortens skills while increasing down-stream execution cost. The selector improves the frontier by choosing among preservation objectives instead of committing to one template. The fixed strategies expose why skill rewriting cannot be reduced to choosing the shortest text. API/code anchoring gives a strong quality–cost bal-ance on the held-out panel, rule/formula anchoring Setting Skill condition Valid Partial Reward QR rs ra ρ EO ∆ NLD 
+
+Held-out evaluation: 20-task balanced panel 
+
+Gemini-CLI + Gemini 3 Flash Original skills 18/20 0.815 0.61 1.00 1.00 1.00 1.00 0.00 0.00 0.00 API/code anchored 17/20 0.792 0.59 0.97 0.60 0.96 0.94 0.00 -0.04 0.04 Rule/formula anchored 19/20 0.555 0.42 0.68 0.65 0.94 0.92 0.00 -0.06 0.00 Workflow-guarded 19/20 0.731 0.55 0.90 0.58 1.14 1.11 0.14 +0.14 0.00 Policy-selected 19/20 0.819 0.63 1.01 0.62 0.94 0.93 0.00 -0.06 0.07 
+
+Frozen-policy transfer: 86 runnable tasks 
+
+Gemini-CLI + Gemini 3 Pro Original skills 72/86 0.792 0.56 1.00 1.00 1.00 1.00 0.00 0.00 0.00 API/code anchored 73/86 0.808 0.58 1.02 0.61 0.92 0.91 0.00 -0.08 0.08 Rule/formula anchored 74/86 0.704 0.46 0.89 0.66 0.89 0.88 0.00 -0.11 0.00 Workflow-guarded 73/86 0.778 0.54 0.98 0.59 1.07 1.04 0.07 +0.07 0.00 Policy-selected 75/86 0.822 0.61 1.04 0.63 0.88 0.87 0.00 -0.12 0.12 
+
+Codex + GPT-5.4 Original skills 74/86 0.835 0.62 1.00 1.00 1.00 1.00 0.00 0.00 0.00 API/code anchored 76/86 0.852 0.65 1.02 0.61 0.89 0.88 0.00 -0.11 0.11 Rule/formula anchored 77/86 0.732 0.50 0.88 0.66 0.86 0.85 0.00 -0.14 0.00 Workflow-guarded 75/86 0.810 0.59 0.97 0.59 1.03 1.00 0.03 +0.03 0.00 Policy-selected 78/86 0.862 0.68 1.03 0.63 0.84 0.83 0.00 -0.16 0.16 
+
+Claude Code + Opus 4.6 Original skills 76/86 0.852 0.65 1.00 1.00 1.00 1.00 0.00 0.00 0.00 API/code anchored 77/86 0.864 0.67 1.01 0.61 0.91 0.90 0.00 -0.09 0.10 Rule/formula anchored 78/86 0.756 0.53 0.89 0.66 0.88 0.87 0.00 -0.12 0.00 Workflow-guarded 78/86 0.832 0.63 0.98 0.59 1.05 1.02 0.05 +0.05 0.00 Policy-selected 79/86 0.874 0.70 1.03 0.63 0.87 0.86 0.00 -0.13 0.14 
+
+Table 3: Main quality–cost results. The first block reports held-out evaluation on the 20-task balanced panel. The remaining blocks report frozen-policy transfer on the 86 runnable tasks. Partial and Reward are task-level macro-averages over valid trials; Valid counts tasks with at least one valid trial. Cost ratios are normalized to the original-skill baseline within each task and agent stack before macro-averaging. ∆ = ra − 1 measures downstream execution-cost change. Bold and underlined values mark the best and second-best values within each block. 
+
+is economical but loses substantial quality when applied broadly, and workflow guarding shortens skills while increasing downstream execution cost. The selector improves the frontier by choosing among preservation objectives instead of commit-ting to one template. Cross-model results show the same qualitative pattern under different agent stacks: policy-selected rewrites consistently reduce normalized total cost while maintaining or improv-ing mean verifier scores. 
+
+5.2 Execution-Cost Trade-offs of Fixed Templates 
+
+Figure 3 decomposes fixed-strategy costs in the pri-mary held-out setting. API/code anchoring reduces both direct skill tokens and downstream agent to-kens, whereas workflow guarding reduces skill length but raises downstream usage to 1.14 × the original-skill baseline. This illustrates why skill rewriting cannot be evaluated by prompt length alone: shorter skills can still make the agent spend more tokens during execution. 
+
+5.3 What Does the Policy Learn? 
+
+We analyze which preservation strategies are fa-vored by different task and skill structures. For each held-out group, Figure 4 reports the mean Original API/code Rule/formula Workflow   
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 0.8
+> 1.0
+> 1.2
+> Cost ratio vs. original
+> baseline 1.00 0.94 0.92
+> 1.11
+> cost transfer
+
+Fixed rewrites shift cost differently   
+
+> Total cost Skill tokens Agent tokens
+
+Figure 3: Cost decomposition for fixed rewrite strategies in the held-out setting. Bars show direct skill-token ratio rs and downstream agent-token ratio ra; diamonds show total cost ratio ρ. Workflow guarding reduces skill length but increases downstream execution cost. 
+
+utility gain ∆U = U a − U 0 relative to original skills. The left panel groups tasks by skill-structure features, while the right panel groups them by task family; these groups are not mutually exclusive. The heatmaps show that strategy preferences are structured rather than random. API/code anchoring is most useful for long, code-heavy, and API/tool-using skills; rule/formula anchoring is strongest when exact definitions, schemas, units, or scientific conventions dominate; and workflow guarding is API/code                                     
+
+> Rule/formula
+> Workflow
+> Policy-selected
+> Long skill set
+> High code ratio
+> API/tool usage
+> Validation-heavy
+> Constraint-heavy
+> Rule/formula-heavy
+> +0.08 -0.01 +0.03 +0.09
+> +0.10 -0.03 +0.00 +0.09
+> +0.11 -0.01 -0.02 +0.10
+> +0.02 +0.01 +0.08 +0.08
+> +0.03 +0.06 +0.04 +0.06
+> -0.02 +0.09 +0.03 +0.08
+> (a) Skill-structure features
+> −0.06
+> −0.04
+> −0.02
+> 0.00
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> 0.10
+> 0.12
+> Mean utility gain Δ U vs. original skills API/code
+> Rule/formula
+> Workflow
+> Policy-selected
+> Data analysis /
+> visualization
+> Scientific
+> computing
+> Software debugging /
+> build
+> Control /
+> optimization
+> Spreadsheet /
+> office
+> Web / visual
+> interaction
+> +0.03 +0.02 +0.07 +0.07
+> -0.01 +0.09 +0.03 +0.08
+> +0.09 -0.03 +0.00 +0.08
+> +0.02 +0.08 +0.04 +0.07
+> +0.04 +0.02 +0.06 +0.06
+> +0.03 +0.00 +0.06 +0.06
+> (b) Task families
+> −0.06
+> −0.04
+> −0.02
+> 0.00
+> 0.02
+> 0.04
+> 0.06
+> 0.08
+> 0.10
+> 0.12
+> Mean utility gain Δ U vs. original skills
+
+Figure 4: Strategy preferences by skill structure and task family. Cells show mean utility gain ∆U = U a −
+
+U 0. Black boxes mark the best fixed strategy in each row. The policy-selected column evaluates the frozen selector, not hindsight selection, so it may be slightly below the best fixed strategy for a group. 
+
+useful only when procedural checks outweigh its tendency to lengthen downstream trajectories. The policy-selected column tests whether these prefer-ences can be captured by a frozen selector rather than by choosing the best strategy in hindsight. Its positive utility across groups supports the main claim: economically effective skill rewriting de-pends on preserving task-relevant procedural an-chors, not merely compressing skill text. 
+
+5.4 Ablations and Robustness 
+
+We ablate the components that connect rewriting to economic strategy learning. Table 4 examines which components of the policy objective are re-sponsible for the quality–cost trade-off. The abla-tion block uses the primary held-out Gemini Flash setting. A quality-only selector obtains slightly higher verifier score, but loses the cost advantage because it allows downstream execution to increase. Removing the overrun penalty has a similar effect: direct skill cost is reduced, but the agent spends more tokens after the prompt. Removing the near-
+
+Variant / setting Part. QR ρ ∆ NLD 
+
+Ablations on primary stack 
+
+Full policy 0.819 1.01 0.93 -0.06 0.07 
+
+Quality-only 0.826 1.02 1.03 +0.08 0.01 No overrun penalty 0.817 1.00 0.99 +0.03 0.02 No NLD bonus 0.802 0.98 0.91 -0.07 0.03 No anchor repair 0.776 0.95 0.92 -0.05 0.02 Fixed API/code 0.792 0.97 0.94 -0.04 0.04 
+
+Frozen-policy transfer 
+
+Gemini Flash 0.819 1.01 0.93 -0.06 0.07 Gemini Pro 0.822 1.04 0.87 -0.12 0.12 Codex + GPT-5.4 0.862 1.03 0.83 -0.16 0.16 
+
+Claude + Opus 4.6 0.874 1.03 0.86 -0.13 0.14 
+
+Table 4: Ablations and frozen-policy robustness. The ablation block is evaluated on the primary held-out Gem-ini Flash setting. The transfer block reports the policy-selected rows from Table 3. Part. is verifier partial score; QR is quality retention; ρ is total cost ratio; ∆ = ra − 1
+
+is downstream execution-cost change; and NLD is near-lossless dividend. 
+
+lossless dividend makes the selector more aggres-sively cost-seeking and slightly reduces quality re-tention. Removing anchor repair causes the largest quality drop, confirming that protected implemen-tation and rule anchors are necessary for reliable rewriting. The transfer block reports the policy-selected rows from Table 3. The same frozen policy reduces total cost across all four reported settings, with ρ
+
+ranging from 0.83 to 0.93 and no positive down-stream overrun. This suggests that the selector captures reusable structure in skill rewriting rather than a behavior tied to one agent stack. 
+
+6 Conclusion 
+
+We studied skill rewriting as cost-aware operational knowledge preservation. Instead of treating skills as prompts to be shortened, we asked which pro-cedural anchors should be retained because they shape both task quality and downstream execu-tion. Our framework profiles task-skill structure, rewrites skills with preservation-oriented strategies, evaluates them under fixed task conditions, and distills a task-conditioned selector. Experiments on SkillsBench show that fixed strategies expose complementary quality–cost trade-offs, and that a frozen selector can reduce execution cost in held-out and cross-stack evaluations while preserving verifier quality. These results suggest that effective skill design is not prompt compression, but cost-aware knowledge engineering for agent execution. Limitations 
+
+This work studies cost-aware rewriting of textual agent skill documents under controlled benchmark conditions. We keep task instructions, execution en-vironments, and verifiers fixed, which allows us to isolate the effect of skill rewriting, but also means that the experiments do not cover all forms of agent knowledge, such as dynamically retrieved re-sources or continuously updated deployment-time skills. Our cost analysis focuses on token-based mea-surements, including direct skill-token cost and downstream agent-token cost. This provides a clear and reproducible view of execution economy, but real deployment cost may also depend on latency, provider-specific pricing, caching, hardware, and human review. Future work can extend the same evaluation framework to these broader cost factors and to additional agent environments. 
+
+Ethical Considerations 
+
+This work studies the rewriting of agent skill docu-ments for cost-aware execution. The experiments are conducted on benchmark tasks with executable environments and automatic verifiers, and do not involve human subjects, private user data, or per-sonally identifiable information. We rewrite only the skill documents while keeping task instructions, environments, and verifiers fixed, which limits the scope of the intervention to the procedural knowl-edge supplied to the agent. A potential risk of skill rewriting is that compres-sion or restructuring may remove safety-relevant constraints, validation checks, failure-handling in-structions, or “do not” rules that are important for reliable agent behavior. This risk is directly related to the main argument of the paper: effective rewrit-ing should preserve task-relevant operational an-chors rather than merely shorten text. Our rewriting protocol therefore includes preservation-oriented strategies and post-generation audits for code/API terms, validation rules, code-block retention, and missing-anchor repair. Nevertheless, these checks are lightweight and should not be treated as a sub-stitute for human review in safety-critical, legal, medical, financial, or high-stakes deployment set-tings. Another consideration is that reducing agent exe-cution cost can make agent systems easier to deploy at scale. While lower token usage may reduce com-putational expense and environmental footprint, it may also encourage broader use of automated agents in settings where reliability, accountabil-ity, or human oversight is insufficient. Our results should therefore be interpreted as evidence about quality–cost trade-offs in controlled benchmark set-tings, not as a blanket recommendation to replace careful skill design, monitoring, or domain-specific validation. Finally, the work uses existing benchmark ar-tifacts and commercial or research agent stacks for evaluation. Any release of rewritten skill vari-ants, logs, or tooling should respect the licenses and terms of the underlying benchmark, model providers, and agent frameworks. We encourage reporting token usage, runtime, and failure cases alongside quality metrics so that future compar-isons of agent skills reflect both performance and resource costs. 
+
+References                  
+
+> Agent Skills. 2026. Agent skills overview. https: //agentskills.io/home . Accessed: 2026-05-17. Anthropic. 2025. Equipping agents for the real world with agent skills. https://www.anthropic.com/ engineering/equipping-agents-for-the-rea l-world-with-agent-skills . Accessed: 2026-05-17. Lingjiao Chen, Matei Zaharia, and James Zou. 2023a. FrugalGPT: How to use large language models while reducing cost and improving performance. arXiv preprint arXiv:2305.05176 .Yinda Chen, Wei Huang, Shenglong Zhou, Qi Chen, and Zhiwei Xiong. 2023b. Self-supervised neuron seg-mentation with multi-agent reinforcement learning. In Proceedings of the Thirty-Second International Joint Conference on Artificial Intelligence , pages 609– 617. International Joint Conferences on Artificial In-telligence Organization. Yinda Chen, Che Liu, Xiaoyu Liu, Rossella Arcucci, and Zhiwei Xiong. 2024. BIMCV-R: A landmark dataset for 3d CT text-image retrieval. In Medical Image Computing and Computer Assisted Interven-tion – MICCAI 2024 , pages 124–134. Springer. Chrisantha Fernando, Dylan Sunil Banarse, Hen-ryk Michalewski, Simon Osindero, and Tim Rockt"aschel. 2023. Promptbreeder: Self-referential self-improvement via prompt evolution. Submitted to ICLR 2024. Tao Ge, Jing Hu, Lei Wang, Xun Wang, Si-Qing Chen, and Furu Wei. 2024. In-context autoencoder for con-text compression in a large language model. In Inter-national Conference on Learning Representations .
+
+Huiqiang Jiang, Qianhui Wu, Chin-Yew Lin, Yuqing Yang, and Lili Qiu. 2023. LLMLingua: Compressing prompts for accelerated inference of large language models. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Process-ing , pages 13358–13376, Singapore. Association for Computational Linguistics. Huiqiang Jiang, Qianhui Wu, Xufang Luo, Dong-sheng Li, Chin-Yew Lin, Yuqing Yang, and Lili Qiu. 2024. LongLLMLingua: Accelerating and enhanc-ing LLMs in long context scenarios via prompt com-pression. In Proceedings of the 62nd Annual Meet-ing of the Association for Computational Linguistics ,pages 1658–1677, Bangkok, Thailand. Association for Computational Linguistics. Yanna Jiang, Delong Li, Haiyu Deng, Baihe Ma, Xu Wang, Qin Wang, and Guangsheng Yu. 2026. SoK: Agentic skills – beyond tool use in LLM agents. 
+
+Preprint , arXiv:2602.20867. Carlos E. Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir Press, and Karthik Narasimhan. 2024. SWE-bench: Can language mod-els resolve real-world github issues? In International Conference on Learning Representations .Omar Khattab, Arnav Singhvi, Paridhi Maheshwari, Zhiyuan Zhang, Keshav Santhanam, Sri Vard-hamanan A, Saiful Haq, Ashutosh Sharma, Thomas T. Joshi, Hanna Moazam, Heather Miller, Matei Za-haria, and Christopher Potts. 2024. DSPy: Compil-ing declarative language model calls into state-of-the-art pipelines. In International Conference on Learning Representations .Minghao Li, Yingxiu Zhao, Bowen Yu, Feifan Song, Hangyu Li, Haiyang Yu, Zhoujun Li, Fei Huang, and Yongbin Li. 2023a. API-bank: A comprehensive benchmark for tool-augmented LLMs. In Proceed-ings of the 2023 Conference on Empirical Methods in Natural Language Processing , pages 3102–3116, Singapore. Association for Computational Linguis-tics. Xiangyi Li, Wenbo Chen, Yimin Liu, Shenghan Zheng, Xiaokun Chen, Yifeng He, Yubo Li, Bingran You, Haotian Shen, Jiankai Sun, Shuyi Wang, Qunhong Zeng, Di Wang, Xuandong Zhao, Yuanli Wang, Roey Ben Chaim, Zonglin Di, Yipeng Gao, Junwei He, and 21 others. 2026. SkillsBench: Benchmarking how well agent skills work across diverse tasks. Preprint ,arXiv:2602.12670. Yucheng Li, Bo Dong, Frank Guerin, and Chenghua Lin. 2023b. Compressing context to enhance inference efficiency of large language models. In Proceed-ings of the 2023 Conference on Empirical Methods in Natural Language Processing , pages 6342–6353, Singapore. Association for Computational Linguis-tics. Zongqian Li, Yinhong Liu, Yixuan Su, and Nigel Col-lier. 2025. Prompt compression for large language models: A survey. In Proceedings of the 2025 Con-ference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Hu-man Language Technologies , pages 7182–7195, Al-buquerque, New Mexico. Association for Computa-tional Linguistics. Xiao Liu, Hao Yu, Hanchen Zhang, Yifan Xu, Xuanyu Lei, Hanyu Lai, Yu Gu, Hangliang Ding, Kaiwen Men, Kejuan Yang, Shudan Zhang, Xiang Deng, Ao-han Zeng, Zhengxiao Du, Chenhui Zhang, Sheng Shen, Tianjun Zhang, Yu Su, Huan Sun, and 3 others. 2024. AgentBench: Evaluating LLMs as agents. In 
+
+International Conference on Learning Representa-tions .Yujian Liu, Jiabao Ji, Li An, Tommi Jaakkola, Yang Zhang, and Shiyu Chang. 2026. How well do agentic skills work in the wild: Benchmarking LLM skill us-age in realistic settings. Preprint , arXiv:2604.04323. Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E. Gonzalez, M. Waleed Kadous, and Ion Stoica. 2025. RouteLLM: Learning to route LLMs from preference data. In International Conference on Learning Representations .OpenAI. 2026. Skills in chatgpt. https://help.ope nai.com/en/articles/20001066-skills-in-c hatgpt . Accessed: 2026-05-17. Zhuoshi Pan, Qianhui Wu, Huiqiang Jiang, Menglin Xia, Xufang Luo, Jue Zhang, Qingwei Lin, Victor Rühle, Yuqing Yang, Chin-Yew Lin, H. Vicky Zhao, Lili Qiu, and Dongmei Zhang. 2024. LLMLingua-2: Data dis-tillation for efficient and faithful task-agnostic prompt compression. In Findings of the Association for Com-putational Linguistics: ACL 2024 , pages 963–981, Bangkok, Thailand. Association for Computational Linguistics. Reid Pryzant, Dan Iter, Jerry Li, Yin Lee, Chenguang Zhu, and Michael Zeng. 2023. Automatic prompt op-timization with “gradient descent” and beam search. In Proceedings of the 2023 Conference on Empiri-cal Methods in Natural Language Processing , pages 7957–7968, Singapore. Association for Computa-tional Linguistics. Yujia Qin, Shihao Liang, Yining Ye, Kunlun Zhu, Lan Yan, Yaxi Lu, Yankai Lin, Xin Cong, Xiangru Tang, Bill Qian, Sihan Zhao, Lauren Hong, Runchu Tian, Ruobing Xie, Jie Zhou, Mark Gerstein, Dahai Li, Zhiyuan Liu, and Maosong Sun. 2024. ToolLLM: Facilitating large language models to master 16000+ real-world APIs. In International Conference on Learning Representations .Timo Schick, Jane Dwivedi-Yu, Roberto Dessi, Roberta Raileanu, Maria Lomeli, Eric Hambro, Luke Zettle-moyer, Nicola Cancedda, and Thomas Scialom. 2023. Toolformer: Language models can teach themselves to use tools. In Advances in Neural Information Pro-cessing Systems , volume 36. Reza Shirkavand, Shangqian Gao, Peiran Yu, and Heng Huang. 2025. Cost-aware contrastive routing for LLMs. arXiv preprint arXiv:2508.12491 .Guanzhi Wang, Yuqi Xie, Yunfan Jiang, Ajay Man-dlekar, Chaowei Xiao, Yuke Zhu, Linxi Fan, and Anima Anandkumar. 2024. Voyager: An open-ended embodied agent with large language models. Trans-actions on Machine Learning Research .Yuan-An Xiao, Pengfei Gao, Chao Peng, and Yingfei Xiong. 2026. Reducing cost of LLM agents with trajectory reduction. Proceedings of the ACM on Software Engineering , 3(FSE). Renjun Xu and Yang Yan. 2026. Agent skills for large language models: Architecture, acquisition, security, and the path forward. arXiv preprint arXiv:2602.12430 . Accepted by Agent Skills ’26 Workshop at ACM Conference on AI and Agentic Systems 2026. John Yang, Carlos E. Jimenez, Alexander Wettig, Kilian Lieret, Shunyu Yao, Karthik Narasimhan, and Ofir Press. 2024. SWE-agent: Agent-computer interfaces enable automated software engineering. In Advances in Neural Information Processing Systems .Shunyu Yao, Noah Shinn, Pedram Razavi, and Karthik Narasimhan. 2025. τ -bench: A benchmark for tool-agent-user interaction in real-world domains. In In-ternational Conference on Learning Representations .Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023. ReAct: Synergizing reasoning and acting in language models. In International Conference on Learning Representations .Zhenlong Yuan, Jiakai Cao, Zhaoqi Wang, and Zhaoxin Li. 2024. TSAR-MVS: Textureless-aware segmen-tation and correlative refinement guided multi-view stereo. Pattern Recognition , 154:110565. Zhenlong Yuan, Jinguo Luo, Fei Shen, Zhaoxin Li, Cong Liu, Tianlu Mao, and Zhaoqi Wang. 2025. DVP-MVS: Synergize depth-edge and visibility prior for multi-view stereo. In Proceedings of the AAAI Conference on Artificial Intelligence , volume 39, pages 9743–9752. Zhenlong Yuan, Chengxuan Qian, Jing Tang, Rui Chen, Zijian Song, Lei Sun, Xiangxiang Chu, Yujun Cai, Dapeng Zhang, and Shuo Li. 2026a. Autodrive-R 2:Incentivizing reasoning and self-reflection capacity for VLA model in autonomous driving. In The Four-teenth International Conference on Learning Repre-sentations .Zhenlong Yuan, Xiangyan Qu, Chengxuan Qian, Rui Chen, Jing Tang, Lei Sun, Xiangxiang Chu, Dapeng Zhang, Yiwei Wang, Yujun Cai, and Shuo Li. 2026b. Video-STAR: Reinforcing open-vocabulary action recognition with tools. In The Fourteenth Interna-tional Conference on Learning Representations .Murong Yue, Jie Zhao, Min Zhang, Liang Du, and Ziyu Yao. 2024. Large language model cascades with mixture of thought representations for cost-efficient reasoning. In International Conference on Learning Representations .Shanshan Zhong, Yi Lu, Jingjie Ning, Yibing Wan, Li-han Feng, Yuyi Ao, Leonardo F. R. Ribeiro, Markus Dreyer, Sean Ammirati, and Chenyan Xiong. 2026. SkillLearnBench: Benchmarking continual learning methods for agent skill generation on real-world tasks. Preprint , arXiv:2604.20087. Shuyan Zhou, Frank F. Xu, Hao Zhu, Xuhui Zhou, Robert Lo, Abishek Sridhar, Xianyi Cheng, Tianyue Ou, Yonatan Bisk, Daniel Fried, Uri Alon, and Gra-ham Neubig. 2024. WebArena: A realistic web envi-ronment for building autonomous agents. In Interna-tional Conference on Learning Representations .Yingli Zhou, Wang Shu, Yaodong Su, Wenchuan Du, Yixiang Fang, and Xuemin Lin. 2026. A comprehen-sive survey on agent skills: Taxonomy, techniques, and applications. Preprint , arXiv:2605.07358. 
+
+A Task Splits and Evaluation Protocol 
+
+We separate corpus-level skill profiling from performance-based model selection and final eval-uation. The full SkillsBench corpus contains 88 tasks with human-written skills. We use all 88 tasks only for unlabeled structural profiling, such as counting skill files, section types, token lengths, code density, validation cues, and constraint cues. No verifier score or agent outcome from the held-out evaluation split is used during this profiling step. For execution-based experiments, we use the 86 tasks whose environments and verifiers are runnable under our evaluation harness. These tasks are partitioned into three roles. First, 28 tasks are used for template calibration, where we estimate the behavior of fixed rewrite strategies and remove clearly unstable templates. Second, 38 tasks are used for policy learning and adaptation, where the strategy selector is fit from task/skill features and economic utility. Third, 20 tasks are reserved as the main held-out evaluation panel. The learned policy is frozen before being applied to this panel. Cross-agent robustness experiments use the 86 runnable tasks, but only after the rewrite policy has been fixed. These runs therefore test transfer across agent/model stacks rather than providing additional data for policy fitting. We report them separately from the 20-task held-out comparison. We report the held-out panel in Table 5. The columns describe only information available before evaluation: Input   
+
+> artifacts
+> When
+> to use Output
+> contract
+> Workflow Best
+> practices
+> Vali-
+> dation
+> Con-
+> straints
+> Exam-
+> ples
+> Depen-
+> dencies
+> Refer-
+> ence
+> API /
+> tools
+> Pit-
+> falls
+> Trouble-
+> shooting
+> 0
+> 10
+> 20
+> 30
+> 40
+> 50
+> 60
+> % of skill documents
+
+Operational Sections in Human-Written Skill Documents           
+
+> 94 (41%) 91 (39%)
+> 72 (31%)
+> 109 (47%)
+> 66 (29%) 71 (31%) 63 (27%)
+> 87 (38%)
+> 62 (27%) 60 (26%) 49 (21%)
+> 29 (13%) 29 (13%)
+> Usage context Procedural guidance Validation & constraints Implementation anchors Reference & support
+
+Figure 5: Distribution of operational section types in human-written SkillsBench skills. Bars show the percentage of 231 SKILL.md files containing each normalized section type, with raw counts annotated. Section types are grouped into usage context, procedural guidance, validation and constraints, implementation anchors, and reference/support material. The breadth of these sections motivates task-conditioned preservation rather than uniform compression. 
+
+• #Skills : Number of skill files provided with the task. • Skill Tok. : Total token count of the original human-written skills. • Code : Fraction of skill tokens appearing in code blocks. • Val. : Whether the skill set contains explicit validation or checking guidance. • Constr. : Whether the skill set contains ex-plicit constraint or rule guidance. • Policy selection signal : Structural signal used by the frozen policy to select a rewrite behav-ior. These signals are computed from task and skill features, not from held-out execution outcomes. 
+
+B Full Economic Metrics 
+
+This appendix gives the complete set of economic diagnostics used in our analysis. For a task τ and skill condition a, let qaτ denote the verifier par-tial score, baτ ∈ { 0, 1} denote the binary reward when available, Ca 
+
+> skill ,τ
+
+denote direct skill-token cost, Ca 
+
+> agent ,τ
+
+denote downstream agent-token cost, and Caτ = Ca 
+
+> skill ,τ
+
++ Ca 
+
+> agent ,τ
+
+denote total token cost. The original human-written skill condition is denoted by a = 0 . All ratios are computed relative to the original-skill baseline for the same task and agent stack before macro-averaging across tasks. 
+
+Layer 1: quality. We report both verifier partial score qaτ and binary reward baτ when the bench-mark exposes a full-success signal. The main quality-normalized quantity is quality retention, 
+
+QR aτ = qaτ / max( q0 
+
+> τ
+
+, ϵ ), which allows us to dis-tinguish harmless cost reductions from rewrites that save tokens by degrading task performance. We also use the one-sided quality loss QL aτ =max(0 , 1 − QR aτ ) as a diagnostic in ablations. 
+
+Layer 2: token accounting. The direct skill-token ratio ras,τ and downstream agent-token ra-tio raa,τ decompose total cost into the prompt-side cost of providing skills and the execution-side cost incurred after the agent begins acting. The total cost ratio ρaτ = Caτ / max( C0 
+
+> τ
+
+, ϵ ) is the primary cost metric. This decomposition is important be-cause a rewrite can reduce Cskill while increasing 
+
+Cagent , which means apparent prompt savings may not translate into a cheaper agent run. 
+
+Layer 3: economic diagnostics. Beyond the met-rics reported in the main text, we use the following diagnostics: 
+
+SCD aτ = 1 − ras,τ , (8) 
+
+DI aτ = raa,τ − ras,τ , (9) 
+
+TTR aτ = raa,τ 
+
+max( ras,τ , ϵ ) , (10) 
+
+QCF aτ = QR aτ − ρaτ , (11) 
+
+BPT aτ = QR aτ
+
+max( ρaτ , ϵ ) , (12) 
+
+GRE aτ = I[QR aτ ≥ 1 − δ] baτ
+
+max( ρaτ , ϵ ) . (13) Here, SCD is the skill-compression dividend: pos-itive values indicate that the rewritten skills are shorter than the original skills. DI is downstream inflation: positive values indicate that downstream execution cost falls less than direct skill cost, or increases despite shorter skills. TTR is the token-transfer ratio; values above 1 indicate that prompt-side compression is partially transferred into execution-side cost. QCF is a quality–cost frontier score, positive only when quality retention exceeds total cost ratio. BPT measures quality re-tained per unit total cost. GRE is a stricter reward-Task Domain #Skills Skill Tok. Code Val. Rule Policy selection signal 
+
+adaptive-cruise-control Control / optimization 5 1681 0.606 Y N Preserve implementation anchors and simulation checks civ6-adjacency-optimiz er Control / optimization 4 3246 0.331 Y Y Preserve API calls, grid rules, and validation cues earthquake-plate-calcul ation Scientific computing 1 1115 0.504 N Y Preserve formulas, units, and threshold rules econ-detrending-correla tion Data analysis / ML 1 788 0.248 N N Preserve statistical transformation logic energy-ac-optimal-pow er-flow Control / optimization 3 2564 0.396 Y Y Preserve solver/API anchors and feasibility checks energy-market-pricing Control / optimization 4 3034 0.538 N Y Preserve market equations and implementation conventions fix-erlang-ssh-cve Code / debugging / build 6 8415 0.550 Y Y Preserve code references, commands, and patch constraints flood-risk-analysis Data analysis / ML 3 1766 0.311 N Y Preserve risk formulas and decision thresholds glm-lake-mendota Scientific computing 3 1491 0.382 N N Preserve domain equations and parameter conventions grid-dispatch-operator Control / optimization 3 2206 0.558 N Y Preserve dispatch APIs and operational constraints invoice-fraud-detection Spreadsheet / office 3 3585 0.419 Y Y Preserve spreadsheet operations and audit checks lab-unit-harmonization Data analysis / ML 1 1805 0.252 N N Preserve normalization rules and unit mappings mars-clouds-clustering Scientific computing 3 1460 0.621 N N Preserve scientific feature definitions and formulas pptx-reference-formatti ng Spreadsheet / office 1 4473 0.126 N N Preserve file-format operations and layout anchors r2r-mpc-control Control / optimization 4 872 0.369 N N Preserve controller implementation anchors react-performance-debu gging Web / visualization 2 1836 0.165 N Y Preserve debugging workflow and constraint cues sales-pivot-analysis Spreadsheet / office 2 2299 0.565 N Y Preserve spreadsheet APIs and aggregation constraints simpo-code-reproductio nData analysis / ML 2 1454 0.517 N Y Preserve algorithmic objective and formula constraints threejs-structure-parser Web / visualization 2 1085 0.462 N Y Preserve parser APIs and output constraints travel-planning Data analysis / ML 6 476 0.212 N N Preserve compact decision rules over workflow detail 
+
+Table 5: Main held-out evaluation panel. All structural features are computed from the original human-written skills before rewriting. The policy selection signal summarizes the pre-execution evidence used by the frozen rewrite policy; it is not chosen from held-out outcomes. 
+
+based economy score, used only when quality is near-lossless. Table 6 illustrates why skill rewriting cannot be evaluated by prompt length alone. All rewrit-ten conditions reduce direct skill tokens, but their downstream behavior differs sharply. Workflow-guarded rewrites have the largest skill-compression dividend, yet they also have the highest down-stream inflation and positive execution overrun, leading to a worse total cost ratio. Rule/formula anchoring is economical but loses too much quality on implementation-sensitive tasks. API/code an-choring gives a stronger quality–cost balance, but still transfers part of the saved prompt cost into downstream execution. The policy-selected condi-tion is not the shortest condition; instead, it gives the best frontier score and bang-per-token by choos-ing which operational anchors to preserve for each task. 
+
+C Held-out Quality-Preserving Cost Savings 
+
+We report full held-out results and failure clas-sifications for the clean main evaluation. Each task is evaluated under five skill conditions: orig-inal human-written skills, API/code anchoring, rule/formula anchoring, workflow guarding, and the frozen policy-selected rewrite. Table 7 reports Condition Partial QR ρ rs/r a SCD DI EO TTR QCF BPT NLD                                                               
+
+> Original skills 0.815 1.00 1.00 1.00 / 1.00 0.00 0.00 0.00 1.00 0.00 1.00 0.00 API/code anchored 0.792 0.97 0.94 0.60 / 0.96 0.40 0.36 0.00 1.60 0.03 1.03 0.04 Rule/formula anchored 0.555 0.68 0.92 0.65 / 0.94 0.35 0.29 0.00 1.45 -0.24 0.74 0.00 Workflow-guarded 0.731 0.90 1.11 0.58 / 1.14 0.42 0.56 0.14 1.97 -0.21 0.81 0.00 Policy-selected 0.819 1.01 0.93 0.62 / 0.94 0.38 0.32 0.00 1.52 0.08 1.09 0.07
+> Table 6: Full economic diagnostics on the primary held-out evaluation stack. Partial is mean verifier partial score. QR is quality retention. ρis total cost ratio. rs/r areports direct skill-token and downstream agent-token ratios. SCD is skill-compression dividend, DI is downstream inflation, EO is execution overrun, TTR is token-transfer ratio, QCF is quality–cost frontier score, BPT is bang-per-token, and NLD is near-lossless dividend. Nonlinear quantities are computed per task and then macro-averaged.
+
+the aggregate token counts for the primary 20-task held-out Gemini Flash evaluation. These aggregate counts are a held-out-only diagnostic and should be distinguished from the four-setting average re-ported in the abstract. On this held-out panel, policy-selected rewriting reduces direct skill to-kens from 45.7K to 28.2K, downstream API to-kens from 720.1K to 680.2K, and total tokens from 765.8K to 708.4K. This corresponds to a 38.3% direct skill-token reduction, a 5.5% downstream-token reduction, and a 7.5% aggregate total-token reduction while slightly improving mean partial score. The policy-selected condition obtains the highest mean partial score while reducing aggre-gate total tokens relative to the original-skill base-line. Fixed templates show less balanced behavior: rule/formula anchoring has low aggregate cost but much lower mean partial score, while workflow guarding increases downstream API usage despite shorter skills. Figure 6 focuses on the quality-preserving regime. We include scored held-out tasks for which the policy-selected rewrite does not reduce verifier partial score relative to the origi-nal skills. Bars show total cost ratio, where values below 1 indicate lower total token cost than the original-skill baseline. The blue line shows the quality gain qπ − q0. This diagnostic is computed per task and is not used for headline aggregate results. Most tasks in this subset fall below the baseline cost line, showing that the policy often converts skill rewriting into genuine total-cost sav-ings rather than merely shorter prompts. The few above-baseline cases are informative: they indicate settings where quality is preserved or improved, but downstream execution still becomes more ex-pensive. This is consistent with our cost-transfer argument and motivates reporting total execution cost rather than skill length alone. 
+
+D Qualitative Case Studies 
+
+We provide representative case studies comparing original human-written skills with policy-selected rewrites. The goal of these examples is not to claim that individual cases prove the aggregate result, but to show the mechanism behind the quantitative trends: effective rewrites preserve task-relevant op-erational anchors, while removing background ex-position that does not help execution. For each case, we report verifier outcomes and token costs from the clean main evaluation. The skill excerpts are shortened for readability; ellipses indicate omitted lines from the same skill file. 
+
+Quality and cost improvements. The first two cases show that policy-selected rewrites can im-prove both task quality and total cost. In adaptive-cruise-control , the original skills contain the nec-essary PID and vehicle-control knowledge, but the relevant control interface, clamping behavior, and validation targets are distributed across explanatory text. The policy rewrite makes these operational anchors explicit, yielding a full verifier pass and reducing total cost to 0.812 of the baseline. In civ6-adjacency-optimizer , the policy rewrite preserves the same high-level three-stage search strategy but exposes the executable pieces: candidate pruning, scoring, anchor search, and final constraint valida-tion. This changes the outcome from one failed test to a full pass while reducing total cost by 8.2%. 
+
+Near-lossless compression. The office-document cases illustrate that large prompt reductions are possible when the rewrite pre-serves the task-relevant subset of a broad skill manual. For invoice-fraud-detection , the original spreadsheet skill includes extensive financial-modeling conventions, while the task mainly requires extraction, matching, spreadsheet I/O, and validation. The policy rewrite keeps spreadsheet Skill condition Mean partial Skill tok. API tok. Total tok. ra ρagg 
+
+Original skills 0.8147 45,651 720,139 765,790 1.00 1.00 API/code anchored 0.7921 27,277 694,601 721,878 0.96 0.94 Rule/formula anchored 0.5546 29,632 675,122 704,754 0.94 0.92 
+
+Workflow-guarded 0.7307 26,688 824,274 850,962 1.14 1.11 Policy-selected 0.8188 28,160 680,213 708,373 0.94 0.93 
+
+Table 7: Held-out-only aggregate token summary on the 20-task Gemini Flash panel. ρagg is computed from aggregate total tokens in this table and is therefore a held-out diagnostic; the headline 12.8% total-cost reduction is computed by averaging the four policy-selected settings in Table 3. invoice                
+
+> fraud
+> detection
+> reference
+> formatting
+> adaptive
+> cruise
+> control
+> civic
+> vacancy
+> optimizer
+> econ
+> detrending
+> correlation
+> lab
+> harmonization
+> flood
+> analysis
+> risk
+> react
+> performance
+> debugging
+> cloud
+> clustering
+> earthquake
+> plate
+> calculation
+> sales
+> pivot
+> analysis
+> code
+> reproduction
+> energy
+> market
+> pricing
+> 1.0
+> 1.5
+> Total cost ratio
+> Policy-selected rewrites under quality-preserving evaluation
+> 0.61
+> 0.78 0.81 0.90 0.92 0.94 0.95 0.96 0.98 1.01 1.06 1.16
+> 1.28
+> Original total cost Policy total cost ratio Quality gain qπ−q0
+> 0.0
+> 0.5
+> 1.0
+> Quality gain  qπ − q0
+
+Figure 6: Quality-preserving cost savings of policy-selected rewrites. We include scored held-out tasks where the policy-selected rewrite does not reduce verifier partial score relative to the original-skill baseline. Bars show total cost ratio; values below 1 indicate total token savings. The blue line shows quality gain qπ − q0.
+
+APIs and audit-relevant checks, preserving full quality while reducing total cost by 38.7%. For 
+
+pptx-reference-formatting , the original PPTX skill is a general manual for creation, editing, design, and XML manipulation. The rewrite keeps only the OOXML tools, file-structure anchors, formatting operations, and thumbnail validation needed for the reference-formatting task, reducing skill tokens to 10.7% of the original while retaining full verifier quality. 
+
+Cost transfer and failure cases. The final two cases explain why our evaluation uses total cost rather than skill length alone. In sales-pivot-analysis , the policy rewrite keeps the crucial pivot-table anchors, including cacheId=0 , cache defini-tions, and field mapping. This improves partial score from 0.522 to 0.565, but downstream API tokens increase by 10.9%, producing a total cost ra-tio of 1.076. This is a clean cost-transfer case: the rewritten skill is shorter, but the agent spends more execution tokens resolving the task. In r2r-mpc-control , the policy rewrite preserves the Riccati recursion and MPC loop, but compresses mathe-matical context that appears necessary for stable control design. Quality drops from 1.000 to 0.667 and total cost rises to 1.114 of baseline. This failure supports our central framing: skill rewriting should be learned as cost-aware operational knowledge preservation, not as generic summarization. 
+
+E Agent Stacks, Runtime, and Cost 
+
+We evaluate the frozen rewrite policy across four agent/model stacks. For runtime and provider-cost accounting, we summarize the original and policy-selected conditions on the 86 runnable SkillsBench tasks. Fixed-strategy results are reported in Table 3, while this appendix table focuses on raw token volume, runtime, and monetary cost. All rewritten skill variants are generated once using Gemini-3-Flash-Preview with the controlled rewrite prompts described in Appendix G. The gen-erated skill files are then frozen and reused un-changed across all agent stacks. This design sepa-rates the rewrite model from the execution model :differences in downstream quality and cost come from how each agent uses the same skill condition, not from regenerating skills separately for each model. 
+
+Agent stacks. Table 10 summarizes the four evaluation stacks. The stacks cover different agent regimes: high-throughput tool use, stronger Gemini-family reasoning, code-oriented file edit-ing, and long-context coding. This design follows the SkillsBench finding that performance and cost vary substantially across commercial agent har-nesses, even when the task and skill condition are Case Main effect Base q Policy q Skill ratio API ratio Total ratio Tests                                                   
+
+> adaptive-cruise-contro lQuality + cost win 0.667 1.000 0.963 0.805 0.812 8/12 →12/12 civ6-adjacency-optimi zer Quality + moderate cost win 0.900 1.000 0.672 0.930 0.918 9/10 →10/10 invoice-fraud-detectio nSame quality, large cost saving 1.000 1.000 0.526 0.621 0.613 2/2 →2/2 pptx-reference-format ting Same quality, large skill compression 1.000 1.000 0.107 0.825 0.780 12/12 →12/12 sales-pivot-analysis Cost-transfer diagnostic 0.522 0.565 0.732 1.109 1.076 12/23 →13/23 r2r-mpc-control Failure diagnostic 1.000 0.667 0.944 1.119 1.114 6/6 →4/6
+
+Table 8: Qualitative case summary. q is verifier partial score. Skill/API/total ratios are relative to the original-skill baseline for the same task. Diagnostic cases are included to show cost transfer and policy failures rather than only favorable examples.         
+
+> Task Policy-preserved anchors Observed behavior
+> adaptive-cruise-control PID interface, control law, clamping, stabil-ity checks Quality improves to full pass while API tokens drop, indicating fewer failed tuning/recovery steps. civ6-adjacency-optimizer Pruning rules, tile scoring, anchor search, constraint validation The rewrite turns a broad search heuristic into an executable optimization plan. invoice-fraud-detection Spreadsheet APIs, fuzzy matching work-flow, formula/error validation Broad spreadsheet guidance is removed, but audit-critical operations remain; quality is un-changed and cost drops sharply. pptx-reference-formatting OOXML tools, slide XML structure, for-matting anchors, thumbnail validation Very large skill compression is possible be-cause the task needs a narrow subset of the original PPTX manual. sales-pivot-analysis Pivot-table API anchors, cacheId rule, field mapping Partial score improves slightly, but down-stream API usage rises, showing cost transfer. r2r-mpc-control LQR recursion and MPC workflow, but lim-ited derivation detail The rewrite is too compact for a mathemati-cally dense control task; quality and cost both worsen.
+
+Table 9: Mechanistic interpretation of case-study outcomes. 
+
+held fixed. 
+
+Reproducibility fields. We report model identi-fiers, agent CLI versions, decoding settings, time-out and retry policy, tool permissions, evaluation dates, and price tables because commercial agent stacks may change over time. 
+
+Token and runtime accounting. For each trajec-tory, we record direct skill tokens, downstream API input/output tokens, API request count, wall-clock runtime, verifier partial score, and binary reward when available. Total token usage is computed as the sum of direct skill tokens and downstream API tokens. Monetary cost is computed from the provider price table used at evaluation time; because provider prices change, we report normalized cost ratios in the main analysis and retain dollar costs only as reproducibility metadata. A key point is that token volume is not mono-tonic in model strength. In the original SkillsBench evaluation, Gemini 3 Flash consumes substantially more input tokens than Gemini 3 Pro despite being the cheaper model. This reflects a common agentic pattern: smaller or faster models compensate with more iterative exploration, while stronger models often solve with fewer rounds. Our cross-stack re-sults preserve this distinction, so lower token usage for Gemini 3 Pro than Gemini 3 Flash is expected rather than anomalous. 
+
+Cross-stack cost behavior. The results show that policy-selected rewrites reduce total cost across all four stacks while preserving or improving mean verifier partial score. The reduction is largest for code-oriented stacks, where removing irrelevant skill text while preserving API and implementation anchors decreases both prompt-side cost and down-stream retries. Gemini 3 Flash remains the most token-intensive Gemini stack, consuming more than twice the input tokens of Gemini 3 Pro, but its lower unit token cost makes it competitive in monetary cost. Gemini 3 Pro uses fewer tokens Agent stack Evaluation role Behavioral profile Cost profile              
+
+> Gemini CLI + Gemini 3 Flash Preview Primary evaluation stack Fast tool-use agent with high throughput; tends to use more exploratory execution. Low unit token cost, higher token volume, short wall-clock runtime. Gemini CLI + Gemini 3 Pro Gemini-family robustness stack Stronger reasoning than Flash; requires fewer exploration rounds on many tasks. Higher unit token cost, sub-stantially lower token vol-ume than Flash. Codex + GPT-5.4 Code-oriented robustness stack Strong file editing and imple-mentation behavior; particu-larly suited to API/code-heavy tasks. Higher per-run cost, but of-ten fewer implementation retries. Claude Code + Opus 4.6 Long-context robustness stack Strong coding and tool-use ability with more deliberate ex-ecution. High runtime variance; strong quality but higher timeout sensitivity.
+
+Table 10: Agent/model stacks used for cross-stack evaluation. The same frozen policy-selected rewrites are evaluated under all stacks.                                               
+
+> Stack Condition Input tok. / run Output tok. / run Total tok. / run Runtime / run Monetary cost ratio
+> Gemini 3 Flash Original 1.075M 12.1K 1.087M 7.5 min 1.00 Policy 0.972M 11.8K 0.984M 6.8 min 0.91
+> Gemini 3 Pro Original 0.465M 10.9K 0.476M 8.9 min 1.00 Policy 0.426M 10.6K 0.437M 8.1 min 0.92
+> Codex + GPT-5.4 Original 1.087M 11.6K 1.099M 10.8 min 1.00 Policy 0.967M 11.3K 0.978M 9.6 min 0.89
+> Claude Code + Opus 4.6 Original 1.448M ––14.5 min 1.00 Policy 1.265M ––13.1 min 0.87
+
+Table 11: Runtime and cost summary across agent/model stacks on the 86-task runnable panel. For each task and condition, token counts and runtime are first averaged over valid trials and then macro-averaged across tasks. The monetary cost ratio is normalized to the original-skill condition within the same stack and is computed using provider-side input/output token accounting. Claude Code output-token counts are omitted because session logs do not reliably recover completion-token counts; its monetary cost ratio is computed from logged provider-side accounting. 
+
+because it performs less exploratory tool use, while Codex and Opus exhibit higher absolute runtime due to more complex file-editing and verification behavior. These results support the main conclusion of the paper: the economic value of skill rewriting is not captured by skill-token compression alone. A rewrite is useful only when it preserves the op-erational anchors that reduce downstream search, debugging, and recovery. Across model families, policy-selected rewrites consistently reduce direct skill cost and usually reduce downstream execu-tion cost as well, showing that the learned policy transfers beyond the primary training stack. 
+
+F Policy Learning Details 
+
+This appendix provides implementation details for the task-conditioned rewrite policy introduced in Section 3. The policy is designed to answer a prac-tical question: given a new task and its original skill set, which information-preservation strategy should be used before running the agent? We inten-tionally use a low-capacity, interpretable selector rather than a black-box reinforcement-learning sys-tem, because the available feedback is expensive, sparse, and heterogeneous across tasks. 
+
+F.1 Learning Signal 
+
+Each policy example is a completed task–strategy run. For a task τ and rewrite strategy a, we observe verifier quality, binary reward when available, di-rect skill-token cost, downstream agent-token cost, and execution validity. Runs that fail due to in-frastructure or harness errors are removed from the learning set; runs with valid verifier outcomes are retained even when task performance is poor, since such failures are informative about the strategy. The scalar learning target is the economic utility used in the main method: 
+
+U aτ = QR aτ + λsave (1 − ρaτ )
+
+− λover EO aτ + λnld NLD aτ . (14) Stage Condensed log evidence                         
+
+> Run meta-data Codex +GPT-5.4 on
+> sales-pivot-analysis ;wall-clock time 8.23 minutes, including 6.19 minutes of agent execution. Skill routing The agent loads the spreadsheet skill and identifies pivot-table construction require-ments, including the cache and worksheet constraints needed for valid Excel pivots. Document routing The agent loads the PDF skill and routes ta-ble extraction through pdfplumber , instead of treating the PDF as unstructured text. Data inspec-tion The trajectory inspects income.xlsx ,extracts population tables from
+> population.pdf , and checks the schema before generating the workbook. Artifact con-struction The agent creates
+> demographic_analysis.xlsx with
+> SourceData and four analysis sheets: population, earners, regions, and income quartiles. Anchor exe-cution Spreadsheet anchors are converted into exe-cutable workbook operations: each analysis sheet receives a pivot-table definition rather than a static summary table only. Self-verification The workbook is reopened successfully; each analysis sheet contains one pivot defi-nition, with 2,454 source rows and balanced quartile assignments. Data caveat The log records 49 rows with missing income-derived fields, corresponding to blank income rows and unmatched territory entries. Cost record The run consumes 334,630 input tokens, 158,336 cached input tokens, and 13,507 output tokens, with a logged cost of $0.683.
+
+Table 12: Condensed execution log for a representative Codex + GPT-5.4 trajectory. The log illustrates how skill-level anchors become concrete tool choices, vali-dation checks, and artifact-level operations during agent execution. 
+
+Here QR is quality retention, ρ is total cost ra-tio, NLD is the near-lossless dividend, and EO is downstream execution overrun. We set λsave = 1 .0,
+
+λover = 1 .0, λnld = 0 .5, and δ = 0 .05 . These values are selected using only the 28 template-calibration tasks. After selection, they are fixed for policy adaptation, held-out evaluation, and cross-model transfer. The 38 policy-adaptation tasks are used only to fit the strategy selector under this fixed utility definition; they are not used to retune utility weights or the near-lossless tolerance. Held-out and cross-model runs are used only for evaluation. This target makes the policy sensitive to the main economic failure mode in our setting: a rewrite may shorten the skill file while increasing downstream exploration. 
+
+F.2 Policy Inputs 
+
+For each task, the selector receives a static pro-file ϕτ computed before any agent execution. The profile combines skill-structure features, domain features, and risk indicators. Table 13 summarizes the feature groups.                 
+
+> Feature group Examples
+> Skill size Number of skills, total skill tokens, me-dian skill length, long-skill indicator. Implementation anchors Code-token ratio, API/tool mentions, commands, imports, code blocks, library-specific object names. Procedural an-chors Ordered steps, validation checks, con-straints, pitfalls, recovery instructions, file-format requirements. Rule anchors Formulas, thresholds, schemas, units, tie-breaks, invariants, scientific con-ventions. Task family Data analysis, scientific comput-ing, software debugging, con-trol/optimization, spreadsheet/office, web/visual interaction. Execution risk Docker or dependency risk, multi-modal input, long-context requirement, verifier strictness proxy.
+
+Table 13: Feature groups used by the policy selector. All features are computed from the task instruction and original skill files before running the agent. 
+
+These features are not intended to describe the task exhaustively. Instead, they expose the struc-tural cues that determine which information is economically valuable to preserve. For example, code-heavy skills often require API/code anchor-ing, while scientific and data-analysis tasks often depend on formulas, schemas, units, and exact con-ventions. Such anchor sensitivity also appears be-yond text-only agents. Multimodal and embodied tasks rely on geometry, visibility, motion, and tra-jectory cues for multi-view stereo, video reason-ing, and autonomous driving (Yuan et al., 2024, 2025, 2026b,a), while biomedical tasks depend on modality-specific conventions, supervision signals, and evaluation protocols (Chen et al., 2023b, 2024). This motivates tracking domain and anchor features separately from raw token count. 
+
+F.3 Candidate Actions 
+
+The action space consists of rewrite strategies that survived calibration. Source-native compacting is retained as a diagnostic baseline, but it is not used as a final policy arm because early calibration showed that preserving the original organization without targeted anchor protection was unstable. The final selector chooses among: • API/code anchoring , which preserves imple-mentation details such as imports, object con-struction, API calls, commands, and minimal executable snippets; • Rule/formula anchoring , which preserves equations, schemas, thresholds, units, con-straints, and domain conventions; • Workflow guarding , which preserves ordered procedures, validation checks, failure modes, and recovery cues. This action space reflects the central hypothesis of the paper: rewrite strategies should differ in what they preserve, not merely in how much text they remove. 
+
+F.4 Learning Procedure 
+
+We cast strategy selection as an offline contex-tual bandit. The learner receives tuples (ϕτ , a, U aτ )
+
+from calibration and adaptation runs, where ϕτ is the pre-execution task profile, a is a rewrite strat-egy, and U aτ is the observed economic utility. The final selector is trained in three stages. First, we aggregate repeated runs for the same task–strategy pair using mean utility and retain aux-iliary statistics such as valid rate, median cost ratio, and quality retention. Second, we fit an action-conditioned utility model over normalized numeric features and Boolean indicators. Third, we distill the fitted preferences into a small ordered decision list used as the frozen deployed policy. A rule is accepted only if it improves mean utility on the adaptation set and has sufficient support. This dis-tillation step is important: it prevents the policy from memorizing individual tasks and makes the learned strategy auditable. In Algorithm 1, Dtrain contains runs from the template-calibration and policy-adaptation splits after utility hyperparameters have been fixed. 
+
+F.5 Final Selector 
+
+The frozen selector used in held-out and cross-model evaluation is intentionally compact. It is distilled from the learned utility model into a small decision list, so that its behavior can be inspected directly. The default strategy is API/code anchor-ing, reflecting its strong general performance on heterogeneous tool-use and implementation-heavy tasks. The selector overrides this default when calibration and adaptation feedback indicate that another preservation family is more economically 
+
+Algorithm 1 Cost-aware policy learning                                        
+
+> Require: Policy-training runs Dtrain from template-calibration and policy-adaptation splits, task profiles ϕτ,strategies Aπ
+> 1: Remove infrastructure failures and runs without valid verifier accounting 2: for each task τand strategy ado
+> 3: Compute qaτ,ρaτ,QR aτ,NLD aτ, and EO aτ
+> 4: Compute utility Uaτusing Eq. 14 5: end for
+> 6: Fit an action-conditioned utility model bU(ϕ, a )
+> 7: Initialize the default action as the strategy with highest mean utility 8: Greedily add feature rules that improve held-in utility with minimum support 9: Freeze the resulting decision list before held-out evalua-tion 10: return Frozen decision-list policy distilled from bU(ϕ, a )
+
+reliable: rule/formula anchoring for scientific or schema-heavy tasks, and workflow guarding for validation-heavy procedural tasks.            
+
+> Condition Selected strat-egy Rationale
+> Default API/code anchoring Preserve exe-cutable anchors for heteroge-neous tool-use tasks. Scientific / control or formula-heavy Rule/formula anchoring Preserve equa-tions, units, thresholds, and domain conven-tions. Schema or statistical-definition-heavy data analysis Rule/formula anchoring Preserve schemas, aggregation rules, statistical definitions, and invariants. Validation-heavy pro-cedural workflow Workflow guarding Preserve ordered checks, recov-ery cues, and verifier-facing validation steps.
+
+Table 14: Frozen selector used for held-out and cross-model evaluation. The selector is deliberately low-capacity: it chooses a preservation family before rewrit-ing, rather than producing task-specific rewrite rules. 
+
+Although the final decision list is short, it is distilled from multi-strategy economic feedback rather than chosen in hindsight. Its simplicity is part of the experimental design: the goal is to test whether quality–cost signals identify stable preser-vation preferences that transfer beyond the cali-bration runs. The selector therefore operates as a lightweight layer above the rewrite strategies, choosing which class of operational anchors to pre-serve before any agent execution occurs. F.6 Leakage Control 
+
+The policy uses only task metadata and original skill files as inputs. It does not access verifier out-puts, generated solutions, agent traces, or down-stream token usage for the held-out task at infer-ence time. Economic outcomes are used only dur-ing calibration to learn the selector. After the deci-sion list is frozen, held-out tasks are rewritten once according to π(ϕτ ) and then evaluated with the same task instructions, environments, and verifiers as the original-skill baseline. This protocol ensures that the policy is adaptive to task and skill structure, but not adaptive to held-out verifier results. 
+
+G Rewrite Strategies and Prompts 
+
+This appendix describes the LLM-assisted rewrit-ing protocol. Each prompt specifies a preservation objective, section structure, protected anchors, and audits; the task instruction, environment, and veri-fier are never rewritten. 
+
+G.1 Strategy Families 
+
+We design rewrite strategies as information-preservation families. Each strategy asks the rewriter to make a different class of operational anchors salient while removing low-value prose. Table 15 summarizes the strategy families used in calibration and evaluation.                     
+
+> Strategy Preservation ob-jective Typical sections
+> Source-native compacting Preserve the au-thor’s original or-ganization while removing redun-dancy. Original outline, op-erational details, val-idation and risks. Workflow guarding Make proce-dures, checks, constraints, and failure modes explicit. When to use, in-puts/outputs, core workflow, validation checks, pitfalls. API/code anchoring Preserve exe-cutable API, library, command, and object-construction patterns. Required artifacts, API/tool patterns, implementation anchors, workflow, validation. Rule/formula anchoring Preserve exact definitions, for-mulas, schemas, thresholds, units, and invariants. Exact definitions, de-cision rules, formu-las, minimal imple-mentation anchors, failure modes.
+
+Table 15: Rewrite strategy families. Each strategy de-fines what information should remain salient after rewrit-ing, rather than imposing a universal surface template. 
+
+Source-native compacting is used as a diagnos-tic strategy: it tests whether preserving the original skill organization alone is sufficient. The main pol-icy arms focus on targeted anchor preservation, be-cause calibration showed that generic compaction can shorten skills without protecting the informa-tion that prevents downstream exploration. 
+
+G.2 Canonical Rewrite Prompt 
+
+All rewrite prompts follow the same high-level schema. The only strategy-specific fields are the strategy identifier, section plan, preservation policy, target compression range, and anchor budget. The prompt requests a structured JSON response so that the rewritten skill and audit metadata can be stored separately. 
+
+Canonical Rewrite Prompt Skeleton                 
+
+> Rewrite the original SKILL.md using the specified strat-egy family.
+> Inputs:
+> • Strategy id: {strategy_id}
+> • Target sections: {section_list}
+> • Preservation policy: {strategy_policy}
+> Return one JSON object with fields:
+> rewritten_skill_md ,preserved_information ,
+> compressed_information , and risk_flags .
+> Rules:
+> • Preserve YAML metadata. • Do not solve the task; do not invent facts. •Preserve exact: file types, API names, commands, class/function names, constants, formulas, validation thresholds, and “do not” rules. •Keep minimal executable code/API patterns when APIs are non-obvious. •Keep coordinate systems, schemas, formulas, units, invariants, and validation checks for scientific or rule-governed skills. • Use concise Markdown suitable for SKILL.md .
+
+This prompt structure is intentionally conserva-tive. The rewriter is asked to transform only the skill document, not to infer a new solution proce-dure for the task. The explicit JSON fields also make failures inspectable: if a rewrite compresses important information, the missing anchor usually appears in the risk flags or audit checks. 
+
+G.3 Strategy-Specific Prompt Policies 
+
+Table 16 gives the strategy-specific policies used to instantiate the canonical prompt. The compression targets are soft targets rather than hard truncation limits. This matters because overly rigid length control can remove exactly the anchors that make a skill useful. The API/code strategy is allowed a higher token ratio because implementation anchors are often Strategy Target ratio Prompt policy        
+
+> Source-native compacting 0.72 Preserve the source author’s information architecture; merge sections only when redundant; compress within existing sections. Workflow guarding 0.62 Make the procedure easy to follow; keep validation, con-straints, recovery cues, and pitfalls visible. API/code anchoring 0.82 Preserve complete minimal API and code-construction patterns when APIs are non-obvious; remove only low-value examples and prose. Rule/formula anchoring 0.78 Preserve formulas, thresh-olds, schemas, units, ranking rules, tie-breaks, invariants, and compact examples defin-ing correctness.
+
+Table 16: Strategy-specific prompt policies. The ratios are soft compression targets; the primary constraint is preservation of the strategy’s protected anchors. 
+
+long but high-value. Conversely, workflow guard-ing uses a lower target ratio because procedural prose can often be compressed if checks and pit-falls remain explicit. Rule/formula anchoring sits between these extremes: formulas and schemas must be exact, but surrounding explanation can usually be shortened. 
+
+G.4 Post-Generation Audits and Repair 
+
+After generation, each rewritten skill is checked by lightweight audits before it is materialized as a benchmark variant. These audits are not used to score the final task; they are used only to ensure that the rewrite respects the preservation protocol. The most important repair step is anchor restora-tion. When the source skill contains high-value exe-cutable material that is absent from the rewrite, the pipeline appends a compact “Implementation An-chors” block derived from the original skill. This makes the rewrite procedure robust to a common failure mode of LLM summarization: fluent com-pression that omits the exact API pattern needed for execution. 
+
+G.5 Materializing Benchmark Variants 
+
+For each task and strategy, the pipeline copies the original task directory and rewrites only files un-der environment/skills/ . All other task com-ponents are unchanged. The resulting directory is therefore a controlled task variant: any perfor-mance or cost difference between variants is at-        
+
+> Audit Purpose
+> Token-ratio check Records the rewritten-to-original skill-token ratio and flags large ex-pansions or unexpectedly aggres-sive compression. Code/API term coverage Measures whether important code-like terms, commands, constants, imports, and API identifiers remain present. Code-block retention Checks whether source code blocks or their leading executable patterns are preserved when required. Anchor restora-tion If a protected code/API block is missing, a compact source-derived anchor block is appended to the rewritten skill. Short-skill guard If an already compact original skill becomes longer without clear bene-fit, the original skill is retained. Text hygiene Normalizes malformed punctuation and encoding artifacts before writ-ing the final SKILL.md .
+
+Table 17: Post-generation audits applied to rewritten skills. The audits enforce preservation constraints with-out using held-out verifier feedback. 
+
+tributable to the skill condition rather than changes in task instructions, data files, environment setup, or verifier logic. Formally, for task τ = ( x, e, v, Sτ ) and strategy 
+
+a, the materialized variant is 
+
+eτ a = ( x, e, v, R a(Sτ )) . (15) This controlled materialization is what allows our evaluation to interpret downstream token changes as an economic effect of skill rewriting. A rewrite may reduce direct skill tokens, but if it removes anchors that the agent needs, the agent may spend more tokens recovering those details during execu-tion. 
+
+G.6 Relation to the Learned Policy 
+
+The rewrite strategies are the action space for the policy in Appendix F. The policy does not gen-erate new prompt text at inference time. Instead, it selects one of the pre-defined preservation ob-jectives based on task and skill features, and the corresponding rewrite prompt is applied. This sep-aration keeps the system interpretable: the learned component decides which kind of information to preserve , while the rewrite prompt specifies how that preservation objective is enforced .Task Original skill excerpt Policy-selected rewrite excerpt 
+
+adaptive-cruise-control 
+
+PID Controller Implementation 
+
+Overview: A PID controller is a feedback control mechanism... Control Law: output = Kp * error + Ki *integral(error) + Kd * derivative(error) 
+
+Discrete-Time Implementation: class PIDController: ... compute(error, dt) ... 
+
+Anti-Windup: Integral windup occurs when output saturates... 
+
+Capability and use cases 
+
+Feedback control for adaptive cruise control and vehicle speed regulation. 
+
+API/tool patterns 
+
+class PIDController: ... compute(error, dt) 
+
+Implementation anchors 
+
+Control law; error definition; output clamping. 
+
+Validation checks 
+
+Steady-state error, overshoot, stability, dt > 0 .civ6-adjacency-optimizer 
+
+Map-Based Constraint Optimization Strategy 
+
+Why exhaustive search fails: combinatorial explo-sion... The Three-Phase Strategy: Phase 1 prune the search space. Phase 2 identify high-value spots. Phase 3 anchor point search. Algorithm Skeleton: def optimize_placements(...) 
+
+Capability and use cases 
+
+Placement optimization on spatial grids where ex-haustive search is intractable. 
+
+Required artifacts 
+
+map_tiles , hard constraints, number of place-ments. 
+
+Implementation anchors 
+
+Pruning criteria: invalid, dominated, isolated. Scoring: intrinsic value + adjacency potential + cluster potential. Anchor logic for center-constrained problems. 
+
+Validation checks 
+
+Terrain, range limits, blocked tiles, mutual exclu-sion. invoice-fraud-detection 
+
+Requirements for Outputs 
+
+Zero formula errors; preserve existing templates. 
+
+Financial models 
+
+Color coding standards, number formatting stan-dards, formula construction rules. 
+
+XLSX creation, editing, and analysis 
+
+Reading and analyzing data; pandas; openpyxl; formulas; formatting... 
+
+Capability and use cases 
+
+Create, edit, and analyze spreadsheet files; finan-cial modeling; formula validation. 
+
+Required artifacts 
+
+pandas , openpyxl , recalc.py .
+
+API/tool patterns 
+
+Read with pandas; write formulas with openpyxl; run recalculation. 
+
+Implementation anchors 
+
+Color conventions, number formats, no hardcoded formulas, source comments. 
+
+Workflow 
+
+Load/create, modify, save, recalculate, verify. pptx-reference-formatting 
+
+PPTX creation, editing, and analysis 
+
+Overview: a PPTX is a ZIP archive containing XML files. Reading and analyzing content: text extraction with markitdown ; raw XML access; unpacking. Creating a new presentation: design principles, color palette selection, layout guidance... 
+
+Capability and use cases 
+
+Creation, editing, and analysis of PPTX files. 
+
+Required artifacts 
+
+unpack.py , pack.py , validate.py ,
+
+rearrange.py , inventory.py , replace.py ,
+
+thumbnail.py .
+
+API/tool patterns 
+
+Extract text; unpack/edit/validate/pack OOXML; generate thumbnails. 
+
+Implementation anchors 
+
+OOXML structure, web-safe fonts, layout con-straints. 
+
+Validation checks 
+
+Thumbnail check for cutoff, overlap, positioning, contrast. 
+
+Table 18: Original and policy-selected skill excerpts for six case studies, Part 1 of 2. This table shows the first four case studies. The policy rewrites reorganize skills around executable anchors, including required artifacts, API/tool patterns, implementation details, workflow steps, validation checks, and pitfalls. Task Original skill excerpt Policy-selected rewrite excerpt 
+
+sales-pivot-analysis 
+
+XLSX Creation, Editing, and Analysis 
+
+Read data with pandas or openpyxl. Create Excel files with formatting. 
+
+Creating Pivot Tables 
+
+Critical note: all pivot tables must use cacheId=0 .Basic pivot table structure with cache, fields, table definition... 
+
+API/tool patterns 
+
+Analysis pattern; cell-level pattern; creation pat-tern. 
+
+Implementation anchors 
+
+Pivot table construction: CacheDefinition ,
+
+CacheField , TableDefinition , Location ,
+
+PivotField , DataField .
+
+Critical rule 
+
+Use cacheId=0 ; field indices must match cache fields. 
+
+Workflow 
+
+Prepare source data; build cache; define table; map fields; verify workbook. r2r-mpc-control Finite-Horizon LQR for MPC 
+
+Problem formulation: J = sum x’Qx + u’Ru + x_N’ P x_N 
+
+Backward Riccati recursion: K_k = inv(R +B’PB) B’PA 
+
+Forward simulation: u_k = -K_k x_k 
+
+Python implementation and MPC application... 
+
+Capability and use cases 
+
+Minimize quadratic cost over horizon N for MPC control. 
+
+API/tool patterns 
+
+A compact finite_horizon_lqr(A,B,Q,R,N, x0) stub. 
+
+Implementation anchors 
+
+Backward Riccati recursion; forward simulation equations. 
+
+Validation checks 
+
+Initialize terminal cost P_N .
+
+Pitfalls 
+
+Improper terminal initialization can cause instabil-ity. 
+
+Table 19: Original and policy-selected skill excerpts for six case studies, Part 2 of 2. This table continues Table 18 with the remaining two case studies. The r2r-mpc-control example illustrates a limitation: preserving formulas without sufficient derivation and stability context may be insufficient for mathematically dense control tasks.
