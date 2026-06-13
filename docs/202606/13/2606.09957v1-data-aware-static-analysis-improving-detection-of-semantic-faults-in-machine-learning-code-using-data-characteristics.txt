@@ -1,0 +1,190 @@
+Title: Data-aware Static Analysis: Improving Detection of Semantic Faults in Machine Learning Code Using Data Characteristics
+
+URL Source: https://arxiv.org/pdf/2606.09957v1
+
+Published Time: Wed, 10 Jun 2026 00:07:11 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Data-aware Static Analysis: Improving Detection of Semantic Faults in Machine Learning Code Using Data Characteristics 
+
+Willem Meijer 
+
+Link¨ oping University 
+
+Link¨ oping, Sweden willem.meijer@liu.se 
+
+Kristian Sandahl 
+
+Link¨ oping University 
+
+Link¨ oping, Sweden kristian.sandahl@liu.se 
+
+D´ aniel Varr´ o
+
+Link¨ oping University 
+
+Link¨ oping, Sweden daniel.varro@liu.se 
+
+Abstract —Semantic faults specific to the use of machine learning models are a common problem for machine learning developers, causing suboptimal predictions, high computational cost, or incorrect outputs. For example, one may erroneously use unscaled data to train a scale-sensitive model. Machine learning developers detect these faults after training their models and manually analyzing the results, making it an inefficient process. We propose a novel data-aware static analysis approach to detect semantic faults in machine learning code, allowing developers to reveal these bugs while writing code instead of after training the model. Our approach uses combined data and control flow analysis, and API contracts, enabling data-aware reasoning about machine learning code at a high level of abstraction. We highlight the potential of our solution by analyzing a sample of real-world machine learning notebooks, finding that we can detect faults that require a data-aware approach. 
+
+Index Terms —Semantic Faults, Machine Learning, Software Verification, Static Analysis, Software Contracts, Data/Control Flow Analysis. 
+
+I. I NTRODUCTION 
+
+With the increase in adoption of machine learning-powered systems [1, 2], the need for quality assurance techniques has grown as well [3–6]. Various attempts have been made to enrich this field, addressing architectural concerns [7, 8], best practices for machine learning development [9], data valida-tion [10–12], or machine learning system testing [12]. How-ever, tool support for effectively building machine learning models remains limited, as machine learning developers still commonly struggle with semantic faults specific to machine learning models [13–16]. For example, one may use unscaled data to train a scale-sensitive model. Such semantic faults result in poor or suboptimal prediction performance, excessive compute resource usage, or incorrect outputs. In their current practice, machine learning developers detect semantic faults in machine learning models after training the model, manually investigating the training results, determining if suboptimal results are due to a bug or just the wrong choice of model, locating the bug in the pipeline and/or data, 
+
+This work was partially supported by the Wallenberg AI, Autonomous Systems and Software Program (WASP) funded by the Knut and Alice Wallenberg Foundation, and was in collaboration with Software Center Project 61 and Vinnova CoDig competence center. 
+
+fixing the bug, and re-training the model; after which the cycle repeats. As a consequence, debugging semantic faults in machine learning is currently a highly time- and resource-consuming process [17, 18]. Existing solutions may identify incorrect hyperparameters and certain training issues [19–22], but have fundamental limitations: they do not consider real data at all [21–23], or only consider structural properties [19, 20], not semantic properties like distributions or correlations. Further, these solutions only provide feedback at runtime instead of during programming [19, 20, 22, 24] or rely on impractical assump-tions to identify faults [21, 23]. 
+
+Our work proposes a novel data-aware approach to detect semantic faults statically in machine learning code. Static detection allows machine learning developers to detect faults while writing their code, before training their models, thus reducing the manual investigation of the results. We leverage two well-known techniques for program analysis: 1) combined data and control flow analysis, and 2) contracts for applica-tion programming interfaces (APIs). This enables data-aware reasoning about machine learning code at a high level of ab-straction after extracting complete machine learning pipelines to reveal what data is loaded, how it is preprocessed, and what models are trained with it. In turn, we define contracts for machine learning APIs that capture the semantic prerequisites of machine learning models (like data distributions), and evaluate if these are met by analyzing the extracted pipeline on real data. We show our solution’s potential impact with a preliminary analysis in the context of the popular sklearn library. Even with a limited number of contracts evaluated on a small number of randomly sampled real-world machine learning notebooks, we can already detect semantic faults that require a data-aware approach. II. R UNNING EXAMPLE 
+
+To illustrate the type of faults we aim to detect, we in-clude Listing 1 [25], implementing a simple machine learning pipeline for binary classification. It imports some packages on lines 1 and 2, loads a dataset df on line 3, constructs a  
+
+> arXiv:2606.09957v1 [cs.SE] 8 Jun 2026 1
+
+import pandas as pd  
+
+> 2
+
+from sklearn.svm import SVC  
+
+> 3
+
+df = pd.read_csv(’my_dataset.csv’)  
+
+> 4
+
+svc = SVC(kernel=’rbf’, gamma=’auto’)  
+
+> 5
+
+svc.fit(df[[’x1’, ’x2’]], df[’y’]) 
+
+Listing 1: Example of a support vector classifier ( SVC ) contain-ing a semantic fault when the data is not equally scaled [25] 0.5 0.0 0.5 1.0 1.5 2.0 2.5       
+
+> 400
+> 300
+> 200
+> 100
+> 0
+> 100
+> 200 3210123
+> 3
+> 2
+> 1
+> 0
+> 1
+
+Fig. 1: Decision boundary plots of a SVC fitted on unequally scaled data (left) versus equally scaled data (right) support vector machine 1 svc on line 4, and trains it on the dataset on line 5 using the fit method. Seemingly, this code is syntactically correct and runs without exceptions. However, it can still fail semantically, as it does not account for the support vector machine’s prerequisite that the scale of each feature in the input data needs to be roughly equal. (Note that this is not mentioned in the official documentation.) This issue is highlighted in Figure 1, where the model trained on unscaled data clearly overfits, as indicated by its complex decision boundary. By scaling the input data, for example, by using 
+
+sklearn ’s StandardScaler ,2 the same code creates an easier-to-interpret, more robust, and better-performing result. Without considering both the data and the code, one cannot know if this transformation is required or if the dataset was already scaled correctly when it was loaded. III. S TATE OF THE ART IN SEMANTIC FAULT DETECTION 
+
+Some methods exist to detect semantic faults in machine learning systems, which commonly separate data from code [10, 11]. For example, Hynes et al. [26] explore data cleaning and validation by writing test cases for dataset properties such as minima or averages, verifying data points using domain knowledge. Similarly, Schelter et al. [27] evaluate a pipeline’s robustness by intentionally injecting data faults, like missing data, into the dataset. Although these purely data-centric methods can find data issues and test the robustness of machine learning pipelines, they are unable to detect semantic faults specific to particular machine learning models.   
+
+> 1SVC documentation: https://scikit-learn.org/stable/modules/generated/sklearn. svm.SVC.html
+> 2StandardScaler documentation: https://scikit-learn.org/stable/modules/generated/ sklearn.preprocessing.StandardScaler.html
+
+TABLE I: Overview of the state of the art, highlighting whether they are data-aware/agnostic and use static/runtime analysis      
+
+> Static Runtime Data-aware Our solution [19, 20, 24]
+> Data-agnostic [21, 23] [19, 20, 22]
+
+Table I highlights state-of-the-art solutions that detect se-mantic faults in machine learning [19–22] and statistics code [23, 24]. We distinguish between data-aware and data-agonistic techniques, illustrating whether the analysis actively uses properties of training or testing data. To highlight when solutions identify faults, we further distinguish between static and runtime analysis, respectively identifying faults while writing and when running the code. 
+
+a) Data-agnostic Techniques: Various solutions identify semantic faults in code without using data [19–23]. Like us, they apply contract-like solutions to enforce API constraints. Most commonly, these are hyperparameter constraints that detect missing or incompatible hyperparameters [19–22]. For example, the kernel in sklearn ’s support vector classifier has five valid options. Two solutions extend this [21, 23] by statically testing for data-related issues using heuristics instead of real data. For example, you could use whether a dataset was visualized as an indicator of class imbalance (a common cause of bias in models) or if statistical assumptions are visually verified. While data visualization can be used to indicate these issues, it does not guarantee they are properly addressed. Ahmed et al. [22] detect training issues in deep learning code using runtime analysis. They identify problems such as slow convergence in deep learning models by observing training results. 
+
+b) Data-aware Techniques: Some solutions exist that explicitly include data into their analysis [19, 20, 24]. Gao et al. [19] include data shapes and formats to identify whether the dataset structure is compatible with the used deep learn-ing model. Reimann and Kniesel-W¨ unsche [20] developed a domain-specific language for machine learning pipelines, complemented by rules that verify whether accessed column names exist or whether a model was trained before it was used for prediction. Although these methods detect structural issues, they cannot detect semantic faults specific to machine learning models, such as incorrect data distributions. Although Turcotte and Wu [24] transcend these methods by injecting statistical tests that verify model assumptions (e.g., feature independence), they include these tests at runtime. 
+
+c) Novelty: Up to our best knowledge, our approach is the first to provide a data-aware static analysis technique to reveal semantic faults related to the incorrect use of specific machine learning models. Moreover, our approach covers a broader range of semantic faults, including distribution and correlation faults, in addition to inappropriate hyperparameters and structural issues. df, 3, read_csv('my_dataset')  
+
+> svc, 5, SVC.fit()
+> svc, 4, SVC('rbf', 'auto')
+> Contract: E qual
+> feature scales
+> Calculated
+> L2 norm
+
+Fig. 2: Visual representation of the running example in Listing 1, highlighting the API contract and calculated data properties in green at the right IV. A NALYSIS PROCEDURE 
+
+To improve semantic fault detection in machine learning code, we propose an approach that natively exploits training and testing data. At a high level, our approach uses combined data and control flow analysis to capture how data is used in the code, including where it is loaded, how it is preprocessed, and which models are trained on it. Using this representation, we can identify the prerequisites of the used machine learning models as contracts, and check whether the real data, in combi-nation with the preprocessing steps, are compliant with those contracts. We carry out our analysis in three main steps: 1) abstract syntax tree (AST) transformation, 2) data and control flow extraction, and 3) contract evaluation. Respectively, these steps rewrite Python code to a simplified and standardized format, transform this into a directed acyclic graph represen-tation, and evaluate whether the machine learning APIs are used correctly. 1 
+
+A. AST Transformation 
+
+To simplify the analysis procedure described in Sec-tion IV-B, we first transform the AST of Python scripts to simplify their coding style. For brevity, we refer to our experimental code for concrete examples [28]. Firstly, we unfold self-defined functions such that their code is executed at the module level (i.e., file level). Developers commonly define their own methods to, e.g., create a common preprocessing pipeline. We continue by unwrapping well-defined loops: loops that iterate over a hard-coded series of elements. De-velopers commonly use these during, e.g., model training, to compare a pre-specified list of models in an attempt to identify the best one. We then continue by extracting nested statements and splitting long chained statements, two programming anti-patterns that are overwhelmingly present in machine learning notebooks in our dataset [13]. Finally, we resolve all aliases to their full names and prefix any imported name with its full library reference. 
+
+B. Data and Control Flow Extraction 
+
+Next, we use preprocessed ASTs to extract data and control flow representations. Conceptually, this allows us to represent our running example of Listing 1 as the directed acyclic graph shown in Figure 2 (ignoring the contract and data property nodes). This representation is necessary because the machine learning scripts in our dataset commonly define                                    
+
+> 1"api": "sklearn.svm.SVC",
+> 2"endpoint": "fit",
+> 3"with_construct_param": {"kernel": "rbf" },
+> 4"rule_name": "Data Must Have Equal Scales",
+> 5"importance": "Critical",
+> 6"description": "The data used to fit the SVC
+> 7must be equally scaled because ...",
+> 8"eval_func": "evaluators.max_l2_norm_ratio",
+> 9"variables": {"threshold": 10 }
+
+Listing 2: Example of an API contract, stating the targeted API, constructor prerequisites, description, and the method that evaluates the contract multiple pipelines to compare their performance, complicating the identification of which preprocessing steps were applied to which datasets. Because our AST transformations simplify the code, the pipeline’s data and control flow can be extracted by iterating through all function calls and assignments at the module level. The notebooks in our dataset seldom contain custom classes, allowing us to omit internal state in custom objects (this is not true for deep learning models implemented using, e.g, torch ,3which are subject to future work). By iter-ating through assignments, we extract name-line-value triples that represent the value of a name at some location in the script. For example, given line 3 in our running example,   
+
+> df =read_csv(’my_dataset.csv’)
+
+, we extract the triple 
+
+⟨ df , 3, read_csv(’my_dataset.csv’) ⟩. Consequently, any future use of df (e.g., to train a model) can be traced to its most recent assignment, making it possible to traverse backwards through the graph. 
+
+C. Contract Evaluation 1) Machine Learning API Contracts: We define API con-tracts for machine learning API endpoints. API contracts are well-known concepts in program analysis, defining how APIs should be used. A machine learning contract, with an example shown in Listing 2, has four basic components: 1) the related API, 2) the parameter prerequisites for that contract to be relevant (some contracts are only relevant when a specific hyperparameter is used), 3) a description of the contract, and 4) a reference to an evaluator method that evaluates the contract. Currently, we define three contract categories: a) hyperparameter restrictions (enforcing the use of supported individual and combinations of hyperparameters), b) parame-terized model requirements (testing whether the training and testing data have similar enough distributions), and c) data property requirements (enforcing data distribution properties, like feature ranges or cardinality, and statistical properties, like the L2 norm, 4 which we use to evaluate our running example). 
+
+2) Data Property Calculation: To evaluate our contracts, we first iterate through all method calls in the AST and test whether related contracts exist. Then, using the variable  
+
+> 3Pytorch documentation: https://pypi.org/project/torch/
+> 4L2 norm documentation: https://docs.scipy.org/doc/scipy/reference/generated/scipy. linalg.norm.html df, 3, read_csv('my_dataset')
+> df, 5, StandardScaler.fit_transform()
+> ss, 4, StandardScaler()
+> svc, 7, SVC.fit()
+> svc, 6, SVC('rbf', 'auto')
+> Contract: E qual
+> feature scales
+> Calculated
+> L2 norm
+> Guaranteed
+> L2 norm
+
+Fig. 3: Extension of Figure 2 where the dataset is transformed using StandardScaler.fit_transform , showing its cor-responding L2 norm guarantee in green at the right names specified in this call, we can identify the most recent assignment to these variables through our data and control flow representation. For example, the SVC.fit call specifies its input dataset df and the model instance svc . This information can then be used to identify what contracts correspond to the model’s hyperparameters. Moreover, we can identify the last assignment of the used dataset. In the running example, this would lead to the read_csv method. This is ideal as  
+
+> read_csv
+
+concretely specifies the dataset path, meaning we can load (a random sample of) data into memory and use that to calculate the evaluated data property and verify if it satisfies our contract. 
+
+3) Guarantees for Preprocessing APIs: Unlike in the run-ning example, it is very common that preprocessing is applied to the data before it is used to train a machine learning model. These perform transformations such as imputation, scaling, or data resampling. An example is shown in Figure 3, which extends our running example by adding the StandardScaler 
+
+to transform the dataset. Because our solution analyzes code statically, we cannot directly calculate output data properties, as we do not have access to runtime data. Therefore, we implement guarantees for preprocessing APIs that capture the assumptions that can be made about the data after a preprocessing step. The specification of these guarantees is almost identical to the contract shown in Listing 2. However, in addition to an API, it also specifies a data property. A simple example of an API guarantee is the data’s mean after using StandardScaler.fit_transform , which cal-culates the dataset’s mean and standard deviation for each feature and uses them to apply the z-transform to each feature. By definition, this allows us to assume that each feature in the output data has a mean of zero without running any additional computation. Consequently, we can write a guarantee stating that the mean of each feature in the output of StandardScaler.fit_transform is always zero. Because some guaranteed properties are not as well-defined, they require some additional calculation. An example of this is 
+
+> sklearn
+
+’s StandardScaler.fit_transform when calcu-lating the L2 norm. In that case, we cannot assume it has some constant value. However, because the formula to calculate the new L2 norm is well-defined, we can write a custom method that extracts the relevant data properties of the method’s input data (again, using reverse pipeline traversal as elaborated in Section IV-C2), calculate the updated L2 norm, and then use that to evaluate the contract. V. P RELIMINARY ANALYSIS 
+
+An early prototype of our framework and our experimental code is available on GitHub [28, 29]. As of now ( dille 
+
+version 0.8.0 ), we have implemented 189 contracts for 52 API endpoints and 60 guarantees for 11 API endpoints. We have focused on pandas and sklearn endpoints, as these are the most common non-deep learning data management and machine learning libraries [13]. To evaluate the potential impact of our solution, we per-formed a preliminary analysis. We leverage the dataset shared by Wang et al. [13], containing roughly 1.2 million Jupyter notebooks. 5 Notebooks provide an interactive interface for Python scripts (among others), making them fundamental in data science due to their ability to give real-time feedback to developers [30]. We randomly sampled 21 1) Kaggle notebooks 2) written in syntactically valid Python 3) that use any sklearn API supported by our tool, and 4) have available CSV datasets. Because our solution does not natively support notebooks, we transformed these to Python scripts using nbconvert .6
+
+Using our solution, we detected semantic faults in 5 out of 21 scripts. These scripts contained 17 unique contract violations, related to six unique contracts. Three of these contracts were data-specific, responsible for seven violations, and the other three contracts were hyperparameter constraints. Notably, all data-specific violations occurred in the same script, being marked for redundant feature imputation five times, once for using a cardinality-sensitive algorithm with a high-cardinality feature, and once for using unequal data ranges to train a range-sensitive algorithm. After investigation, we concluded that five out of seven marked violations were correct and two were incorrect. Both of these misclassifications marked redundant imputation steps, which were triggered due to the absence of missing data in the sample we took from the complete dataset, as it was quite rare. Consequently, if the complete dataset was used, these issues would not have been marked. Even with this small empirical sample, we were already able to use our prototype to identify a series of semantic faults in machine learning code. Because almost half of these were data-specific, this highlights the importance and potential of a data-informed approach when evaluating machine learning software. VI. C ONCLUSION 
+
+We propose a novel data-aware static analysis approach to detect semantic faults related to the use of specific machine learning models. Developers can use this method to detect 
+
+> 5Jupyter documentation: https://docs.jupyter.org/en/latest/
+> 6nbconvert documentation: https://nbconvert.readthedocs.io/en/latest/
+
+semantic faults while writing code instead of after training the model, thus reducing the time needed to resolve faults. Our approach uses combined data and control flow analysis, and API contracts, enabling data-aware reasoning about machine learning code at a high level of abstraction. We highlight the potential of our solution by analyzing some real-world scripts that use the popular sklearn library, finding that we can detect faults that require a data-aware approach. VII. F UTURE WORK 
+
+A natural continuation of this work is to include a greater range of machine learning models in our contract suite. This will enable a large-scale empirical evaluation to evaluate the utility of our solution, and empirically identify the prevalence of semantic faults in machine learning code. Such a study will need to account for unknown models and preprocessing steps, as new machine learning models are released frequently, which is not currently supported by our tool. For that purpose, we will aim to exploit three-valued logic to maximize the utility for machine learning developers, while minimizing the number of incorrectly identified faults. REFERENCES 
+
+[1] OECD/BCG/INSEAD, The Adoption of Artificial Intelligence in Firms: New Evidence for Policymaking .OECD Publishing, May 2025. [Online]. Available: http://dx.doi.org/10.1787/f9ef33c3-en [2] M. F. Arroyabe, C. F. Arranz, I. Fernandez De Arroyabe, and J. C. Fernandez de Arroyabe, “Analyzing ai adoption in european smes: A study of digital capabilities, innovation, and external environment,” 
+
+Technology in Society , vol. 79, p. 102733, Dec. 2024. [Online]. Available: http://dx.doi.org/10.1016/j.techsoc. 2024.102733 [3] K. Shivashankar and A. Martini, “Maintainability challenges in ml: A systematic literature review,” in 2022 48th Euromicro Conference on Software Engineering and Advanced Applications (SEAA) . IEEE, Aug. 2022, p. 60–67. [Online]. Available: http://dx.doi.org/10.1109/ SEAA56994.2022.00018 [4] P. Santhanam, Quality Management of Machine Learning Systems . Springer International Publishing, 2020, p. 1–13. [Online]. Available: http://dx.doi.org/10.1007/ 978-3-030-62144-5 1 [5] J. Bogner, R. Verdecchia, and I. Gerostathopoulos, “Characterizing technical debt and antipatterns in ai-based systems: A systematic mapping study,” in 2021 IEEE/ACM International Conference on Technical Debt (TechDebt) . IEEE, May 2021, p. 64–73. [Online]. Available: http://dx.doi.org/10.1109/ TechDebt52882.2021.00016 [6] P.-O. Cˆ ot´ e, A. Nikanjam, R. Bouchoucha, I. Basta, M. Abidi, and F. Khomh, “Quality issues in machine learning software systems,” Empirical Software Engi-neering , vol. 29, no. 6, Sep. 2024. [Online]. Available: http://dx.doi.org/10.1007/s10664-024-10536-7 [7] R. Nazir, A. Bucaioni, and P. Pelliccione, “Architecting ml-enabled systems: Challenges, best practices, and design decisions,” Journal of Systems and Software ,vol. 207, p. 111860, Jan. 2024. [Online]. Available: http://dx.doi.org/10.1016/j.jss.2023.111860 [8] A. Bucaioni, R. Kazman, and P. Pelliccione, “A checklist of quality concerns for architecting ml-intensive systems,” Journal of Systems and Software ,vol. 231, p. 112612, Jan. 2026. [Online]. Available: http://dx.doi.org/10.1016/j.jss.2025.112612 [9] A. Serban, K. van der Blom, H. Hoos, and J. Visser, “Software engineering practices for machine learning — adoption, effects, and team assessment,” Journal of Systems and Software , vol. 209, p. 111907, Mar. 2024. [Online]. Available: http://dx.doi.org/10.1016/j.jss.2023. 111907 [10] S. E. Whang, Y. Roh, H. Song, and J.-G. Lee, “Data collection and quality challenges in deep learning: a data-centric ai perspective,” The VLDB Journal , vol. 32, no. 4, p. 791–813, Jan. 2023. [Online]. Available: http://dx.doi.org/10.1007/s00778-022-00775-9 [11] S. Kumar, S. Datta, V. Singh, S. K. Singh, and R. Sharma, “Opportunities and challenges in data-centric ai,” IEEE Access , vol. 12, p. 33173–33189, 2024. [Online]. Available: http://dx.doi.org/10.1109/ACCESS. 2024.3369417 [12] S. Albelali and M. Ahmed, “Testing machine learning and deep learning systems: Achievements and challenges,” Arabian Journal for Science and Engineering , vol. 50, no. 15, p. 11433–11484, Jun. 2025. [Online]. Available: http://dx.doi.org/10.1007/ s13369-025-10276-w [13] Y. Wang, W. Meijer, J. A. H. L´ opez, U. Nilsson, and D. Varr´ o, “Why do machine learning notebooks crash? an empirical study on public python jupyter notebooks,” 
+
+IEEE Transactions on Software Engineering , vol. 51, no. 7, p. 2181–2196, Jul. 2025. [Online]. Available: http://dx.doi.org/10.1109/TSE.2025.3574500 [14] N. Humbatova, G. Jahangirova, G. Bavota, V. Riccio, A. Stocco, and P. Tonella, “Taxonomy of real faults in deep learning systems,” in Proceedings of the ACM/IEEE 42nd International Conference on Software Engineering ,ser. ICSE ’20. ACM, Jun. 2020, p. 1110–1121. [Online]. Available: http://dx.doi.org/10.1145/3377811.3380395 [15] T. L. De Santana, P. A. D. M. S. Neto, E. S. De Almeida, and I. Ahmed, “Bug analysis in jupyter notebook projects: An empirical study,” ACM Transactions on Software Engineering and Methodology , vol. 33, no. 4, p. 1–34, Apr. 2024. [Online]. Available: http://dx.doi.org/10.1145/3641539 [16] S. S. Khairunnesa, S. Ahmed, S. M. Imtiaz, H. Rajan, and G. T. Leavens, “What kinds of contracts do ml apis need?” Empirical Software Engineering , vol. 28, no. 6, Oct. 2023. [Online]. Available: http://dx.doi.org/ 10.1007/s10664-023-10320-z [17] T. D. Lai, A. Simmons, S. Barnett, J.-G. Schneider, and R. Vasa, “Comparative analysis of real issues in open-source machine learning projects,” Empirical Software Engineering , vol. 29, no. 3, May 2024. [Online]. Avail-able: http://dx.doi.org/10.1007/s10664-024-10467-3 [18] M. M. Morovati, A. Nikanjam, F. Tambon, F. Khomh, and Z. M. Jiang, “Bug characterization in machine learning-based systems,” Empirical Software Engineer-ing , vol. 29, no. 1, Dec. 2023. [Online]. Available: http://dx.doi.org/10.1007/s10664-023-10400-0 [19] Y. Gao, Z. Li, H. Lin, H. Zhang, M. Wu, and M. Yang, “Refty: refinement types for valid deep learning models,” in Proceedings of the 44th International Conference on Software Engineering , ser. ICSE ’22. ACM, May 2022, p. 1843–1855. [Online]. Available: http://dx.doi.org/10.1145/3510003.3510077 [20] L. Reimann and G. Kniesel-W¨ unsche, “Safe-ds: A domain specific language to make data science safe,” in 2023 IEEE/ACM 45th International Conference on Software Engineering: New Ideas and Emerging Results (ICSE-NIER) .IEEE, May 2023, p. 72–77. [Online]. Available: http://dx.doi.org/10.1109/ICSE-NIER58687.2023.00019 [21] K. Shivashankar and A. Martini, “Mlscent: A tool for anti-pattern detection in ml projects,” in 2025 IEEE/ACM 4th International Conference on AI Engineering –Software Engineering for AI (CAIN) . IEEE, Apr. 2025, p. 150–160. [Online]. Available: http://dx.doi.org/10. 1109/CAIN66642.2025.00026 [22] S. Ahmed, S. M. Imtiaz, S. S. Khairunnesa, B. D. Cruz, and H. Rajan, “Design by contract for deep learning apis,” in Proceedings of the 31st ACM Joint European Software Engineering Conference and Symposium on the Foundations of Software Engineering , ser. ESEC/FSE ’23. ACM, Nov. 2023, p. 94–106. [Online]. Available: http://dx.doi.org/10.1145/3611643.3616247 [23] A. Turcotte and N. N. Mehta, “The fault in our stats,” in Proceedings of the 40th IEEE/ACM International Conference on Automated Software Engineering , ser. ASE ’25. ACM, Nov. 2025. [Online]. Available: https://reallytg.github.io/files/papers/ ase25 statlint final final.pdf [24] A. Turcotte and Z. Wu, “Expressing and checking statistical assumptions,” Proceedings of the ACM on Software Engineering , vol. 2, no. FSE, p. 2735–2758, Jun. 2025. [Online]. Available: http://dx.doi.org/10.1145/ 3729391 [25] W. Meijer, “Contract-based validation of conceptual design bugs for engineering complex machine learning software,” in Proceedings of the ACM/IEEE 27th International Conference on Model Driven Engineering Languages and Systems , ser. MODELS Companion ’24. ACM, Sep. 2024, p. 155–161. [Online]. Available: http://dx.doi.org/10.1145/3652620.3688201 [26] N. Hynes, D. Sculley, and M. Terry, “The data linter: Lightweight, automated sanity checking for ML data sets,” in NIPS MLSys Workshop , vol. 1, no. 5, 2017, p. 10. [27] S. Schelter, T. Rukat, and F. Biessmann, “Jenga: A framework to study the impact of data errors on the predictions of machine learning models,” in Proceedings of the 24th International Conference on Extending Database Technology (EDBT) . OpenProceedings, Mar. 2021. [Online]. Available: https://openproceedings.org/ 2021/conf/edbt/p134.pdf [28] A. Authors, “Experiment repository for ”data-informed static analysis: Improving detection of semantic faults in machine learning code using data characteristics”,” Dec. 2025. [Online]. Available: https://doi.org/10.5281/ zenodo.17805911 [29] ——, “Dille: Data-informed static analysis,” Dec. 2025. [Online]. Available: https://doi.org/10.5281/ zenodo.17805763 [30] J. Wang, L. Li, and A. Zeller, “Better code, better sharing: on the need of analyzing jupyter notebooks,” in Proceedings of the ACM/IEEE 42nd International Conference on Software Engineering: New Ideas and Emerging Results , ser. ICSE ’20. ACM, Jun. 2020, p. 53–56. [Online]. Available: http://dx.doi.org/10.1145/ 3377816.3381724

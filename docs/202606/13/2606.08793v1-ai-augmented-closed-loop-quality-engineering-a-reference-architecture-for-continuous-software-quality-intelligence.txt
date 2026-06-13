@@ -1,0 +1,426 @@
+Title: AI-Augmented Closed-Loop Quality Engineering: A Reference Architecture for Continuous Software Quality Intelligence
+
+URL Source: https://arxiv.org/pdf/2606.08793v1
+
+Published Time: Tue, 09 Jun 2026 01:26:39 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# AI-Augmented Closed-Loop Quality Engineering: A Reference Architecture for Continuous Software Quality Intelligence 
+
+## Dimple Bajaj 
+
+Abstract 
+
+The quality of software engineering is still under a challenge due to disjointed processes between requirements, testing, and production, which hinders the opportunity to implement quality strate-gies in consecutive releases. Existing approaches tend to be fixed-model or single-optimization approaches and lack production feedback learning mechanisms. The paper at hand proposes a closed-loop reference architecture of continuous software quality intelligence with AI enhancements. The model synthesizes requirement feature mining, risk-based test prioritization, defect prediction, and production incident analysis as an element of a feedback-based pipeline. A limited feedback learning model is introduced that is used to propagate the production signal-based on defect sever-ity and incident impact- to the following release to ensure stability, and the time. The method is evaluated using a semi-synthetic test dataset of 4,500 requirements, 27,049 test cases, 13,089 defects and 7,841 incidents in six release cycles. The experimental results show that the proposed system reduces the defect leakage by 0.19 to 0.13, increases the effectiveness of the detection system to 0.72 to 0.84, and shortens the test execution by up to 35 percent compared to the non-adaptive baselines. The changes are stable release to release. The findings indicate that through the integra-tion of feedback-based learning in a closed-loop architecture, it can be continued to enhance quality process, which offers practical foundation of adaptive quality engineering of software. 
+
+Keywords: Closed-loop quality engineering, feedback-driven learning, defect prediction, test pri-oritization, software quality intelligence, production analytics. 
+
+# 1 Introduction 
+
+The growing complexity of software systems and the need to get fast and iterative releases have demonstrated the weakness of the more traditional approaches to quality engineering that are more likely to be founded on a fixed model and fragmented processes. The most recent advances in machine learning have enabled anticipating defects, optimizing tests, and predicting the results of the builds, which is the foundation of smarter quality practices (Jing et al., 2024; Kawalerowicz and Madeyski, 2023). However, the solutions that are mostly established are usually single phases of the software lifecycle without mechanisms to introduce feedback of downstream processes such as testing and production to upstream decisions systematically. Empirical studies show what opportunities there are and what constraints there are in the applica-tion of AI in the context of software quality. Machine learning has practical applications in industrial applications, such as automated test oracle generation and defect prediction, where the applicabil-ity of the method has been demonstrated (Arrieta et al., 2021; Herbold et al., 2022). At the same time, it is also indicated that model efficiency cannot be assessed solely based on the predictive performance, but explainable AI is also required in order to assess its efficiency and appropriateness to the needs of practitioners (Barredo Arrieta et al., 2020; Jiarpakdee et al., 2021). Additionally, 1
+
+> arXiv:2606.08793v1 [cs.SE] 7 Jun 2026
+
+the choice of the measures of evaluation is one of the key aspects to guarantee effective evaluation of predictive systems, and alternative measures, such as the Matthews correlation coefficient, can be more effective than commonly-used measures (Chicco and Jurman, 2023a). The urge to comprehend intricate models, like random forests, simply justifies the necessity to be clear about the procedure of coming up with a choice founded on AI (Aria et al., 2021). Despite these developments, there remains a single significant gap: the absence of built-in, feedback-driven architectures that can enable continuous learning between software releases. The existing practices tend to be causally inconsistent and fails to logically back-trace production indicators -defect severity or incident impact - through the previous stages of the process, like requirement analysis and test prioritization. Such a weakness suppresses the ability of AI systems to be fine-tuned over time and provide better quality results in a stable and consistent manner. Due to this gap, this paper suggests an AI-enhanced closed-loop quality engineering paradigm, which combines predictive modeling with a systematic feedback mechanism in the entire software lifecycle. The given solution is grounded on the earlier research in the area of defect prediction, test intelligence, and explainability, but concentrates on the continuous learning and structure integration rather than on the standalone performance of models. The framework enables the iterative and chronologically consistent spread of feedback by helping to refine requirement risk estimating and testing plans across releases, and hence, what is referred to as continuous software quality intelligence. 
+
+# 2 Review of Literature 
+
+Applying machine learning to software quality engineering was a popular subject of study, partic-ularly in the areas of defect prediction, test case prioritization, and empirical validation. However, despite a significant level of development, there are still some obstacles to reproducibility, integra-tion, and practical applicability. The systematic reviews and meta-analyses imply intrinsic limitations of reliability and comparability of empirical studies in software engineering. According to Kitchenham et al., (2020), the differences in the experimental design, data sets and evaluation approaches render the process of evidence aggregation across studies very difficult. Lewowski and Madeyski, (2022) confirm these fears by demonstrating that reproducibility is a critical issue, and most studies are not characterized in sufficient detail, to be replicated. Similarly speaking, Stradowski and Madeyski, (2023a) observe that there is no connection between research and practice in the industry, and that there are problems with data quality, lack of standardization, and low-external validity. When it comes to software defect prediction, several surveys indicate that machine learning methods are quite popular, yet they also indicate that there are still disadvantages present. Pandey et al., (2021) and Pachouly et al., (2022) show that various algorithms have been proposed, although they tend to rely on the dataset and cannot be generalized. Also, experiments show that the representation of features is a critical determinant of prediction performance. As an example, Pradhan et al., (2020) demonstrate how the old-fashioned defect density measures are substituted with machine learning-based algorithms, and dos Santos and Figueiredo, (2020) demonstrate that machine learning feature interactions may be highly useful as far as the defect prediction outcomes are concerned. In addition, labeling defects have also been cited as a questionable factor, and the paper by Rosa et al., (2023) provided a sample, which can lead to inconsistency in the results, undermining the validity of the model. 2Test case prioritization has also received extensive coverage as a way of enhancing testing efficiency. Paper-based reviews by Pan et al., (2022) and Prado Lima and Vergilio, (2020) verify that machine learning-based methods can increase the effectiveness of prioritization, especially in continuous integration settings. Paterson et al., (2019) also show that the combination of defect prediction and test prioritization are able to enhance the rate of fault detection. Nevertheless, the current methods will generally only be confined to certain stages of the testing process and fail to capture the feedback of subsequent lifecycle processes, like production, thus limiting their flexibility. Methodologically, the development of machine learning frameworks and optimization methods have led to enhanced experimentation and model performance. The mlr3 framework (Lang et al., 2019) offers a versatile and structured platform to perform reproducible machine learning experiments, whereas Hyperband (Li et al., 2018) is a platform to optimize hyperparameters with a trade-off between exploration and computational cost. Simultaneously, interpretability has become a pressing issue, and the methods to achieve it, including ensemble-based interpretable models, suggested by Konstantinov and Utkin, (2021) are designed to ensure increased transparency without a drop in predictive power. Irrespective of these advances, little has been done in integrating them into end-to-end software quality engineering workflows. 
+
+# 3 Methodology 
+
+## 3.1 Overview 
+
+This paper introduces an AI-enhanced reference architecture of closed-loop quality engineering that supports continuous software quality intelligence during release cycles. The suggested framework will combine the requirement analysis, test priority, defect prediction, and production analytics into a single feedback-based system. The goal is not to optimise a single predictive model but to have a causally consistent learning pipeline where signals produced by downstream stages are systematically fed back upstream to refine decision-making in future releases. In this context, continuous quality intelligence means the process of estimating and refining require-ment risk, test effectiveness, and defect likelihood through a series of steps using both production-based and historical signals. The AI elements are used to approximate latent risk patterns and predictive relationships, but the main contribution is the closed-loop structural incorporation and formulation of feedback, as opposed to the choice of particular machine learning models. 
+
+## 3.2 System Architecture 
+
+The proposed architecture is structured into five interrelated layers whose functionality is executed sequentially during each release and incrementally across releases: Requirement Intelligence, Re-quirement Risk Estimation, Test Intelligence, Defect Prediction, and Production Intelligence with Adaptive Feedback. At the entry point, every requirement ri was converted to structured feature representation: 
+
+xi = [ ai, c i, f i]
+
+where ai denotes an ambiguity score based on natural language processing heuristics (e.g. frequency of vague words, modal auxiliaries and readability measures), ci denotes a complexity score based on structural features (length, dependency count) and fi denotes the feedback signal based on past 3releases. Such a representation allows converting the unstructured requirements description into the measurable signals that can be used in the downstream learning. Requirement risk is then estimated using a regression model: 
+
+Ri = gθR (xi), Ri ∈ [0 , 1] 
+
+where gθR denotes a parametric function (e.g., gradient boosting). The output Ri is interpreted as a normalized probability reflecting the likelihood that requirement ri contributes to defect occurrence. Test intelligence is built through the spreading of requirement level risks to the related test cases. Where R(j) represents the list of requirements associated with test case tj . The priority score of the test is calculated as: 
+
+Tj = 1
+
+|R (j)|
+
+X
+
+> i∈R (j)
+
+Ri
+
+This aggregation eliminates the many-to-one mapping between requirements and test cases and makes sure the test prioritization is based on the risk of associated requirements. The test level of defect prediction is then carried out. A feature vector zj , which represents each test case, is defined as: 
+
+zj = [ Tj , e j , h j ]
+
+where ej denotes historical failure frequency and hj captures execution-related attributes such as test type or runtime. The probability of defect detection is then estimated using: 
+
+byj = fθD (zj ), byj ∈ [0 , 1] 
+
+where fθD is a classification model. The inclusion of both risk-derived and historical features ensures that predictions reflect both structural risk propagation and empirical execution behavior. The observed incidents I occurring after deployment are used to form production intelligence. In-cidents are clustered in the form of a clustering function: 
+
+Ck = hθP (I)
+
+where hθP is a clustering algorithm that is run on features (severity, resolution time, affected com-ponents, etc.). The clusters are given an impact score based on aggregated incident characteristics: 
+
+Si = 1
+
+|I|
+
+X
+
+> i∈I
+
+(severity i · resolution_time i)
+
+This expression is used to represent the severity and cost of production problems and gives a quantitative indicator of feedback learning. 4Figure 3 Architecture Diagram 
+
+## 3.3 Guiding Objective Formulation 
+
+To provide an interpretable abstraction for reasoning about quality trade-offs, we define a composite objective: 
+
+J = α · DefectRate + β · TestCost + γ · (1 − DetectionAccuracy )
+
+where α, β, γ ≥ 0 are weighting coefficients. This formulation is not directly optimized in the system; it is used as a conceptual guide to balance competing factors in terms of defect leakage, testing effort, and predictive performance in practice deployments. 
+
+## 3.4 Defect Severity and Incident Impact Modeling 
+
+In order to allow propagation of feedbacks, defect and incident signals are normalized to bounded scores. The total defect severity is given as: 
+
+Sd = 1
+
+|D|
+
+X
+
+> d∈D
+
+w(d)
+
+where w(d) ∈ [0 , 1] is a normalized severity weight assigned based on defect criticality levels. Similarly, the incident impact score is defined as: 
+
+Si = 1
+
+|I|
+
+X
+
+> i∈I
+
+(severity i · resolution_time i)
+
+5Both Sd and Si are normalized to the interval [0 , 1] , ensuring compatibility with the feedback learning mechanism. 
+
+## 3.5 Adaptive Feedback Learning 
+
+The central component of the proposed architecture is a bounded and stable feedback update mecha-nism that propagates production signals into requirement-level risk estimates. For each requirement 
+
+ri, the feedback signal is updated as: 
+
+f (t+1)  
+
+> i
+
+= (1 − λ)f (t) 
+
+> i
+
++ λ · σ
+
+
+
+θf 
+
+> 1
+
+Sd + θf 
+
+> 2
+
+Si
+
+where λ ∈ (0 , 1) is a fixed decay factor controlling the influence of historical versus new information, 
+
+σ(·) is the sigmoid function, and θf 
+
+> 1
+
+, θ f 
+
+> 2
+
+are scaling parameters. This formulation exhibits three important properties. First, it is bounded, as both f (t) 
+
+> i
+
+and the sigmoid output lie within [0 , 1] , ensuring that f (t+1)  
+
+> i
+
+∈ [0 , 1] . Second, it is stable, as the convex combination does not allow uncontrolled growth. Third, it favors temporal flexibility, where older signaling can fade away, and there can be newly produced evidence to the signal. Consequently, the feedback loop allows propagation of downstream quality signals into upstream decision processes and this is controllable and interpretable. 
+
+## 3.6 Closed-Loop Learning Process 
+
+The system is an iterative release-based system. In every release t, requirement features are deter-mined and applied to estimate requirement risk. The aggregation of these risks is done to prioritize the test cases and they are then evaluated by the defect prediction model. After the test execution and deployment, defects D and production incident I are gathered and converted into severity and impact scores. These signals are then included in the feedback update, which alters the requirement representations in the next release. Temporal causality is an enforced design constraint. Particularly, feedback calculated based on release t was used in release t + 1 . This assures that current predictions are not based on any future information, which would lead to data leakage and would maintain the validity of empirical assessment. 
+
+## 3.7 Implementation Considerations 
+
+The exact machine learning models applied at each of the layers (e.g., gradient boosting when estimating risks or Random Forest when predicting defects) are not supposed to be considered as a vital constituent but are rather representative choices. The architectural design is valid even when there are other models of choice. Normalization and encoding are standard preprocessing steps used to make components compatible. Time-aware data partitioning is used to evaluate with respect to the sequential character of the software releases. 64 Experimental Setup 
+
+## 4.1 Objective 
+
+The evaluation determines whether the proposed closed-loop architecture enhances continuous soft-ware quality intelligence between releases. It is concerned with system-level results, namely, the reduction of the number of defect leaks, the increase of the efficiency of tests, and the stability of feedback-based learning. 
+
+## 4.2 Dataset 
+
+The semi-synthetic dataset used in the study is structured to maintain realistic relationship among requirements, test cases, defects and production incidents. The data set is conducive to complete traceability needed in closed-loop assessment. 
+
+Component Records 
+
+Requirements 4,500 Test Cases 27,049 Defects 13,089 Incidents 7,841 Artifacts are linked as: Requirements → Test Cases → Defects → Incidents Standard imputation (mean in the case of numerical, mode in the case of categorical features) is used to deal with missing values. 
+
+## 4.3 Feature Alignment 
+
+The data is directly mapped to the methodological variables. Requirements are represented as: 
+
+xi = [ ai, c i, f i]
+
+where ambiguity ai and complexity ci are derived features, and feedback fi is initialized to zero. Test prioritization is computed using: 
+
+Tj = 1
+
+|R (j)|
+
+X
+
+> i∈R (j)
+
+Ri
+
+Existing dataset fields such as test_risk_score are used only for baseline comparison to avoid leakage. Defect severity and incident impact are computed as: 
+
+Sd = 1
+
+|D|
+
+X w(d), Si = 1
+
+|I|
+
+X(severity · resolution time )
+
+74.4 Experimental Design 
+
+Assessment is done on six consecutive releases to obtain temporal learning. In every release t, there is an estimation of requirement risk, prioritization of test cases, observation of defects, and production incidents. The feedback is then updated as: 
+
+f (t+1)  
+
+> i
+
+= (1 − λ)f (t) 
+
+> i
+
++ λ · σ
+
+
+
+θf 
+
+> 1
+
+Sd + θf 
+
+> 2
+
+Si
+
+Feedback from release t is applied only to release t + 1 , ensuring causal consistency. 
+
+## 4.5 Comparison Setup 
+
+Three experimental configurations are taken into account to test the effect of the proposed archi-tecture. The initial configuration is a basic case of no feedback where the test prioritization is done using original requirement features and is constant across releases. Such an arrangement is a case of a fixed pipeline and no adaptive learning. The second structure presents the idea of the static machine learning where predictive models are used to estimate the risk of requirements and predict defects, but no feedback correction is provided. Consequently, model behavior is fixed once it is first trained and not updated according to production results. The third setup is the known close loop sequence, whereby adaptive feedback learning is built into the pipeline. Within this environment, the feedback based on the severity of defects and incidents during production is spread to the next release, which allows dynamically updating the requirement risk estimation and prioritizing tests. This setup is representative of the full capabilities of the proposed architecture and enables evaluation of the effects of the proposed architecture in comparison with non-adaptive baselines. 
+
+## 4.6 Evaluation Metrics 
+
+System-level metrics are used: 
+
+• Defect Rate (DR): 
+
+DR = Defects in Production Total Defects 
+
+• Detection Effectiveness (DE): 
+
+DE = Defects Detected in Testing Total Defects 
+
+• Test Execution Reduction (TER): 
+
+TER = 1 − Executed Tests Total Tests 
+
+• Feedback Stability (FS): 
+
+FS = 1
+
+N
+
+X f (t+1)  
+
+> i
+
+− f (t)
+
+> i
+
+85 Results and Discussion 
+
+## 5.1 Overview of Evaluation 
+
+The proposed closed-loop architecture is tested in six consecutive releases to determine how it can provide continuous software quality smartness. The metrics under analysis are system-level metrics such as defect rate (DR), detection effectiveness (DE), test execution reduction (TER), and feedback stability (FS). Findings are presented as trends over releases and are indicative of the progressive essence of learning and not performance snapshots. Any values listed are averages of release data with standard deviation where appropriate. 
+
+## 5.2 Defect Rate Reduction Across Releases 
+
+Table 1 shows the defect rate per release in each configuration. The no-feedback baseline is charac-terized by varying behavior, which means that there is no adaptive learning. The unchanging ML setup makes progress of moderate success, but flattens following early publications. Conversely, the proposed system shows a slow yet steady decrease in the rate of defect, with small variations that are realistic behaviour of a system. 
+
+Table 1: Defect Rate (DR) Across Releases Release No Feedback Static ML Proposed System 
+
+R1 0.21 ± 0.02 0.19 ± 0.02 0.19 ± 0.02 
+
+R2 0.22 ± 0.02 0.18 ± 0.02 0.17 ± 0.02 
+
+R3 0.21 ± 0.01 0.18 ± 0.02 0.15 ± 0.01 
+
+R4 0.23 ± 0.02 0.17 ± 0.01 0.14 ± 0.01 
+
+R5 0.22 ± 0.02 0.17 ± 0.01 0.145 ± 0.01 
+
+R6 0.23 ± 0.02 0.16 ± 0.01 0.13 ± 0.01 
+
+The proposed system reduces defect rate from approximately 0.19 to 0.13 over six releases, represent-ing a relative improvement of around 30-35%. Such an enhancement coincides with the refinement of requirement risk and test prioritization based on feedback. 9Figure 2. Defect rate across releases under different configurations 
+
+## 5.3 Detection Effectiveness 
+
+The results of detection effectiveness are presented in Table 2. No-feedback configuration is quite stable, whereas the static ML demonstrates gradual improvement and stabilizes after mid releases. The suggested system demonstrates gradual improvement, which means that feedback improves the capability to identify defects in the course of testing. 
+
+Table 2: Detection Effectiveness (DE) Release No Feedback Static ML Proposed System 
+
+R1 0.68 ± 0.02 0.72 ± 0.02 0.72 ± 0.02 
+
+R2 0.67 ± 0.02 0.74 ± 0.02 0.75 ± 0.02 
+
+R3 0.69 ± 0.02 0.75 ± 0.02 0.78 ± 0.02 
+
+R4 0.66 ± 0.02 0.76 ± 0.01 0.80 ± 0.01 
+
+R5 0.68 ± 0.02 0.77 ± 0.01 0.82 ± 0.01 
+
+R6 0.67 ± 0.02 0.78 ± 0.01 0.84 ± 0.01 
+
+The enhancement of the effectiveness of detection is a direct result of the enhanced mechanism of test prioritization in which the requirement risk with feedback adjustments results to a more focused execution of the tests. 10 Figure 3. Detection effectiveness across releases under different configurations 
+
+## 5.4 Test Execution Efficiency 
+
+The decline in the volume of test execution is indicated in Table 3. The no-feedback setup performs all the tests, which lead to no reduction. The moderate efficiency gains are obtained in the case of static ML, whereas the proposed system is showing increasingly high reduction with slight variability. 
+
+Table 3: Test Execution Reduction (TER) Release No Feedback Static ML Proposed System 
+
+R1 0.00 0.12 ± 0.02 0.12 ± 0.02 
+
+R2 0.00 0.18 ± 0.02 0.21 ± 0.02 
+
+R3 0.00 0.20 ± 0.02 0.26 ± 0.02 
+
+R4 0.00 0.23 ± 0.02 0.29 ± 0.02 
+
+R5 0.00 0.25 ± 0.02 0.32 ± 0.02 
+
+R6 0.00 0.27 ± 0.02 0.35 ± 0.02 
+
+The proposed approach achieves up to ∼35% reduction in test execution while simultaneously improving detection effectiveness, demonstrating improved efficiency without loss of quality. 11 Figure 4. Test execution reduction across releases under different configurations 
+
+## 5.5 Impact of Feedback Mechanism 
+
+The direct comparison between the proposed and static ML configurations brings out the role of feedback learning. Although both strategies involve the use of predictive models, only the proposed system is released adaptive. 
+
+## 5.6 Feedback Stability Analysis 
+
+Table 4 reports feedback stability across release transitions. 
+
+Table 4: Feedback Stability (FS) Transition FS 
+
+R1 → R2 0.17 R2 → R3 0.14 R3 → R4 0.12 R4 → R5 0.10 R5 → R6 0.08 The converging trend shows that feedback updates converge. This is in line with the bounded feedback formulation, whereby the stability and prevention of oscillations are achieved through sigmoid normalization and λ decay factor. 12 5.7 Discussion 
+
+The findings show that the suggested closed-loop architecture provides gradual yet consistent en-hancement in the quality of software released. The system minimizes defect leakage and enhances the effectiveness of defect detection with time by integrating production feedback in requirement risk estimation and test prioritization. The proposed method is also adaptive, as opposed to the static approaches that demonstrate minimal enhancement, in line with the change in the behavior of the system. The nature of improvements is gradual and gradual, which agrees with the limited feedback formulation that makes it stable and avoids extreme shifts. The feedback approach can add value to the machine learning models that are not dynamic, as it allows one to match the predicted risk with the observed results. Moreover, the findings also suggest that efficiency and effectiveness of testing can be enhanced concurrently because less test running is reached without having to compromise the detection of defects. 
+
+# 6 Conclusion 
+
+In this paper, an AI-enhanced closed-loop reference architecture of continuous software quality en-gineering was introduced. The framework incorporates requirement analysis, test prioritization, defect prediction, and production intelligence with a limited feedback learning process, which pro-vides stability and temporal consistency. Experimental analysis of several releases has shown that the suggested methodology leads to lower leakage of defects, higher detection rates and efficiency and higher testing efficiency than non-adaptive baselines. The observed improvements are slow and consistent, which promotes the suitability of the architecture in practice. The paper underscores the relevance of adaptive quality engineering systems based on feedback. Future research will be aimed at validating with real-world industrial data and scaling the framework to large continuous delivery systems. 
+
+# References 
+
+• Aria, M., Cuccurullo, C., Gnasso, A., 2021. A comparison among interpretative proposals for random forests. Mach. Learn. Appl. 6, 100094. http://dx.doi.org/10.1016/j.mlwa. 2021.100094 .
+
+• Arrieta, A., Ayerdi, J., Illarramendi, M., Agirre, A., Sagardui, G., Arratibel, M., 2021. Using machine learning to build test oracles: An industrial case study on elevators dispatching algorithms. In: 2021 IEEE/ACM International Conference on Automation of Software Test. AST, pp. 30–39. http://dx.doi.org/10.1109/AST52587.2021.00012 .
+
+• Barredo Arrieta, A., Díaz-Rodríguez, N., Del Ser, J., Bennetot, A., Tabik, S., Barbado, A., Garcia, S., Gil-Lopez, S., Molina, D., Benjamins, R., Chatila, R., Herrera, F., 2020. Explainable artificial intelligence (XAI): Concepts, taxonomies, opportunities and challenges toward responsible AI. Inf. Fusion 58, 82–115. 
+
+• Chicco, D., Jurman, G., 2023a. The Matthews correlation coefficient (MCC) should replace the ROC AUC as the standard metric for assessing binary classification. BioData Min. 16, 4. 
+
+http://dx.doi.org/10.1186/s13040-023-00322-4 .13 • Herbold, S., Trautsch, A., Trautsch, F., Ledel, B., 2022. Problems with SZZ and features: An empirical study of the state of practice of defect prediction data collection. Empir. Softw. Eng. 27, 42. http://dx.doi.org/10.1007/s10664-021-10092-4 .
+
+• Hryszko, J., Madeyski, L., 2017. Assessment of the software defect prediction cost effec-tiveness in an industrial project. In: Madeyski, L., Śmiałek, M., Hnatkowska, B., Huzar, Z. (Eds.), Software Engineering: Challenges and Solutions. In: Advances in Intelligent Systems and Computing, vol. 504, Springer, pp. 77–90. http://dx.doi.org/10.1007/ 978-3-319-43606-7_6 .
+
+• Hryszko, J., Madeyski, L., 2018. Cost effectiveness of software defect prediction in an in-dustrial project. Found. Comput. Decision Sci. 43, 7–35. http://dx.doi.org/10.1515/ fcds-2018-0002 .
+
+• IIBA, 2015. Babok: A Guide to the Business Analysis Body of Knowledge. International Insti-tute of Business Analysis. International Organization for Standardization, 2022. ISO/IEC/IEEE 29119-1:2022 software and systems engineering — software testing. URL https://www.iso. org/standard/81291.html . (Accessed 20 December 2022). 
+
+• Ismail, A.M., Hamid, S.H.A., Sani, A.A., Daud, N.N.M., 2024. Toward reduction in false positives just-in-time software defect prediction using deep reinforcement learning. IEEE Access 12, 47568–47580. 
+
+• Jiarpakdee, J., Tantithamthavorn, C.K., Grundy, J., 2021. Practitioners’ perceptions of the goals and visual explanations of defect prediction models. In: 2021 IEEE/ACM 18th In-ternational Conference on Mining Software Repositories. MSR, IEEE/ACM, pp. 432–443. 
+
+http://dx.doi.org/10.1109/MSR52588.2021.00055 .
+
+• Jing, X.-Y., Chen, H., Xu, B., 2024. Intelligent Software Defect Prediction. Springer Nature Singapore, http://dx.doi.org/10.1007/978-981-99-2842-2 .
+
+• Kawalerowicz, M., Madeyski, L., 2021. Continuous build outcome prediction: A smallN experiment in settings of a real software project. In: Fujita, H., Selamat, A., Lin, J.C.-W., Ali, M. (Eds.), IEA/AIE 2021. Advances and Trends in Artificial Intelligence. from Theory to Practice. In: LNCS, vol. 12799, Springer, Cham, pp. 412–425. http://dx.doi.org/10. 1007/978-3-030-79463-7_35 .
+
+• Kawalerowicz, M., Madeyski, L., 2023. Continuous build outcome prediction: An experimen-tal evaluation and acceptance modelling. Appl. Intell. 53, 8673–8692. http://dx.doi.org/ 10.1007/s10489-023-04523-6 .
+
+• Kitchenham, B., Madeyski, L., Brereton, P., 2020. Meta-analysis for families of experiments in software engineering: A systematic review and reproducibility and validity assessment. Empir. Softw. Eng. 25, 353–401. http://dx.doi.org/10.1007/s10664-019-09747-0 .
+
+• Konstantinov, A.V., Utkin, L.V., 2021. Interpretable machine learning with an ensemble of gradient boosting machines. Knowl.-Based Syst. 222, 106993. http://dx.doi.org/10.1016/ j.knosys.2021.106993 .
+
+• Lang, M., Binder, M., Richter, J., Schratz, P., Pfisterer, F., Coors, S., Au, Q., Casalicchio, G., Kotthoff, L., Bischl, B., 2019. mlr3: A modern object-oriented machine learning framework in R. J. Open Source Softw. http://dx.doi.org/10.21105/joss.01903 .14 • Lewowski, T., Madeyski, L., 2022. How far are we from reproducible research on code smell detection? A systematic literature review. Inf. Softw. Technol. 144, 106783. http://dx. doi.org/10.1016/j.infsof.2021.106783 .
+
+• Li, L., Jamieson, K., DeSalvo, G., Rostamizadeh, A., Talwalkar, A., 2018. Hyperband: Anovel bandit-based approach to hyperparameter optimization. J. Mach. Learn. Res. 18, 1–52, URL https://www.jmlr.org/papers/volume18/16-558/16-558.pdf .
+
+• Pachouly, J., Ahirrao, S., Kotecha, K., Selvachandran, G., Abraham, A., 2022. A systematic literature review on software defect prediction using artificial intelligence: Datasets, data validation methods, approaches, and tools. Eng. Appl. Artif. Intell. 111, 104773. http: //dx.doi.org/10.1016/j.engappai.2022.104773 .
+
+• Pan, R., Bagherzadeh, M., Ghaleb, T.A., Briand, L., 2022. Test case selection and priori-tization using machine learning: A systematic literature review. Empir. Softw. Eng. 27, 
+
+http://dx.doi.org/10.1007/s10664-021-10066-6 .
+
+• Pandey, S.K., Mishra, R.B., Tripathi, A.K., 2021. Machine learning based methods for soft-ware fault prediction: A survey. Expert Syst. Appl. 172, 114595. http://dx.doi.org/10. 1016/j.eswa.2021.114595 .
+
+• Paterson, D., Campos, J., Abreu, R., Kapfhammer, G.M., Fraser, G., McMinn, P., 2019. An empirical study on the use of defect prediction for test case prioritization. In: 2019 12th IEEE Conference on Software Testing, Validation and Verification. ICST, pp. 346–357. 
+
+http://dx.doi.org/10.1109/ICST.2019.00041 .
+
+• Pradhan, S., Nanniyur, V., Vissapragada, P.K., 2020. On the defect prediction for large scale software systems — from defect density to machine learning. In: 2020 IEEE 20th International Conference on Software Quality, Reliability and Security. QRS, pp. 374–381. 
+
+http://dx.doi.org/10.1109/QRS51102.2020.00056 .
+
+• Prado Lima, J.A., Vergilio, S.R., 2020. Test case prioritization in continuous integration environments: A systematic mapping study. Inf. Softw. Technol. 121, 106268. http: //dx.doi.org/10.1016/j.infsof.2020.106268 .
+
+• Rosa, G., Pascarella, L., Scalabrino, S., Tufano, R., Bavota, G., Lanza, M., Oliveto, R., 2023. A comprehensive evaluation of SZZ variants through a developer-informed oracle. J. Syst. Softw. 202, 111729. http://dx.doi.org/10.1016/j.jss.2023.111729 .
+
+• dos Santos, G.E., Figueiredo, E., 2020. Failure of one, fall of many: An exploratory study of software features for defect prediction. In: 2020 IEEE 20th International Working Conference on Source Code Analysis and Manipulation. SCAM, pp. 98–109. http://dx.doi.org/10. 1109/SCAM51674.2020.00016 .
+
+• Stradowski, S., Madeyski, 2023a. Bridging the gap between academia and industry in machine learning software defect prediction: Thirteen considerations. In: 38th IEEE/ACM Interna-tional Conference on Automated Software Engineering. pp. 1098–1110. http://dx.doi.org/ 10.1109/ASE56229.2023.00026 .15
