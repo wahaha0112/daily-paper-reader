@@ -1,0 +1,1094 @@
+Title: DIG: Oracle-Guided Directed Input Generation for One-Day Vulnerabilities
+
+URL Source: https://arxiv.org/pdf/2606.13037v1
+
+Published Time: Fri, 12 Jun 2026 00:39:22 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# DIG: Oracle-Guided Directed Input Generation for One-Day Vulnerabilities 
+
+## Andrew Bao University of Minnesota, Twin Cities 
+
+## bao00065@umn.edu 
+
+## Haochen Zeng University of California, Riverside 
+
+## hzeng013@ucr.edu 
+
+## Peng Chen Independent Researcher 
+
+## spinpx@gmail.com 
+
+## Stephen McCamant University of Minnesota, Twin Cities 
+
+## smccaman@umn.edu 
+
+## Pen-Chung Yew University of Minnesota, Twin Cities 
+
+## yew@umn.edu 
+
+# Abstract 
+
+One-day vulnerabilities pose significant risks due to delayed or incomplete patch adoption. Generating proof-of-concept (PoC) inputs is therefore essential for assessing real-world impact. The key challenge is identifying necessary constraints for triggering the vulnerability and solving them effectively. Existing directed fuzzing approaches prioritize inputs toward target locations, but neither explicitly identify necessary constraints nor solve them effectively, relying instead on target-distance feedback and random mutation. Agentic approaches show strong potential through code reasoning and structured input generation, but goal drift in long-horizon reasoning limits their effectiveness. DIG addresses this challenge by exploiting a key property of one-day vulnerabilities: patches often reveal necessary pre-conditions for triggering. DIG uses an LLM to analyze the patch and synthesize an oracle making these conditions explicit. The oracle supports effective PoC generation at two levels. At the high level, DIG performs oracle-guided generator evolu-tion, where an agent infers and solves constraints to satisfy the oracle. At the low level, DIG instruments the oracle into the target program and uses branch-distance feedback to guide random mutation in directed fuzzing. Evaluation shows DIG outperforms 2 state-of-the-art agents and 10 fuzzers across 138 real-world CVEs. DIG triggers 80 vulnerabilities, surpassing prior results and outperforming the best baseline by 40% (57 vs. 80 CVEs). Notably, DIG exclusively triggers 9 vulnerabilities no existing technique can trigger. Compared to the average of other tools, DIG triggers vulnerabilities faster in 92.9% of cases, achieving over 100 × speedup in 48.8% of cases, with a maximum speedup of 3,664 ×. Beyond one-day PoC generation, DIG uncovers 6 previously unknown vulnerabilities in widely deployed libraries, enabling zero-day discovery. 
+
+# 1 Introduction 
+
+Modern software systems have become foundational infrastruc-ture for the internet and critical services. As these systems scale and become more complex, security vulnerabilities have be-come increasingly prevalent and difficult to assess. The vulner-ability lifecycle distinguishes two critical periods: zero-day vul-nerabilities exist from discovery until patch release, while one-day vulnerabilities exist from patch disclosure until widespread deployment. Despite the fact that zero-day vulnerabilities re-ceive significant attention, one-day vulnerabilities present an equally severe but often underestimated threat. Prior studies [ 1, 2, 3, 4 , 5 , 6, 7] show that patch adoption is often slow and incomplete. During this window, attackers can analyze released patches to infer vulnerable behavior and rapidly develop exploits. From a defender’s perspective, the availability of a patch alone is insufficient to assess the risk of one-day vulnerabilities. Defenders must determine whether their specific systems remain vulnerable under heterogeneous deployment conditions [ 8], assess the severity of potential ex-ploitation [ 9], and verify patch completeness [ 10 , 11 , 12 ]. This attack–defense asymmetry renders one-day vulnerabilities, in practice, nearly as dangerous as zero-days. To bridge this gap, defenders need automated proof-of-concept (PoC) generation that provides end-to-end evidence of real-world risk. The key challenge of PoC generation for one-day vulnera-bilities is twofold: identifying which constraints are necessary for vulnerability triggering, and solving these constraints ef-fectively. Existing approaches tackle this challenge from two different directions. First, directed greybox fuzzing (DGF) does not explicitly identify which constraints are necessary for vulnerability trig-gering. Instead, it identifies target locations (e.g., vulnerable function locations) and uses control-flow [ 13 , 14 ] or data-flow [ 15 , 16 ] distances to estimate whether an input is mak-ing progress toward these targets. Because fuzzing provides high-throughput execution, DGF can explore a large number of 1
+
+> arXiv:2606.13037v1 [cs.CR] 11 Jun 2026
+
+candidate inputs and gradually select inputs that make progress toward the targets. However, since this guidance is only an indirect proxy for constraints that are necessary for vulnerabil-ity triggering, and the search still relies primarily on low-level 
+
+random mutation , DGF often struggles to construct valid PoCs. Second, recent LLM-based input generation approaches [ 17 ,18 , 19 ] offer a promising direction. Since LLMs are trained on large-scale code, they capture broad knowledge about program syntax, input formats, and common semantic rules. PBFuzz [ 20 ]further strengthens these approaches through an agentic work-flow. To identify constraints, the agent analyzes the target code, call relationships, and execution feedback to infer reachability and triggering constraints. To solve these constraints, it trans-lates them into parameterized input generators, and then uses property-based testing to systematically search for inputs that satisfy them. However, many hard-to-trigger vulnerabilities re-main difficult for PBFuzz. This is because PoC generation is often a long-horizon reasoning task that requires satisfying a sequence of constraints to trigger the vulnerability. As a result, agents are prone to the goal drift effect [ 21 , 22 , 23 ], where they may gradually lose sight of the vulnerability trigger over long reasoning chains, causing them to infer incorrect constraints, forget valid ones, or fail to preserve the constraints necessary for constructing a valid PoC. These limitations suggest that effective one-day PoC gen-eration requires both a more direct source of information for identifying the constraints necessary for vulnerability trigger-ing and a more effective way to solve them. Our key insight comes from a distinctive property of one-day vulnerabilities: A security patch may add a new check, correct a variable re-lation, introduce a state constraint, or modify a precondition before a dangerous operation. While these changes appear to fix the vulnerability, they more fundamentally reveal why the original vulnerability could be triggered. Therefore, a patch is not only the result of a fix, but also an important source for un-derstanding the constraints required to trigger the vulnerability. For example, a patch that adds a bounds check, if (size <= MAX) , directly suggests that triggering the vulnerability may require violating this check, i.e., size > MAX .We derive an oracle from the patch and define it as a nec-essary precondition for vulnerability triggering. The oracle 
+
+supports effective PoC generation at two levels. At the high level, the oracle serves as an explicit starting point for identi-fying constraints. Starting from the oracle, the agent reasons backward to infer a sequence of constraints that lead to the oracle. The derived constraints give each iteration in the agentic workflow a concrete subgoal: solving unresolved constraints and gradually building the PoC, which helps mitigate the goal drift problem. At the low level, the oracle is instrumented into the binary. This gives the directed fuzzer explicit constraints to solve, rather than relying only on indirect target-distance guidance. Moreover, the oracle makes constraint solving more effective by improving random mutation with branch-distance feedback. 
+
+Our solution We present DIG ( Directed Input Generation), an oracle-guided PoC generation system for one-day vulnera-bilities. Specifically, DIG introduces the following techniques: • Oracle Synthesis: LLMs are well suited for patch analysis because, through training on large-scale code and bug-fix patterns, they can understand the semantic intent of a patch rather than merely its textual changes. DIG leverages this ca-pability to turn implicit patch information into an oracle. First, DIG identifies the key constraints in the patch that are most relevant to the vulnerability, such as a newly added check, a corrected variable relation, or an enforced state condition. Second, it analyzes how these constraints prevent the original vulnerable behavior in the context of the source code and vul-nerability description. Third, it infers what must hold in the vulnerable source code for these constraints to be violated, which DIG uses as the oracle. • Oracle-guided Generator Evolution: At the high level, DIG’s agent performs LLM-based code reasoning from the oracle to infer the constraints that govern how variables in the oracle are computed and propagated. DIG then evolves the generator based on the inferred constraints: each run pre-serves the generation logic developed in the previous run and extends it to address additional unresolved constraints. This incremental refinement breaks the goal of PoC generation into a sequence of smaller constraint-solving steps, mitigat-ing goal drift in agent reasoning and progressively improving the generator’s ability to produce valid PoCs. • Oracle-guided Directed Mutation: At the low level, DIG instruments the oracle into the binary, which allows DIG to improve random mutation with oracle guidance. Mutations are concentrated on input regions that directly influence or-acle satisfaction, while branch-distance feedback steers the search direction, guiding the fuzzer to move the input closer to satisfying the oracle rather than further away. We argue that this low-level directed mutation complements high-level generator evolution. While high-level reasoning is effective at global search and constructing inputs that satisfy the con-straints leading to the oracle, it is relatively slow and may still leave the oracle unsatisfied (e.g., hard-to-infer constraints due to hidden program states). Low-level directed mutation com-plements this process by performing high-throughput local search over small changes to oracle-relevant input regions. 
+
+Contributions In summary, we make the following contribu-tions: • At the conceptual level, we formulate one-day PoC genera-tion as a constraint-solving problem over oracle-related con-straints. • At the technical level, we design several novel techniques to improve the effectiveness of constraint solving in PoC gen-eration, including oracle synthesis, oracle-guided generator evolution, and oracle-guided directed mutation. • At the practical level, we build the end-to-end system and con-duct a comprehensive evaluation of 138 real-world vulnerabil-ities on the Magma benchmark, demonstrating that DIG sub-stantially outperforms state-of-the-art LLM-driven input gen-2eration systems, as well as directed and non-directed fuzzers, in PoC generation. We further commit to open-sourcing our artifacts to facilitate reproducibility and future research. 
+
+# 2 Motivating Examples 
+
+In this section, we demonstrate DIG’s effectiveness for PoC generation through two case studies on one-day vulnerabilities in real-world programs. In §2.1, we show how DIG’s oracle-guided generator evolution generates a PoC for CVE-2019-14494, where other state-of-the-art techniques fail. In §2.2, we show how DIG’s oracle-guided directed mutation generates a PoC for CVE-2015-8784, where DIG’s agent alone fails due to hidden program state. 
+
+## 2.1 CVE-2019-14494 
+
+This vulnerability is a floating-point underflow lead-ing to division-by-zero in Poppler’s PDF tiling pat-tern renderer (Figure 11 in Appendix). It occurs in 
+
+SplashOutputDev::tilingPatternFill() when render-ing specially crafted PDF files with tiling patterns. To reach the vulnerable code, the input must satisfy stan-dard PDF syntactic constraints: valid PDF structure (e.g., a 
+
+%PDF-1.4 header), correct object references, proper dictionary syntax, and a well-formed TilingPattern object with all required fields ( /PatternType , /BBox , /XStep , /YStep ). These con-straints are enforced by the PDF parser and object construction. Any syntactic violation causes parsing failure before reaching the vulnerable function. The critical challenge lies in satisfying multiple semantic constraints at runtime. We highlight three essential ones: • Singularity check (C7). Before invoking the vulnerable func-tion tilingPatternFill() , Poppler validates that the Cur-rent Transformation Matrix (CTM) is not approximately sin-gular (Figure 12 in Appendix). In PDF, the CTM is repre-sented as a six-parameter affine transform [a b c d e f] ,whose linear part is the 2 × 2 matrix 
+
+a cb d
+
+
+
+with determi-nant ad − bc . The check requires | det (CTM )| ≥ 10 −6. The challenge is to find a CTM whose linear part is large enough to pass this check, yet still small enough to contribute to the downstream floating-point underflow. For instance, a CTM with a = 10 −5, b = 0 , c = 0 , d = 1 yields det = 10 −5 > 10 −6,bypassing the check while enabling the subsequent floating-point underflow. In contrast, values like a = 10 −1 would pass the singularity check but fail to trigger underflow. • XStep/YStep dependency (C8). The Pattern’s /XStep 
+
+and /YStep must equal the BBox dimensions in 
+
+SplashOutputDev::doTilingPatternFill() . This cross-field dependency requires xStep == bbox[2] -bbox[0] and yStep == bbox[3] - bbox[1] .• Floating-point underflow chain (C9–C10). The most crit-ical semantic constraint involves a multi-step computation that must produce zero through floating-point underflow. As shown in Figure 11, the product of three values from different PDF objects must underflow below the minimum positive sub-normal value of IEEE 754 double precision ( ≈ 4.94 × 10 −324 
+
+for C/C++ double ). This requires: (1) an extremely small tile width ( 10 −340 ) specified in the Pattern’s /BBox dictionary, (2) a small CTM scale factor ( 10 −5) from the transforma-tion matrix (constrained by the singularity check), and (3) their product 10 −5 × 10 −340 = 10 −345 < 4.94 × 10 −324 un-derflowing to exactly zero. This constraint is particularly subtle because the ceil() function in surface_width = (int)ceil(fabs(kx)) rounds any non-zero value up to at least 1. For example, even a tiny value like kx = 10 −12 would result in ceil (10 −12 ) = 1 , yielding surface_width = 1 
+
+and avoiding division-by-zero. Only when kx underflows to 
+
+exactly 0.0 will surface_width become zero. DIG first analyzes the vulnerability patch (Figure 13 in Ap-pendix) and identifies the key constraints that are most relevant to the vulnerability. In this case, the patch adds a zero check before the division. DIG then analyzes how this check prevents the vulnerable behavior in the original code and infers that trig-gering the vulnerability requires surface_width == 0 || surface_height == 0 , which DIG uses as the oracle. DIG generates a valid PoC (Figure 14 in Appendix) through 12 rounds of generator evolution. At each iteration, DIG con-ducts LLM-based code reasoning from the oracle to infer the constraints that govern how the variables in the oracle are com-puted and propagated. Figure 1 summarizes the constraints inferred by DIG across these iterations. Early generators (cycles 1–9) focused on satisfying the syn-tactic constraints required to reach the oracle. These included constructing a valid PDF structure and tiling pattern, popu-lating the required Pattern fields, ensuring that the Pattern is referenced by the page resources, and including the necessary fill operators in the content stream (i.e., C1–C5). DIG also de-rived the semantic constraints governing the computation of the oracle, including the relation between XStep , YStep , and BBox 
+
+(C8) and the numerical conditions required for the underflow chain (C9–C10). A critical breakthrough came in cycle 9, when DIG inferred that ceil(fabs(kx)) makes any positive value round up to at least 1, implying that the oracle can be satis-fied only when surface_width becomes exactly zero (C10). This insight narrowed the remaining unresolved constraints to achieving exact zero through floating-point underflow. Guided by this constraint, cycle 10 introduced an extreme tile width (10 −340 ), and cycle 11 preserved this logic while further re-fining the CTM scale ( 10 −5) so that the remaining semantic constraints, including the non-singularity constraint (C7), were simultaneously satisfied. This process illustrates how oracle-guided generator evolu-tion mitigates the goal drift problem in agentic reasoning. By focusing each iteration on the currently unresolved constraints while preserving previously recovered generation logic, DIG incrementally builds the generator and gradually constructs the final PoC. In our experiments, neither existing agentic PoC-generation systems, such as PBFuzz [ 20 ], nor general-purpose coding agents, such as Cursor [ 24 ], were able to satisfy the ora-cle and generate a valid PoC. Moreover, state-of-the-art fuzzers, 3as well as LLM-assisted input-generation approaches such as G2Fuzz [ 17 ], LlamaFuzz [ 25 ], and SeedAIchemy [ 26 ], failed even to satisfy the syntactic constraints required to reach the vulnerable function. 
+
+DIG constraint inference for CVE-2019-14494                                                                             
+
+> •C1: valid_pdf_structure (file )(proper header and object structure) •C2: PatternType =1 (TilingPattern) •C3: ∃BBox ,XStep ,YStep ,Matrix ∈Pattern (required fields) •C4: Pattern ∈Page .Resources (resource reference) •C5: content_stream ⊇ { /Pattern cs ,scn ,re f }(fill operators) •C6: ∀i∈[0,5]:isfinite (CTM [i]) (finite CTM values) •C7: |det (CTM )|=|CTM [0]×CTM [3]−CTM [1]×CTM [2]| ≥
+> 10 −6
+> •C8: XStep =BBox [2]−BBox [0]∧YStep =BBox [3]−BBox [1]
+> •C9: kx ×tile_width ×(x1 −x0 )<4.94 ×10 −324 (underflow) •C10: surface_width =⌈| kx |⌉ =0 (zero after scaling)
+
+FIGURE 1: Constraints inferred by DIG for CVE-2019-14494. 
+
+## 2.2 CVE-2015-8784 
+
+Constraints required to trigger CVE-2015-8784                                       
+
+> •C1: valid_tiff_structure (file )(valid magic number, IFD entries, and strip/tile data) •C2: Compression =32766 (NeXT 2-bit RLE codec selected) •C3: BitsPerSample =2(only value accepted by NeXTPreDecode )•C4: isTiled (file )(TileWidth and TileLength tags present) •C5: td_tilewidth >td_imagewidth (scanline is computed from td_imagewidth via TIFFScanlineSize , while the de-code loop uses td_tilewidth as imagewidth ; the mismatch al-lows op_offset to reach scanline before npixels reaches
+> imagewidth )
+
+FIGURE 2: Constraints required to trigger CVE-2015-8784. 
+
+This vulnerability is a heap buffer overwrite in NeXTDecode 
+
+(Figure 15 in Appendix). To reach NeXTDecode , the input must satisfy syntactic constraints C1–C3: a valid TIFF file us-ing NeXT compression (tag 32766) and BitsPerSample = 2, the only value accepted by the pre-decode validator 
+
+NeXTPreDecode . The overflow occurs because the inner 
+
+while loop and the output buffer use two different values for the row width: the loop iterates until npixels reaches 
+
+imagewidth , while the buffer allocated for each output row is only scanline bytes. When imagewidth exceeds what 
+
+scanline can hold, SETPIXEL writes past the end of the row into adjacent heap memory. As shown in Figure 15, scanline is read from 
+
+tif->tif_scanlinesize , which is computed by 
+
+TIFFScanlineSize64 (bottom of the figure) solely from 
+
+td_imagewidth . In the default strip mode, NeXTDecode also sets the local variable imagewidth from td_imagewidth .Since both values derive from the same field, SETPIXEL (which packs four 2-bit pixels per byte, incrementing op_offset 
+
+every fourth pixel) always stays within the buffer: by the time npixels reaches imagewidth , op_offset equals 
+
+scanline and the loop exits. In tiled mode (C4), the 
+
+if (isTiled) branch in the figure overrides imagewidth 
+
+with td_tilewidth . However, scanline is not updated to match; it still reflects td_imagewidth . When td_tilewidth 
+
+> td_imagewidth (C5), the loop runs for more pixels than the buffer can hold. For example, with td_imagewidth = 4 and td_tilewidth = 16: scanline = 1 byte (room for 4 pixels), but the loop runs for 16 pixels. After the first 4 pixels, op_offset = 1 ≥ scanline = 1 while 
+
+npixels = 4 < imagewidth = 16, and SETPIXEL begins writing out of bounds. In our experiments, DIG successfully analyzed the oracle derived from the patch, but its generator evolution failed to generate a valid PoC. We found that the agent failed to in-fer the hidden state relationship between two variables: how 
+
+scanline and imagewidth are computed, and how tiled mode decouples them. In strip mode, both values are derived from td_imagewidth ; in tiled mode, imagewidth is over-written with td_tilewidth , whereas scanline still reflects 
+
+td_imagewidth .In contrast, oracle-guided directed mutation does not re-quire understanding the hidden relationship. Instead, it ob-serves how each mutation changes the oracle branch distance. Adjusting the RLE stream can initially increase the number of decoded pixels, reducing the distance to op_offset >= scanline . However, in strip mode, npixels is bounded by 
+
+imagewidth , so op_offset eventually stops growing and the branch distance stops decreasing. The fuzzer can then ex-plore other input regions that affect the oracle. A byte-level mutation that happens to create a valid tiled-mode configu-ration (e.g., by setting the TileWidth and TileLength en-tries) can make isTiled(tif) true, causing imagewidth to be overwritten with td_tilewidth . This immediately changes the branch distance. A larger td_tilewidth raises the upper bound on op_offset , allowing the distance to op_offset >= scanline to decrease again. Therefore, further insertions into the RLE stream become effective again, increasing op_offset 
+
+until the out-of-bounds write is triggered. In our experiments, DIG’s low-level directed mutation triggered the vulnerability 13.1 × faster than state-of-the-art mutation-enhanced fuzzers such as AFL++ [27] and FOX [28]. 
+
+# 3 DIG Design 
+
+In this section, we first describe DIG’s overall architecture and key components (§3.1). We then define the oracle and explain how it is synthesized (§3.2). Next, we detail DIG’s oracle-guided generator evolution (§3.3), and finally its oracle-guided directed mutation (§3.4). 
+
+## 3.1 DIG Workflow 
+
+Figure 3 illustrates the overall workflow of DIG. 1 Given patch information, the CVE description, and the program source code, DIG synthesizes an oracle and instruments it into the target program. It also enables sanitizer instrumentation to detect whether candidate inputs actually trigger the vulnerability. 2
+
+DIG’s agent infers constraints from the oracle by invoking a suite of program analysis tools, including static, dynamic, and 4Agent  
+
+> Generation Evolution Directed Mutation
+> Constraints Inference
+> Constraint Solving
+> 23
+> Vul Info
+> Instrumented
+> Binary
+> Oracle Synthesis
+> LLM
+> 1
+> Program P
+> 1. Patch
+> 2. CVE Info
+> 3. Target
+> ├─ png.c
+> ├─ pngrutil.c
+> ├─ pngrtran.c
+> └─ ...
+> Byte offsets Inference
+> Branch-Distance-
+> Guided Mutation
+> Input
+
+FIGURE 3: Overview of DIG’s workflow for PoC generation. 
+
+source-code analyzers. Based on the inferred constraints, DIG constructs and refines a generator that preserves previously sat-isfied constraints while learning to satisfy unresolved ones. 3
+
+When high-level generator evolution fails to satisfy the oracle, DIG performs low-level directed mutation on inputs generated by the generator. In this step, DIG performs black-box taint analysis to identify the input bytes that directly influence the oracle. Then, DIG mutates these bytes based on the branch dis-tance feedback. Step 2 is repeated until the oracle is satisfied or the generator-evolution budget is reached. Step 3 is repeated until the oracle is satisfied or a timeout is reached. 
+
+## 3.2 Oracle Synthesis 
+
+DEFINITION 1 (Oracle). Let P be a program under test, I
+
+its input space, and S the set of runtime program states. We write ⟨P, i⟩ → ∗ s to denote that executing P on input i ∈ I can reach state s ∈ S . Let Sv ⊆ S be the set of vulnerable states that characterize the triggering of a vulnerability v. An oracle is a patch-derived boolean predicate O : S →{True , False } such that any execution that reaches Sv must pass through a state satisfying O: 
+
+∀i ∈ I ,  ⟨P, i⟩ → ∗ Sv
+
+ ⇒  ∃s ∈ S. ⟨P, i⟩ → ∗ s ∧ O(s) = True .
+
+An important aspect of this definition is that the oracle is patch-derived. This distinguishes DIG’s oracle from arbitrary necessary preconditions, such as dominator branches along the execution path. In contrast, the oracle is derived from the patch and therefore encodes a specific precondition for vulnerability triggering. This follows from the assumption that the patch cor-rectly and completely fixes the vulnerability. A security patch typically introduces checks or enforces conditions that were missing in the vulnerable version. Therefore, any execution that triggers the vulnerability must violate these "patch-enforced" conditions. If a triggering execution did not violate them, the patch would fail to prevent that execution, contradicting the assumption that the patch correctly and completely fixes the vulnerability. DIG’s oracle should not be confused with the check used by sanitizers. A sanitizer check is a detection mechanism that monitors whether a final execution outcome, such as memory corruption or a crash, has occurred. In contrast, DIG’s oracle is used to guide the search toward PoC generation. It captures patch-derived vulnerability conditions that inputs must satisfy before the final bug manifestation can occur. A natural ques-tion, then, is whether a crash condition can serve as such a search oracle. In principle, crash conditions are often unavail-able. Many vulnerabilities do not come with bug reports. For example, in our study of 20 OpenSSL CVEs, none were ac-companied by a bug report. In contrast, patch information is consistently available. DIG synthesizes an oracle through LLM-based analysis of vulnerability artifacts: the vulnerable source code, bug descrip-tion, and security patch. Figure 4 shows a simplified version of the prompt that guides this process. The prompt first defines an oracle as a patch-derived necessary precondition for vul-nerability triggering. It then guides the LLM to synthesize the oracle in three steps. First, it identifies the constraints in the patch that are most relevant to the vulnerability, such as a newly added check, a corrected variable relation, or an enforced state condition. Second, it analyzes how these constraints prevent the original vulnerable behavior in the context of the source code and vulnerability description. Third, it infers what must hold in the vulnerable version for these constraints to be violated, which DIG uses as the oracle. 
+
+Oracle Synthesis Prompt            
+
+> <role> You are an expert security researcher specializing in patch analysis and oracle synthesis. An oracle is a patch-derived boolean predicate over program states that captures a necessary precondition for vulnerability triggering.
+> <mission> Your mission is to synthesize such an oracle by analyzing the security patch, vulnerable source code, and bug description. First, identify the constraints in the patch that are most relevant to the vul-nerability, such as a newly added check, a corrected variable relation, or an enforced state condition. Second, analyze how these constraints prevent the vulnerable behavior in the source code and vulnerability description. Third, infer what must hold in the source code for these constraints to be violated, and express these violations as an oracle.
+> <input>
+> •Security Patch (Diff): <PATCH>
+> •Source Code to the PATCH: <SOURCE_CODE>
+> •Vulnerability Description: <DESCRIPTION>
+> <output> Return a C/C++ code snippet that specifies both where the oracle should be inserted in the vulnerable source code and what pred-icate should be checked. The predicate should use in-scope program variables at that location.
+
+FIGURE 4: Simplified prompt for oracle synthesis. 
+
+## 3.3 Oracle-guided Generator Evolution 
+
+Our oracle-guided generator evolution consists of two phases: constraint inference and constraint solving. Algorithm 1 illus-trates the overall process. For constraint inference (lines 6–7), we use an ACTION-OBSERVATION agentic workflow [ 29 ]to infer oracle-related constraints (more details in §3.3). For constraint solving (lines 8–14), we define the effectiveness of 5generators based on their constraint satisfaction sets, and se-lect the most effective generator to solve the constraints (more details in §3.3). Both phases share a common agentic tool set that the agent invokes during reasoning: 
+
+Static Analysis Tools reason about interprocedural control flow: • get_call_path( func ) — returns the call path from 
+
+main to the target. • get_callers( func , depth ) — returns callers up to a given depth. 
+
+Source Code Inspection Tools examine oracle-related variable definitions: • get_source_code( func ) — retrieves function source. • grep_code( pattern ) — locates assignment sites of oracle-related variables across the codebase. 
+
+Dynamic Analysis Tools compare runtime behavior against inferred constraints: • get_execution_trace() — records execution trace on a candidate input. • analyze_condition() — inspects constraint satisfac-tion on the execution trace. 
+
+Oracle-guided Constraint Inference As we discussed in §1, the key challenge of PoC generation is to identify which con-straints are necessary to trigger the vulnerability and solve them effectively. Through oracle synthesis (§3.2), DIG identifies a necessary precondition derived from the patch for vulnerability triggering. However, this oracle does not fully specify all the necessary constraints that must be satisfied to reach and sat-isfy the oracle. Therefore, DIG performs constraint inference to recover these constraints and uses them to guide generator evolution. Specifically, DIG performs constraint inference through an ACTION-OBSERVATION agentic workflow. As shown in Algorithm 1, the function UpdConstr is called at line 6 in the ACTION phase. The agent inspects the source code (via 
+
+get_source_code and grep_code ) and invokes static anal-ysis tools (via get_call_path and get_callers ) to reason about data flow and control flow, inferring additional constraints necessary for satisfying the oracle. If a newly inferred con-straint is not already included in the oracle-related constraint set, the agent adds it to the set. The function UpdUnsatConstr 
+
+is called at line 7 in the OBSERVATION phase. During this phase, the agent executes the most effective generator so far with dynamic analysis tools such as get_execution_trace 
+
+and analyze_condition to inspect which constraints are sat-isfied and which are not. Then, the unsatisfied constraints are added to the unsatisfied constraint set, which is used to guide the generator refinement at line 13 to generate more effective generators to solve the unsatisfied constraints. 
+
+Oracle-guided Constraint Solving To guide the generator evo-lution, we define the effectiveness of generators based on their constraint satisfaction sets. Given an oracle O, let ΣO denote the set of oracle-related constraints inferred from O.
+
+Algorithm 1 Oracle-Guided Generator Evolution 
+
+Require: Oracle O, instrumented program P, source code src (P), bud-get B 
+
+> 1:
+
+ΣO ← O ▷ oracle-related constraints  
+
+> 2:
+
+ΣU ← /0 ▷ unsatisfied constraints  
+
+> 3:
+
+G ← /0 ▷ set of refined generators  
+
+> 4:
+
+g∗ ← ⊥ ▷ most effective generator  
+
+> 5:
+
+while B > 0 do 
+
+// Phase 1: Constraint Inference  
+
+> 6:
+
+ΣO ← UPD CONSTR (ΣO, src (P)) ▷ ACTION phase  
+
+> 7:
+
+ΣU ← UPD UNSAT CONSTR (ΣO, P, g∗) ▷ OBSERVATION phase 
+
+// Phase 2: Constraint Solving  
+
+> 8:
+
+g∗ ← arg max g∈G Eff (g) ▷ select most effective generator  
+
+> 9:
+
+i ← g∗() ▷ generate input from best generator  
+
+> 10:
+
+if EXECUTE (i, P) triggers crash then  
+
+> 11:
+
+return i 
+
+> 12:
+
+else  
+
+> 13:
+
+g ← REFINE GENERATOR (ΣU , g∗) 
+
+> 14:
+
+G ← G ∪ { g} 
+
+> 15:
+
+end if  
+
+> 16:
+
+B ← B − 1 
+
+> 17:
+
+end while  
+
+> 18:
+
+return g∗
+
+DEFINITION 2 (Constraint Satisfaction Set). For a generator g, its constraint satisfaction set is: CS (g, ΣO) = {c ∈ ΣO | inputs from g satisfy c }
+
+DEFINITION 3 (Effectiveness of Generators). Generator g∗
+
+is more effective than g if CS (g, ΣO) ⊂ CS (g∗, ΣO); in other words, g is dominated by g ∗. We denote this as: Eff (g) < Eff (g∗)
+
+where Eff (·) represents the effectiveness of a generator. ⊥(Bottom)   
+
+> CS= ∅
+> g1
+> {C1}
+> g2
+> {C1,C2,C4,C5,C6}
+> g5
+> {C1,...,C8}
+> g4
+> {C1,C2,C3,C5,C6}
+> ⊤g12
+> {C1,...,C10} Oracle trigger
+> Oracle reach
+> None
+
+FIGURE 5: Generator lattice for CVE-2019-14494, showing the evolu-tion of generators through constraint satisfaction. 
+
+The generator evolution process satisfies oracle-related con-straints through a lattice structure defined by the effectiveness 6relation. The subset-based comparison of constraint satisfac-tion sets creates a partial order over generators. The bottom element ⊥ represents the least effective generator that satisfies no constraints, while the top element ⊤ represents the most ef-fective generator where CS (g∗, ΣO) = ΣO. Generators between these two are ordered by the subset relation of their constraint satisfaction sets: a proper superset indicates strictly greater ef-fectiveness, while two generators are incomparable when they satisfy different constraint subsets such that neither subset fully encompasses the other. At line 8 in Algorithm 1, DIG selects the most effective generator g∗ by maximizing Eff (g) over the current genera-tor set G. The effectiveness of each generator is measured via 
+
+analyze_condition() (via GDB), which inspects the con-crete variable values at each constraint site to determine which constraints in ΣO are satisfied by inputs from g. Because the effectiveness relation is a partial order, two generators may be 
+
+incomparable : neither dominates the other when they satisfy different but overlapping constraint subsets. In such cases, DIG randomly selects among the non-dominated generators in G. At line 13, the function RefineGenerator is called to refine the selected generator g∗. This function invokes source code inspec-tion tools ( get_source_code , grep_code ) to locate where unsatisfied constraints originate in the source code, then calls an LLM to update the generator to satisfy those constraints. Figure 5 visualizes the lattice structure for CVE-2019-14494 (§2.1), where the superscript in gx denotes the iteration num-ber. Generators are color-coded by their oracle-related status. Generators g2 and g4 are incomparable as they satisfy different constraint subsets. The evolution progresses from ⊥ (0 con-straints) through g5 (8 constraints, first to reach the oracle) to 
+
+g12 (satisfying all constraints in ΣO). 
+
+## 3.4 Oracle-guided Directed Mutation 
+
+When the generator evolution fails to satisfy the oracle or the budget is reached, DIG performs directed mutation to guide the search toward the oracle. Algorithm 2 presents our oracle-guided directed mutation strategy. First, in the byte-offset influ-ence phase, also known as black-box taint analysis [ 30 , 31 ](Lines 2–9), the algorithm identifies which byte offsets in the seed input s influence the oracle’s branch distance δO(s).For each byte offset i, M UTATE BYTE mutates the byte and checks whether the branch distance changes. Only offsets that affect branch distance are considered influential. Second, in the mutation-with-gradient-feedback phase (Lines 10–13), for each influential byte offset, C OMPUTE GRADIENT computes a gradient gi that estimates how sensitive the oracle’s branch distance function is to changes in the byte. Specifically, we approximate the gradient as gi ≈ δO(s[i]+ ε)−δO(s[i])  
+
+> ε
+
+, where ε is a small perturbation (e.g., ε = 1 ). This gradient provides an estimated direction of change to steer input bytes toward sat-isfying the oracle. The algorithm then mutates input bytes in the direction that reduces the branch distance, which provides gradient feedback for mutations. Compared to random mutation, oracle-guided directed muta-tion offers two key advantages. First, it focuses mutations on 
+
+Algorithm 2 Oracle-guided Directed Mutation 
+
+Require: Seed s reaching oracle O, branch distance function 
+
+δO for O 
+
+> 1:
+
+I ← /0 ▷ Byte offsets in s that influence δO(s) 
+
+> 2:
+
+for each byte offset i in s do  
+
+> 3:
+
+d ← δO(s) ▷ Branch distance before mutation  
+
+> 4:
+
+s[i] ← MUTATE BYTE (s[i]) 
+
+> 5:
+
+d′ ← δO(s) 
+
+> 6:
+
+if d̸ = d′ then  
+
+> 7:
+
+I ← I ∪ { i} 
+
+> 8:
+
+end if  
+
+> 9:
+
+end for  
+
+> 10:
+
+for each i ∈ I do  
+
+> 11:
+
+gi ← COMPUTE GRADIENT (s, i, δO) 
+
+> 12:
+
+s[i] ← MUTATE BYTE (s[i], s[i] − gi) 
+
+> 13:
+
+end for  
+
+> 14:
+
+return s
+
+input regions directly influencing the oracle. For CVE-2015-8784 (§2.2), DIG mutates the bytes that influence the oracle 
+
+op_offset >= scanline rather than performing random mu-tations that cause parsing failures and exit early. Second, the oracle provides branch distance as gradient feedback [ 32 , 28 ]. Given op_offset = 100, scanline = 500 , the branch dis-tance of 400 indicates adjustment magnitude; the >= operator indicates direction ( op_offset must increase). Random muta-tion lacks both: it cannot distinguish op_offset = 105 from 
+
+op_offset = 100 (both fail but one is closer to satisfying the oracle), and half its mutations move in the wrong direction. 
+
+# 4 Implementation 
+
+We implement three main components in DIG: oracle syn-thesis, oracle-guided generator evolution, and oracle-guided directed mutation. Oracle synthesis is implemented in Python with 1,456 LoC. Oracle-guided generator evolution is imple-mented in Python and C++ with 14,163 LoC. Directed mutation is implemented in C/C++ based on AFL [ 33 ], using LLVM 14 with 1,212 LoC. As part of generator evolution, DIG includes an agentic tool set to support constraint inference and input generation. This tool set consists of three types of tools: static analy-sis, dynamic analysis, and source-code inspection. The static analysis tools, get_call_path and get_callers , are im-plemented in C++ using LLVM 14, with 1,671 LoC. To im-plement these tools, we build a call graph with indirect-call support based on type analysis. The dynamic analysis tool 
+
+get_execution_trace is implemented in C++ with 278 LoC; it instruments target programs at compile time using GCC/Clang’s -finstrument-functions flag, which inserts 
+
+__cyg_profile_func_enter callbacks at function entries to record call sequences and invocation counts. Another dy-namic analysis tool, analyze_condition , is a lightweight wrapper around GDB that evaluates branch conditions at run-time. For source-code inspection tools, get_source_code is 7implemented with tree-sitter and consists of 851 LoC, while 
+
+grep_code is a wrapper around grep .
+
+# 5 Evaluation 
+
+In this section, we evaluate DIG to answer the following re-search questions: 
+
+RQ1 (Oracle Synthesis Correctness): How accurately can DIG synthesize vulnerability oracles compared to human ex-perts? 
+
+RQ2 (PoC Generation Effectiveness): How effective is DIG at generating PoCs for known CVEs compared to state-of-the-art approaches? 
+
+RQ3 (In-depth Analysis): What insights can be gained from a detailed analysis of DIG in PoC generation? 
+
+RQ4 (Ablation Study): How do individual components (oracle-guided generator evolution, and oracle-guided directed muta-tion) contribute to DIG’s overall effectiveness in PoC genera-tion? 
+
+RQ5 (New Vulnerability Finding): Can DIG discover previ-ously unknown vulnerabilities in real-world programs? 
+
+## 5.1 Evaluation Setup 
+
+We follow established best practices for rigorous fuzzing evalu-ation [34, 35] and describe our experimental setup below. 
+
+Dataset We use the Magma benchmark [ 36 ] for four reasons: (1) Real-world vulnerabilities: Magma consists of real-world vulnerabilities, covering 138 CVEs across 9 widely used open-source projects. (2) Generality and scalability: the benchmark includes software projects with diverse input formats and a wide range of codebase sizes (see Table 7). (3) Standard and comparable benchmark: Magma has been widely adopted in prior fuzzing research [ 37 , 38 , 39 , 28 , 20 ], making it a com-monly used standard for evaluating PoC generation capabilities. (4) Unsaturated and challenging: according to the Magma doc-umentation, only a subset of its vulnerabilities (e.g., 42 out of 138 CVEs) have been successfully triggered by existing fuzzers, indicating that the benchmark remains far from saturated and still leaves substantial room for improvement. 
+
+Baselines and Setup We select two agentic systems and ten fuzzers as baselines (see Table 6). These baselines cover five cat-egories: (i) C0 : Agentic input generation (PBFuzz [ 20 ] and Cur-sor [ 24 ]); (ii) C1 : baseline coverage-guided fuzzing (AFL [ 33 ]and AFL++ [ 27 ]); (iii) C2 : directed fuzzing employing vari-ous techniques (AFLGo [ 13 ], SelectFuzz [ 15 ], Titan [ 39 ]); (iv) 
+
+C3 : coverage-guided fuzzing with enhanced mutation (Cm-pLog [ 31 ] and FOX [ 28 ]); and (v) C4 : LLM-assisted input generation added on top of baseline coverage-guided fuzzing (G 2Fuzz [ 17 ], LLAMAFUZZ [ 25 ], SeedAIchemy [ 26 ]). For all tools, we used the most recent stable release available at the time of our study. For tools whose implementations are not pub-licly available at the time of writing, such as SeedAIchemy, or whose deployment is difficult, such as LlamaFuzz, we directly used the results reported in the original papers because they also use the same benchmark for evaluation. For fuzzers built on AFL-based engines, including AFL++, AFLGo, SelectFuzz, Titan, CmpLog, FOX, and G 2Fuzz, we configured the fuzzing engine in non-deterministic mode. Each non-LLM fuzzer (C1, C2, C3) was run for 24 hours per target and repeated 10 times using Magma’s initial seed corpus. In contrast, LLM-based approaches (C0, C4), including G 2Fuzz, PBFuzz, and Cursor, were run once due to cost constraints and did not require Magma’s initial seed corpus. DIG was also run once per target due to cost constraints, consistent with the settings used for G 2Fuzz, PBFuzz, and Cursor. For PBFuzz and Cursor (configured with the prompt template in Figure 16), we directly used the results reported by the PBFuzz authors. To ensure a fair comparison between LLM-assisted and agentic input-generation approaches, all such approaches used the same default model, Claude Sonnet 4.5. In addition, all experiments were conducted on a server with two AMD EPYC 9354 CPUs, 64 cores in total, and 256 GB RAM. For consistency, each instance was executed in a Docker container limited to one CPU core and 4 GB RAM. 
+
+Evaluation Metrics We evaluate PoC generation using two primary metrics. First, CVE coverage measures the number of distinct Magma CVEs successfully triggered. For non-LLM fuzzers (C1, C2, C3), CVE coverage is computed as the union of CVEs triggered across all 10 runs. For LLM-based approaches (C0, C4), i.e., G 2Fuzz, PBFuzz, Cursor, and DIG, which are ex-ecuted once due to cost constraints, CVE coverage is computed as the total number of CVEs triggered in the single 24-hour run. Second, Time-to-Event (TTE) measures the elapsed time from the start of fuzzing until the first successful PoC is gener-ated. To account for runs that do not generate a PoC within the 24-hour time budget, we treat such runs as right-censored and estimate the survival function using the Kaplan–Meier estima-tor [ 40 ]. We report the restricted mean TTE (RMST), computed as the area under the survival curve up to the 24-hour cutoff. For CVEs that can be triggered from multiple fuzzing harnesses, we report the minimum TTE. 
+
+## 5.2 Oracle Synthesis Correctness 
+
+Before assessing oracle correctness, we first establish a ground-truth oracle for evaluation. The Magma benchmark provides a per-vulnerability canary function ( MAGMA_LOG ), which im-plements a set of predicates intended to characterize necessary conditions for vulnerability triggering. We treat this canary func-tion as the reference oracle and additionally perform manual inspection to validate its intended semantics. When discrepan-cies are observed, human judgment is treated as the final arbiter, resulting in a ground-truth oracle. Using this ground-truth oracle, we assess the correctness of DIG’s synthesized oracles at three levels of increasing per-missiveness. At L1 (Syntactic Equivalence) , a synthesized oracle is considered correct if it is syntactically identical to the ground-truth oracle, i.e., the two oracles contain exactly 8TABLE 1: Oracle synthesis correctness breakdown across the Magma benchmark.                                                           
+
+> Project CVEs L1 L2 L3 Syn. Err. Ref. Err.
+> libpng 514000libsndfile 18 12 3032libtiff 14 84021libxml2 16 10 4020Lua 412100poppler 22 17 1310sqlite3 20 14 3210OpenSSL 20 10 9010PHP 16 84131
+
+the same predicates with identical structure. At L2 (Semantic Equivalence) , a synthesized oracle is considered correct if it is semantically equivalent to the ground-truth oracle, meaning that both oracles characterize the same conditions, even if their predicate formulations differ syntactically. At L3 (Sufficient-Condition Correctness) , a synthesized oracle is considered correct if it captures a sufficient condition for the ground-truth oracle. In other words, whenever the synthesized oracle evalu-ates to true, the ground-truth oracle would also evaluate to true, even though the synthesized oracle may be more restrictive and may not cover all cases captured by the ground-truth oracle. In addition to these correctness levels, we distinguish two cat-egories of errors encountered during evaluation: a Synthesis Error , where the synthesized oracle is incorrect with respect to the ground-truth oracle, and a Reference Error , where the ref-erence oracle itself is incorrect with respect to the ground-truth oracle (e.g., the Magma canary). 
+
+Synthesized-oracle Correctness. The Magma benchmark con-tains a total of 138 CVEs. Three CVEs ( PNG004 , PNG005 , and 
+
+XML015 ) were excluded due to missing or incorrect CVE anno-tations in the benchmark. This leaves 135 synthesized oracles for evaluation against the ground-truth oracle. Among the 135 evaluated cases, 122 synthesized oracles are correct under the L1-L3 criteria, corresponding to a success rate of 90.37% . The remaining 13 cases are classified as Synthesis Errors. In addi-tion, we identified 4 cases where the Magma reference oracle itself is incorrect, which are categorized as Reference Errors. Table 1 summarizes the results. Appendix .2 provides case stud-ies for all categories discussed above: L1, L2, L3, Synthesis Error, and Reference Error. 
+
+RQ1 Takeaway: Given patch information, DIG achieves a 
+
+90.37% success rate in synthesizing correct oracles across 135 CVEs. This suggests that LLM-guided reasoning is a promising approach for automating oracle synthesis at scale. 
+
+## 5.3 PoC Generation Effectiveness 
+
+CVE Coverage To comprehensively evaluate DIG’s effective-ness, we compare its CVE coverage against two agentic sys-tems and 10 state-of-the-art fuzzers across all 138 CVEs in the Magma benchmark detailed in Table 8. Figure 6 (left) shows that DIG successfully triggers 80 out of 138 CVEs (58.0%), sub-stantially outperforming all tools. Agentic systems (C0) achieve 57 CVEs for PBFuzz (41.3%) and 38 CVEs for Cursor (27.5%). Baseline fuzzers (C1) achieve 48 CVEs for AFL (34.8%) and 52 CVEs for AFL++ (37.7%). Directed fuzzers (C2) range from 28-45 CVEs: AFLGo leads with 45 CVEs (32.6%), followed by SelectFuzz at 37 CVEs (26.8%), and Titan at 29 CVEs (21.0%). Mutation-enhanced fuzzers (C3) achieve 51 CVEs for CmpLog (37.0%) and 48 CVEs for FOX (34.8%). LLM-assisted input generation tools (C4) range from 28-46 CVEs: LLAMAFUZZ achieves 46 CVEs (33.3%), SeedAIchemy 41 CVEs (29.7%), and G 2Fuzz 28 CVEs (20.3%). To understand the unique CVEs found by different fuzzers, we analyze the overlap distribution of the 84 CVEs across all 13 tools (including DIG). Figure 6 (right) shows, for each tool, how many of its CVEs are also found by other tools. We define three overlap categories: Exclusive (0 others)—CVEs found by only one tool; Rare (1-3 others)—CVEs found by 2-4 tools total; Common ( ≥4 others)—CVEs found by 5+ tools. DIG has 9 exclusive and 18 rare CVEs out of its 80 total, meaning over one-third of DIG’s coverage comes from vulnerabilities that few or no other tools can trigger. Among agentic systems (C0), PBFuzz has 3 exclusive and 14 rare CVEs and Cursor has no exclusive CVEs but contributes 9 rare ones, demonstrating the potential of agentic systems to trigger vulnerabilities that traditional fuzzers cannot. In contrast, all C1–C4 tools have zero exclusive CVEs, and most of their coverage consists entirely of common CVEs (e.g., CmpLog’s 51 CVEs are all common), showing that traditional fuzzers largely overlap on the same vulnerabilities. 0 20 40 60 80                 
+
+> Total CVE Coverage
+> G2fuzz
+> Titan
+> Selectfuzz
+> Cursor
+> SeedAIchemy
+> AFLGo
+> LLAMAFUZZ
+> FOX
+> AFL
+> CmpLog
+> AFL++
+> PBFuzz
+> DIG
+> 28
+> 29
+> 37
+> 38
+> 41
+> 45
+> 46
+> 48
+> 48
+> 51
+> 52
+> 57
+> 80
+> DIG
+> C0
+> C1
+> C2
+> C3
+> C4
+> 020 40 60 80
+> CVE Overlap Distribution
+> 28
+> 29
+> 136
+> 929
+> 239
+> 45
+> 244
+> 345
+> 147
+> 51
+> 250
+> 314 40
+> 918 53
+> Exclusive (0 others)
+> Rare (1-3 others)
+> Common ( 4 others)
+
+FIGURE 6: Left: CVE coverage per fuzzer. Right: CVE coverage overlap across fuzzers. 
+
+To further understand how fuzzers from different categories perform in PoC generation, we compare DIG’s CVE coverage against the union of all fuzzers in each category. Figure 7 reveals that DIG alone outperforms the combined union of every cate-gory. Agentic systems (C0) together cover only 57 CVEs (23 fewer than DIG alone). Directed fuzzers (C2) collectively find only 50 CVEs (30 fewer), LLM-assisted input generation tools (C4) together find 52 CVEs (28 fewer), mutation-enhanced fuzzers (C3) find 56 CVEs (24 fewer), and baseline fuzzers 9DIG C0 C1 C2 C3 C4      
+
+> Fuzzer Category
+> 0
+> 20
+> 40
+> 60
+> 80
+> Unique CVEs Found (Union)  80
+> 57 54
+> 50
+> 56
+> 52
+> +23 +26 +30 +24 +28
+
+FIGURE 7: Unique CVEs found by the union of all tools in each category. < 1 1-10 10-100 100-1000 1000       
+
+> 0
+> 10
+> 20
+> 30
+> 40
+> Count
+> 2
+> (2.5%)
+> 9
+> (11.2%)
+> 30
+> (37.5%)
+> 31
+> (38.8%)
+> 8
+> (10.0%)
+> < 1 1-10 10-100 100-1000 1000
+> 0
+> 10
+> 20
+> 30
+> 40
+> Count
+> 36
+> (45.0%) 32
+> (40.0%)
+> 7
+> (8.8%) 5
+> (6.2%)
+
+FIGURE 8: Distribution of DIG’s speedup ranges. Left: vs. average. Right: vs. best performer. 
+
+(C1) find 54 CVEs (26 fewer). This shows that DIG’s advan-tage is not attributable to the underperformance of any single baseline. Even when all tools within a category are combined to eliminate individual variance, DIG alone still achieves higher CVE coverage. In addition, DIG’s CVE coverage is also consistent across different file formats: DIG triggers all listed CVEs in PNG, SND, TIF, XML, Lua, PDF, and SQL, and triggers most listed CVEs in PHP (8 out of 10) and SSL (5 out of 7), showing that its effectiveness generalizes across diverse input formats and program sizes. 
+
+Time-to-Event (TTE) We also evaluate DIG’s effectiveness by comparing its Time-to-Event (TTE) with that of 12 state-of-the-art tools. Table 8 presents the detailed TTE results, where we compute two key metrics: (1) vs. Avg., which measures DIG’s speedup relative to the average TTE of all other tools, and (2) vs. Best, which measures DIG’s speedup relative to the best-performing tool for each CVE. DIG demonstrates strong TTE performance across the bench-mark. Compared to the average performance of other tools, DIG is faster in 92.9% of cases (78 out of 84 CVEs), slower in 2 cases, and times out in the remaining 4 cases. Moreover, 48.8% of cases show speedups exceeding 100×, and 10.0% achieve speedups over 1000×. Even under the stricter compari-son against the best-performing tool for each CVE, DIG remains faster in 52.4% of cases (44 out of 84 CVEs), including 5 cases with speedups over 100×. Figure 8 visualizes the distribution of these speedup ranges. The cases where DIG is slower than the best baseline are mostly easy-to-trigger targets. Among these 36 CVEs, the fastest baseline triggers 31 CVEs within 3 min-utes. In 20 of these cases, DIG takes no more than 3 additional minutes compared with the fastest baseline. For example, on PNG003, the fastest baseline triggers the CVE in 0.3 minutes, while DIG takes 1.5 minutes; this appears as a 5× slowdown, but the absolute gap is only 1.2 minutes. On these easy targets, seed-based, high-throughput fuzzers can quickly expose vul-nerabilities close to existing seeds, and agentic systems such as PBFuzz and Cursor can also rapidly trigger them through direct code-level reasoning. DIG, by contrast, generates PoCs from scratch through generator evolution, which introduces additional overhead that is most apparent on easy-to-trigger CVEs. In addition, DIG achieves remarkable speedups on several CVEs where even the best baseline struggles. On SQL001, DIG triggers the vulnerability in 1.4 minutes, outperforming the best baseline by 979.29× and the average by 1020.58×. Similarly, on SQL006, DIG achieves a 960.00× speedup over both the average and the best baseline. On PHP005, DIG triggers the CVE in 2.1 minutes while all other tools time out, yielding a 685.71× speedup. 
+
+RQ2 Takeaway: DIG triggers 80 out of 138 CVEs (58.0%), outperforming all 12 baselines and every category union, with 9 exclusive CVEs that no other tool can trigger. Compared to the average baseline TTE, DIG is faster in 78 out of 84 cases (92.9%), with 8 cases exceeding 1000× speedup. While agentic systems (C0) demonstrate the po-tential to trigger vulnerabilities that traditional fuzzers cannot, goal drift can limit their ability to reason about hard-to-trigger vulnerabilities. DIG mitigates this limi-tation through oracle-guided generator evolution, which evaluates each iteration based on measurable constraint satisfaction and preserves generators that make progress toward the oracle, improving its ability to reason about hard-to-trigger vulnerabilities. 
+
+## 5.4 In-depth Analysis libpng       
+
+> libsndfile
+> lua
+> libtiff
+> libxml2
+> sqlite3
+> php
+> openssl
+> poppler
+> 0
+> 1
+> 2
+> 3
+> 4
+> 5
+> 6
+> 7
+> Number of Constraints
+> 2.67
+> 6.10
+> 5.00 4.92
+> 4.31 4.37 4.27
+> 3.69 3.63
+> PNG006
+> SND002
+> LUA004
+> TIF001
+> XML001
+> SQL002
+> PHP003
+> SSL008
+> PDF001
+> 0
+> 2
+> 4
+> 6
+> 8
+> 10
+> 12
+> Number of Constraints
+> 4
+> 88
+> 66
+> 7
+> 5
+> 6
+> 10
+
+FIGURE 9: Constraint inference statistics. Left: average number of inferred constraints across bugs in each program. Right: the bug with the most inferred constraints in each program. 
+
+Constraint Inference Figure 9 (left) shows the average number of oracle-related constraints inferred per vulnerability for each program. Across all programs, DIG infers an average of 4.28 constraints per vulnerability. The number of constraints varies across programs: libsndfile has the highest average (6.10), fol-lowed by Lua (5.00) and libtiff (4.92), while libpng has the 10 lowest (2.67). Poppler (3.63) and OpenSSL (3.69) also have relatively few constraints per vulnerability. Figure 9 (right) shows the vulnerability with the most in-ferred constraints in each program. Although the number of constraints does not directly determine constraint solving dif-ficulty, it serves as a useful proxy for oracle complexity and correlates with DIG’s TTE in practice. Among these hardest vulnerabilities, SND002 (8 constraints), PHP003 (5 constraints), and SSL008 (6 constraints) are vulnerabilities that DIG fails to trigger within the time budget. For vulnerabilities that DIG suc-cessfully triggers, those with the most constraints tend to have the longest TTE within their program: LUA004 (8 constraints, 15.3 min) is the slowest among all Lua vulnerabilities; SQL002 (7 constraints, 60.1 min) is the slowest among all sqlite3 vul-nerabilities; and PNG006 (4 constraints, 8.6 min) is the slowest among all libpng vulnerabilities. PDF001, also used as the motivating example in Section 2.1, has the most constraints overall (10) and takes 110.7 minutes, making PDF001 the CVE that took the longest to trigger using generator evolution alone. These results suggest a positive correlation between the num-ber of inferred constraints and DIG’s TTE, as more constraints require more rounds of generator evolution to satisfy. 
+
+Token Breakdown Regarding PoC generation token usage, Ta-ble 2 reports the average LLM token usage per vulnerability for each program, broken down into Constraint Inference (CI) and Generator Evolution (GE). Across all programs, DIG consumes a total of 55.1M tokens, with CI accounting for 90.0% (49.6M tokens) and GE for 10.0% (5.5M tokens). The token disparity between CI and GE arises because CI re-quires extensive agentic tool use to inspect source code, analyze calling relationships, and examine generator execution traces before producing actionable evolution suggestions. This pro-cess often incurs many LLM API calls. In contrast, GE mainly requires a small number of calls to update the generator.                                   
+
+> TABLE 2: Average LLM token usage (in thousands) per vulnerability for each program. CI and GE denote Constraint Inference and Genera-tor Evolution, respectively.
+> Program CI (K tok) GE (K tok) Total (K tok)
+> libpng 348.8 77.8 426.5 libsndfile 1,709.3 241.5 1,950.8 libtiff 10,927.5 1,241.8 12,169.3 libxml2 6,861.4 452.8 7,314.1 lua 235.6 54.5 290.2 openssl 10,931.1 1,234.7 12,165.8 php 1,848.7 265.6 2,114.3 poppler 12,670.6 1,525.4 14,195.9 sqlite3 4,040.5 410.4 4,450.9
+> TOTAL 49,573.5 5,504.4 55,077.9
+
+Cost and LLM Model Comparison The total cost of oracle synthesis is $16.2 for 135 CVEs, corresponding to an average of $0.12 per oracle. We also evaluate the success rate of PoC generation (generator evolution alone) and its cost for four state-of-the-art LLMs: GPT-5 [ 41 ], Sonnet 4.5 [ 42 ], Gemini 3 Flash [ 43 ], and DeepSeek v3.2 [ 44 ], where DeepSeek v3.2 is an open-weight model and the remaining models are closed-source models. Figure 10(a) plots each model’s success rate and release date. Although the earliest and latest releases differ by nearly four months, we do not observe a strong correlation between model release date and PoC success rate. Overall, the closed-source models achieve higher PoC suc-cess rates than the open-weight models. Among these models, Sonnet 4.5 achieves the highest success rate (53%), followed by Gemini 3 Flash (51%) and GPT-5 (45%), while the open-weight model DeepSeek v3.2 attains a success rate of 34%. On average, the closed-source models achieve success rates that are 15.7 percentage points higher than those of the open-weight model, corresponding to a 46.1% relative difference. For PoC generation cost, we evaluate four LLM backends on 170 CVE instances. 1 Figure 10(b) shows substantial cost variation: DeepSeek v3.2 ($0.15 per PoC, $24.8 total), Gem-ini 3 Flash ($0.55, $93.2), GPT-5 ($2.02, $334.2), and Sonnet 4.5 ($3.03, $515.8). Success rates also vary: DeepSeek v3.2 (28%), GPT-5 (50%), Gemini 3 Flash (55%), and Sonnet 4.5 (58%). Gemini 3 Flash emerges as the most cost-effective op-tion, achieving 55% success at $93.2—5.5× cheaper than Son-net 4.5 (58%, $515.8) with only a 3-percentage-point lower success rate. Sonnet 4.5 offers the highest performance but at a premium cost. DeepSeek v3.2, while cheapest ($24.8), delivers a poor success rate (28%). GPT-5 ($334.2, 50%) falls short on both dimensions: it underperforms Gemini 3 Flash in success rate (50% vs. 55%) while costing 3.6× more. Figure 10(c) presents a per-project comparison of CVE cover-age achieved by each LLM on the Magma benchmark. Sonnet 4.5 and Gemini 3 Flash achieve the highest CVE coverage across all projects. Among closed-source models, Sonnet 4.5 and Gemini 3 Flash cover all CVEs found by GPT-5, and ad-ditionally cover 11 unique vulnerabilities that GPT-5 cannot find. Among these three models, Sonnet 4.5 finds three unique vulnerabilities, while Gemini 3 Flash finds one unique vulnera-bility. 
+
+Consistency of PoC Generation In our main evaluation setting, we ran DIG once per target program due to cost constraints. To understand the consistency of PoC generation, we randomly selected two vulnerabilities from each program and ran DIG five times. Table 3 reports the TTE for each run along with the standard deviation and success count. DIG successfully triggers vulnerabilities in 86 out of 90 runs (95.6%), with 16 out of 18 bugs achieving a 5/5 success rate. Among the 18 bugs, 8 exhibit low variance (std < 2 min), indicating highly stable generation for vulnerabilities with simpler constraint structures (e.g., PHP002 with std = 0.1 min, SSL003 with std = 0.1 min). The remaining bugs show higher variance due to the stochastic nature of LLM-guided generator evolution, where different runs may explore different constraint-solving strategies. Despite this variance, DIG consistently triggers these vulnerabilities across runs, confirming that the overall approach is reliable even when 
+
+> 1This differs from the 135 CVEs in oracle synthesis because some projects contain multiple programs, and some CVEs are not compiled in Magma’s binary configurations.
+
+11 30   
+
+> 40
+> 50
+> 60
+> Success Rate (%)
+> GPT-5
+> (45%)
+> Sonnet 4.5
+> (53%)
+> DeepSeek v3.2
+> (34%)
+> Gemini 3 Flash
+> (51%)
+> Sep 25 Nov 25 Jan 26
+> Release Date
+> CVE Coverage:
+> 73
+> 71
+> 62
+> 47
+
+(a) 0    
+
+> 1
+> 2
+> 3
+> Cost per PoC ($)
+> 30 40 50 60
+> Success Rate (%)
+> Sonnet 4.5
+> ($3.03)
+> Gemini 3 Flash
+> ($0.55)
+> GPT-5
+> ($2.02)
+> DeepSeek v3.2
+> ($0.15)
+> Total Cost:
+> $515.8
+> $343.2
+> $93.2
+> $24.8
+
+(b) libpng  
+
+> libsndfile
+> libtiff
+> libxml2
+> lua
+> poppler
+> sqlite3
+> openssl
+> php
+> 0
+> 4
+> 8
+> 12
+> 16
+> CVE Coverage
+> Sonnet 4.5
+> Gemini 3 Flash
+> GPT-5
+> DeepSeek v3.2
+
+(c) 
+
+FIGURE 10: Comparison of DIG † with different LLM backends: (a) success rate and model release date, (b) cost per PoC generation and success rate, and (c) CVE coverage across different open-source projects. TABLE 3: TTE (in minutes) across 5 independent runs per vulnerability. T.O. denotes timeout. 
+
+Bug ID Run 1 Run 2 Run 3 Run 4 Run 5 Std Succ. 
+
+LUA001 13.7 1.6 1.5 1.5 6.5 5.3 5/5 LUA002 1.7 3.7 1.6 1.6 1.6 0.9 5/5 PDF005 34.0 23.0 24.8 T.O. 29.2 4.9 4/5 PDF022 1.4 1.5 1.3 3.4 1.6 0.9 5/5 PHP002 1.2 1.2 1.3 1.1 1.2 0.1 5/5 PHP009 2.8 1.6 6.6 3.6 2.9 1.9 5/5 PNG001 2.2 2.1 0.9 1.8 2.0 0.5 5/5 PNG007 1.4 3.0 1.6 1.7 1.8 0.6 5/5 SND016 3.5 38.4 31.8 38.7 7.1 17.2 5/5 SND020 5.7 4.3 3.8 4.3 6.9 1.3 5/5 SQL003 0.6 11.3 0.8 0.8 1.5 4.7 5/5 SQL018 17.9 6.5 26.3 1.7 5.2 10.3 5/5 SSL001 45.6 46.3 45.4 53.0 2.1 20.6 5/5 SSL003 0.9 0.9 0.9 1.0 1.0 0.1 5/5 TIF008 11.0 12.5 16.7 62.6 52.8 24.6 5/5 TIF014 26.6 4.1 4.3 1.0 3.5 10.5 5/5 XML001 1.8 43.7 3.5 3.9 10.2 17.7 5/5 XML010 28.5 9.5 T.O. T.O. T.O. 13.4 2/5 
+
+individual run times fluctuate. 
+
+## 5.5 Ablation Study 
+
+To understand how oracle-guided generator evolution and oracle-guided directed mutation contribute to DIG’s perfor-mance, we conduct an ablation study with two variants. DIG †
+
+removes low-level directed mutation and retains only generator evolution, isolating the contribution of high-level generation. DIG ‡ removes generator evolution by disabling the agentic tool set, including static analysis, dynamic analysis, and source-code inspection. As a result, DIG ‡ becomes a prompt-based input generation variant, similar to G 2Fuzz, while still keeping oracle-guided directed mutation enabled. We evaluate both variants against full DIG. We randomly select two vulnerabilities from each program that DIG can trigger. Table 4 presents the results. The results reveal the distinct contributions of each compo-nent. DIG successfully triggers all 18 CVEs (100%). DIG † (no directed mutation) triggers 13/18 (72.2%), failing on 5 CVEs (XML012, PDF004, PDF014, TIF008, SQL002). These failures suggest that generator evolution alone may leave the oracle un-satisfied when triggering depends on hidden state relationships or hard-to-infer runtime constraints. Oracle-guided directed mu-
+
+TABLE 4: Ablation study results showing the contribution of oracle-guided generator evolution and directed mutation. ✓indicates success-ful PoC generation; × indicates failure.                                                       
+
+> Variant PNG001 PNG006 XML006 XML012 PDF004 PDF014 SND006 SND020 TIF008 TIF014 SQL002 SQL014 LUA001 LUA004 SSL009 SSL016 PHP001 PHP005 DIG ✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓✓
+> DIG †✓✓✓×××✓✓×✓×✓✓✓✓✓✓✓
+> DIG ‡✓××✓×××✓✓✓✓××✓××××
+
+tation complements this by performing high-throughput local search over oracle-relevant input regions, using branch-distance feedback to move candidate inputs closer to satisfying the ora-cle without explicitly inferring all missing constraints. 
+
+DIG ‡ (no generator evolution) drops further to 7/18 (38.9%), failing on 11 CVEs. This 61.1% drop in success rate demon-strates that generator evolution is the primary driver of DIG’s effectiveness: without systematic constraint reasoning, the LLM may generate PoCs blindly. Notably, SQL002 and TIF008 suc-ceed in DIG ‡ but fail in DIG †, indicating that for these CVEs the vulnerability can be triggered through directed mutations with prompt-based input generation. 
+
+RQ4 Takeaway: Oracle-guided generator evolution is the primary driver of DIG’s effectiveness, while oracle-guided directed mutation provides a complementary boost. 
+
+## 5.6 New Vulnerability Finding 
+
+While DIG targets one-day vulnerabilities, its techniques can extend to zero-day vulnerability discovery. We demonstrate this potential by using LLMs to scan code for potentially vulnerable code locations and DIG to verify whether vulnerabilities actu-ally exist. We evaluate DIG on the same Magma benchmark programs used in our one-day evaluation, limiting the study to libpng and libsndfile due to budget constraints. The libpng and libsndfile programs are widely deployed libraries that have un-dergone extensive testing, making them challenging targets for zero-day vulnerability finding. However, the results are encour-aging. We uncovered 6 previously unknown vulnerabilities. Table 5 summarizes the discovered vulnerabilities. The libpng vulnerability (Bug #1) is a high-severity stack buffer 12 overflow in png_do_bgr() caused by integer overflow when processing malicious PNG files with extreme width values. The 5 libsndfile bugs span multiple severity levels: 3 critical bugs (heap overflow, stack overflow, and NULL pointer dereference) and 2 high-severity integer overflows.                              
+
+> TABLE 5: New vulnerabilities discovered by DIG in the latest versions of libpng and libsndfile.
+> ID Library Type Location Severity
+> #1 libpng Stack Overflow png_do_bgr() High #2 libsndfile Heap Overflow psf_save_write_chunk() Critical #3 libsndfile Stack Overflow let2i_array() Critical #4 libsndfile NULL Deref sf_open_virtual() Critical #5 libsndfile Int Overflow wav_write_fmt_chunk() High #6 libsndfile Int Overflow wavex_write_fmt_chunk() High
+
+To understand how DIG discovers vulnerabilities, we present a case study of Bug #1, a stack buffer overflow in libpng’s png_do_bgr() function. When a malicious PNG file specifies an extreme width (e.g., 0xFFFFFFFF ), the cal-culation rowbytes = width * 3 overflows, wrapping to 
+
+0xFFFFFFFD on 32-bit systems. This causes the program to allocate a small stack buffer while accessing it based on the original large width, triggering overflow. DIG first synthesized an oracle checking for integer overflow in the rowbytes cal-culation: (width > UINT32_MAX / channels) . DIG then inferred the constraints related to the oracle and found the fol-lowing conditions: (1) the PNG width is set to an extreme value (≥ 0x55555556 ), (2) the color type is PNG_COLOR_TYPE_RGB 
+
+(3 channels), (3) the bit depth is 8, and (4) the application uses 
+
+PNG_TRANSFORM_BGR . These constraints guided DIG to gener-ate inputs toward extreme width values combined with BGR transformation. 
+
+# 6 Discussion 
+
+## 6.1 Generality 
+
+DIG’s approach is broadly applicable. First, DIG is agnostic to vulnerability classes, such as buffer overflows, use-after-free bugs, and integer overflows. Our large-scale evaluation on Magma shows that DIG can trigger diverse types of vulner-abilities. Second, DIG does not require formal grammars or manually specified input formats, making it applicable to both text-based formats, such as XML and SQL, and binary formats, such as PDF and TIFF. Third, although DIG currently targets C/C++, its LLM-based reasoning can naturally extend to other languages. DIG’s success on Poppler, which uses complex C++ features such as polymorphism and dynamic dispatch, suggests potential applicability to similar object-oriented languages. 
+
+## 6.2 Limitations 
+
+Assumptions on Vulnerability Artifacts DIG targets one-day vulnerabilities, assuming availability of vulnerability-related artifacts such as patches, vulnerability reports, or candidate vulnerable functions. These artifacts provide initial guidance for oracle synthesis and drive input generation. This design choice aligns with the one-day vulnerability setting where patches and vulnerability details are publicly released, distinguishing it from zero-day discovery where such information is unavailable. 
+
+Training Data Contamination Magma CVEs may appear in the training data of state-of-the-art LLMs, which is a com-mon challenge for LLM-based vulnerability research on public benchmarks. However, DIG’s advantages in CVE coverage and TTE over other LLM-based approaches under the same model setting suggest that its gains come from its design and cannot be explained by training data exposure alone. 
+
+# 7 Related Work 
+
+Directed Greybox Fuzzing AFLGo [ 13 ] pioneered control-flow distance to guide execution toward target locations. Hawk-eye [ 45 ] improves the control-flow distance metric by address-ing challenges related to indirect calls and incorporating call trace similarity for more accurate targeting. WindRanger [ 14 ]considers deviated basic blocks that steer execution away from targets. Lyso [ 38 ] enhances distance metrics with multi-step guidance. Beacon [ 46 ] uses static analysis to identify un-reachable code regions and inserts assertion checks. Sieve-Fuzz [ 47 ] dynamically prunes unreachable paths at runtime. SelectFuzz [ 15 ] and DAFL [ 16 ] apply selective instrumentation to exclude control- and data-independent code regions from coverage tracking. 
+
+LLM-Assisted Testcase Generation Several approaches use LLMs to generate initial seeds or mutate existing ones. Fuzz4All [ 48 ] synthesizes and refines input-generation prompts based on coverage feedback. G²fuzz [ 17 ] and ELFuzz [ 19 ] syn-thesize generators and evolve them through mutation. Chat-Fuzz and LlamaFuzz [ 25 ] provide structure-aware mutation operators. For protocol fuzzing, ChatAFL [ 18 ] extracts mes-sage structures from specifications to guide stateful sequence generation, while mGPTFuzz [ 49 ] mines protocol standards to derive state models. Complementary work applies LLMs to enhance symbolic execution. AutoBug [ 50 ] uses LLMs to replace SMT solvers, representing path constraints as code for direct reasoning. COT-TONTAIL [ 51 ] leverages LLMs for structure-aware constraint selection and concolic execution. CONCOLLMIC [ 52 ] em-ploys LLM agents for language-agnostic symbolization. These approaches target code coverage rather than vulnerability re-production. 
+
+# 8 Conclusion 
+
+We present DIG, an oracle-guided PoC generation system for one-day vulnerabilities. DIG introduces oracle synthesis, oracle-guided generator evolution, and oracle-guided directed muta-tion to identify necessary constraints for vulnerability trigger-ing and solve them effectively. Extensive evaluation on the 13 Magma benchmark shows that DIG substantially outperforms state-of-the-art agents and fuzzers, achieving higher CVE cov-erage, faster time to trigger the vulnerabilities, and discovering 9 exclusive vulnerabilities not triggered by existing techniques. We also demonstrate DIG’s potential for zero-day vulnerability discovery and find 6 new vulnerabilities. 
+
+# Ethical Considerations 
+
+The primary ethical consideration in our work is ensuring that the vulnerabilities we identify and the associated proof-of-concept exploits are responsibly disclosed. We have followed standard practices for responsible disclosure by notifying the affected parties of any vulnerabilities discovered during our experiments before any public release of the findings. This en-sures that the software vendors have the opportunity to address the vulnerabilities before they are exposed to the public. Addi-tionally, our work does not involve any experiments on human subjects, use of personal data, or other activities that could raise significant ethical concerns. 
+
+# References 
+
+[1] Xin Tan, Yuan Zhang, Chenyuan Mi, Jiajun Cao, Kun Sun, Yifan Lin, and Min Yang. Locating the security patches for disclosed OSS vulnerabilities with vulnerability-commit correlation ranking. In Proceedings of the 2021 ACM SIGSAC Conference on Computer and Communications Security , pages 3282–3299, 2021. [2] Nesara Dissanayake, Mansooreh Zahedi, Asangi Jayati-laka, and Muhammad Ali Babar. Why, how and where of delays in software security patch management: An empir-ical investigation in the healthcare sector. Proceedings of the ACM on Human-computer Interaction , 6(CSCW2):1– 29, 2022. [3] Nesara Dissanayake, Asangi Jayatilaka, Mansooreh Za-hedi, and Muhammad Ali Babar. An empirical study of automation in software security patch management. In 
+
+Proceedings of the 37th IEEE/ACM International Con-ference on Automated Software Engineering , pages 1–13, 2022. [4] Markus Zimmermann, Cristian-Alexandru Staicu, Cam Tenny, and Michael Pradel. Small world with high risks: A study of security threats in the NPM ecosystem. In 
+
+28th USENIX Security symposium (USENIX security 19) ,pages 995–1010, 2019. [5] Nikos Vasilakis, Ben Karel, Nick Roessler, Nathan Daut-enhahn, André DeHon, and Jonathan M Smith. BreakApp: Automated, Flexible Application Compartmentalization. In NDSS , 2018. [6] Yue Xiao, Dhilung Kirat, Douglas Lee Schales, Jiyong Jang, Luyi Xing, and Xiaojing Liao. JBomAudit: Assess-ing the Landscape, Compliance, and Security Implications of Java SBOMs. In ISOC Network and Distributed System Security Symposium , 2025. [7] Laurie Williams, Giacomo Benedetti, Sivana Hamer, Ranindya Paramitha, Imranur Rahman, Mahzabin Tamanna, Greg Tystahl, Nusrat Zahan, Patrick Morrison, Yasemin Acar, et al. Research directions in software supply chain security. ACM Transactions on Software Engineering and Methodology , 34(5):1–38, 2025. [8] Antonio Nappa, Richard Johnson, Leyla Bilge, Juan Ca-ballero, and Tudor Dumitras. The attack of the clones: A study of the impact of shared code on vulnerability patch-ing. In 2015 IEEE symposium on security and privacy ,pages 692–708. IEEE, 2015. [9] Chaowei Xiao, Armin Sarabi, Yang Liu, Bo Li, Mingyan Liu, and Tudor Dumitras. From patching delays to infec-tion symptoms: Using risk profiles for an early discovery of vulnerabilities exploited in the wild. In 27th USENIX Security Symposium (USENIX Security 18) , pages 903– 918, 2018. [10] Frank Li and Vern Paxson. A large-scale empirical study of security patches. In Proceedings of the 2017 ACM SIGSAC Conference on Computer and Communications Security , pages 2201–2215, 2017. [11] Qiushi Wu and Kangjie Lu. On the feasibility of stealthily introducing vulnerabilities in open-source software via hypocrite commits. Proc. Oakland , 17, 2021. [12] Zhun Wang, Tianneng Shi, Jingxuan He, Matthew Cai, Jialin Zhang, and Dawn Song. CyberGym: Evaluating AI Agents’ Real-World Cybersecurity Capabilities at Scale, 2025. [13] Marcel Böhme, Van-Thuan Pham, Manh-Dung Nguyen, and Abhik Roychoudhury. Directed greybox fuzzing. In Proceedings of the 2017 ACM SIGSAC Conference on Computer and Communications Security , pages 2329– 2344, 2017. [14] Zhengjie Du, Yuekang Li, Yang Liu, and Bing Mao. Win-dRanger: a directed greybox fuzzer driven by deviation basic blocks. In Proceedings of the 44th International Conference on Software Engineering , pages 2440–2451, 2022. [15] Changhua Luo, Wei Meng, and Penghui Li. Selectfuzz: Efficient directed fuzzing with selective path exploration. In 2023 IEEE Symposium on Security and Privacy (SP) ,pages 1050–1064. IEEE Computer Society, 2023. [16] Tae Eun Kim, Jaeseung Choi, Kihong Heo, and Sang Kil Cha. DAFL: Directed Grey-box Fuzzing guided by Data Dependency. In 32nd USENIX Security Symposium (USENIX Security 23) , pages 4931–4948, 2023. [17] Kunpeng Zhang, Zongjie Li, Daoyuan Wu, Shuai Wang, and Xin Xia. Low-Cost and Comprehensive Non-textual 14 Input Fuzzing with LLM-Synthesized Input Generators. 
+
+arXiv preprint arXiv:2501.19282 , 2025. [18] Ruijie Meng, Martin Mirchev, Marcel Böhme, and Abhik Roychoudhury. Large language model guided protocol fuzzing. In Proceedings of the 31st Annual Network and Distributed System Security Symposium (NDSS) , volume 2024, 2024. [19] Chuyang Chen, Brendan Dolan-Gavitt, and Zhiqiang Lin. ELFuzz: Efficient Input Generation via LLM-driven Synthesis Over Fuzzer Space. arXiv preprint arXiv:2506.10323 , 2025. [20] Haochen Zeng, Andrew Bao, Jiajun Cheng, and Chengyu Song. PBFuzz: Agentic Directed Fuzzing for PoV Gener-ation. arXiv preprint arXiv:2512.04611 , 2025. [21] Zehong Wang, Fang Wu, Hongru Wang, Xiangru Tang, Bolian Li, Zhenfei Yin, Yijun Ma, Yiyang Li, Weixiang Sun, Xiusi Chen, et al. Why reasoning fails to plan: A planning-centric analysis of long-horizon decision making in llm agents. arXiv preprint arXiv:2601.22311 , 2026. [22] Xinyu Jessica Wang, Haoyue Bai, Yiyou Sun, Haorui Wang, Shuibai Zhang, Wenjie Hu, Mya Schroder, Bilge Mutlu, Dawn Song, and Robert D Nowak. The long-horizon task mirage? diagnosing where and why agentic systems break. arXiv preprint arXiv:2604.11978 , 2026. [23] Rauno Arike, Elizabeth Donoway, Henning Bartsch, and Marius Hobbhahn. Technical report: Evaluating goal drift in language model agents. arXiv preprint arXiv:2505.02709 , 2025. [24] Anysphere. Cursor: The AI code editor. https://curs or.com , 2023. Accessed: 2025. [25] Hongxiang Zhang, Yuyang Rong, Yifeng He, and Hao Chen. Llamafuzz: Large language model enhanced grey-box fuzzing. arXiv preprint arXiv:2406.07714 , 2024. [26] Aidan Wen, Norah A Alzahrani, Jingzhi Jiang, Andrew Joe, Karen Shieh, Andy Zhang, Basel Alomair, and David Wagner. SeedAIchemy: LLM-Driven Seed Corpus Gen-eration for Fuzzing. arXiv preprint arXiv:2511.12448 ,2025. [27] Andrea Fioraldi, Dominik Maier, Heiko Eißfeldt, and Marc Heuse. AFL++: Combining incremental steps of fuzzing research. In 14th USENIXWorkshop on Offensive Technologies (WOOT 20) , 2020. [28] Dongdong She, Adam Storek, Yuchong Xie, Seoyoung Kweon, Prashast Srivastava, and Suman Jana. Fox: Coverage-guided fuzzing as online stochastic control. In 
+
+Proceedings of the 2024 on ACM SIGSAC Conference on Computer and Communications Security , pages 765–779, 2024. [29] Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik R Narasimhan, and Yuan Cao. React: Synergizing reasoning and acting in language models. In 
+
+The eleventh international conference on learning repre-sentations , 2022. [30] Shuitao Gan, Chao Zhang, Peng Chen, Bodong Zhao, Xi-aojun Qin, Dong Wu, and Zuoning Chen. GREYONE: Data Flow Sensitive Fuzzing. In 29th USENIX Secu-rity Symposium (USENIX Security 20) , pages 2577–2594, 2020. [31] Cornelius Aschermann, Sergej Schumilo, Tim Blazytko, Robert Gawlik, and Thorsten Holz. REDQUEEN: Fuzzing with Input-to-State Correspondence. In NDSS ,volume 19, pages 1–15, 2019. [32] Peng Chen and Hao Chen. Angora: Efficient fuzzing by principled search. In 2018 IEEE Symposium on Security and Privacy (SP) , pages 711–725. IEEE, 2018. [33] Michał Zalewski. American Fuzzy Lop (AFL). https: //lcamtuf.coredump.cx/afl/ .[34] George Klees, Andrew Ruef, Benji Cooper, Shiyi Wei, and Michael Hicks. Evaluating fuzz testing. In Proceedings of the 2018 ACM SIGSAC conference on computer and communications security , pages 2123–2138, 2018. [35] Moritz Schloegel, Nils Bars, Nico Schiller, Lukas Bern-hard, Tobias Scharnowski, Addison Crump, Arash Ale-Ebrahim, Nicolai Bissantz, Marius Muench, and Thorsten Holz. SoK: Prudent Evaluation Practices for Fuzzing. In 2024 IEEE Symposium on Security and Privacy (SP) ,pages 137–137. IEEE Computer Society, 2024. [36] Ahmad Hazimeh, Adrian Herrera, and Mathias Payer. Magma: A ground-truth fuzzing benchmark. Proceedings of the ACM on Measurement and Analysis of Computing Systems , 4(3):1–29, 2020. [37] Abhishek Shah, Dongdong She, Samanway Sadhu, Krish Singal, Peter Coffman, and Suman Jana. Mc2: Rigorous and efficient directed greybox fuzzing. In Proceedings of the 2022 ACM SIGSAC Conference on Computer and Communications Security , pages 2595–2609, 2022. [38] Andrew Bao, Wenjia Zhao, Yanhao Wang, Yueqiang Cheng, Stephen McCamant, and Pen-Chung Yew. From Alarms to Real Bugs: Multi-target Multi-step Directed Greybox Fuzzing for Static Analysis Result Verification. In 34th USENIX Security Symposium (USENIX Security 25) , pages 6977–6997, 2025. [39] Heqing Huang, Peisen Yao, Hung-Chun Chiu, Yiyuan Guo, and Charles Zhang. Titan: Efficient multi-target directed greybox fuzzing. In 2024 IEEE Symposium on Security and Privacy (SP) , pages 1849–1864. IEEE, 2024. [40] Edward L Kaplan and Paul Meier. Nonparametric es-timation from incomplete observations. Journal of the American Statistical Association , 53(282):457–481, 1958. 15 [41] Aaditya Singh, Adam Fry, Adam Perelman, Adam Tart, Adi Ganesh, Ahmed El-Kishky, Aidan McLaughlin, Aiden Low, AJ Ostrow, Akhila Ananthram, et al. Openai gpt-5 system card. arXiv preprint arXiv:2601.03267 , 2025. [42] Anthropic. System Card: Claude Sonnet 4.5. Technical report, 2025. https://www-cdn.anthropic.com/963 373e433e489a87a10c823c52a0a013e9172dd.pdf .[43] Google DeepMind. Gemini 3 Flash Model Card. Techni-cal report, 2025. https://storage.googleapis.com /deepmind-media/Model-Cards/Gemini-3-Flash -Model-Card.pdf .[44] Aixin Liu, Aoxue Mei, Bangcai Lin, Bing Xue, Bingxuan Wang, Bingzheng Xu, Bochao Wu, Bowei Zhang, Chao-fan Lin, Chen Dong, et al. Deepseek-v3. 2: Pushing the frontier of open large language models. arXiv preprint arXiv:2512.02556 , 2025. [45] Hongxu Chen, Yinxing Xue, Yuekang Li, Bihuan Chen, Xiaofei Xie, Xiuheng Wu, and Yang Liu. Hawkeye: To-wards a desired directed grey-box fuzzer. In Proceedings of the 2018 ACM SIGSAC Conference on Computer and Communications Security , pages 2095–2108, 2018. [46] Heqing Huang, Yiyuan Guo, Qingkai Shi, Peisen Yao, Rongxin Wu, and Charles Zhang. Beacon: Directed grey-box fuzzing with provable path pruning. In 2022 IEEE Symposium on Security and Privacy (SP) , pages 36–50. IEEE, 2022. [47] Prashast Srivastava, Stefan Nagy, Matthew Hicks, Anto-nio Bianchi, and Mathias Payer. One fuzz doesn’t fit all: Optimizing directed fuzzing via target-tailored program state restriction. In Proceedings of the 38th Annual Com-puter Security Applications Conference , pages 388–399, 2022. [48] Chunqiu Steven Xia, Matteo Paltenghi, Jia Le Tian, Michael Pradel, and Lingming Zhang. Fuzz4all: Uni-versal fuzzing with large language models. 2024. [49] Xiaoyue Ma, Lannan Luo, and Qiang Zeng. From one thousand pages of specification to unveiling hidden bugs: Large language model assisted fuzzing of matter {IoT }
+
+devices. In 33rd USENIX Security Symposium (USENIX Security 24) , 2024. [50] Yihe Li, Ruijie Meng, and Gregory J Duck. Large language model powered symbolic execution. Pro-ceedings of the ACM on Programming Languages ,9(OOPSLA2):3148–3176, 2025. [51] Haoxin Tu, Seongmin Lee, Yuxian Li, Peng Chen, Lingx-iao Jiang, and Marcel Böhme. Large language model-driven concolic execution for highly structured test input generation. arXiv preprint arXiv:2504.17542 , 2025. [52] Zhengxiong Luo, Huan Zhao, Dylan Wolff, Cristian Cadar, and Abhik Roychoudhury. Agentic concolic execution. In IEEE Symposium on Security and Privacy (SP) , 2026. 
+
+## .1 Evaluation Baselines and Benchmark 
+
+TABLE 6: Overview of tools used for evaluation.      
+
+> Cat. Fuzzer Description
+> C0 PBFuzz [20] Cursor [24] Agentic PoC generation General-purpose coding agent C1 AFL [33] AFL++ [27] Baseline Community-enhanced baseline C2 AFLGo [13] SelectFuzz [15] Titan [39] Distance-based seed scheduling Selective path exploration Multi-target synergy C3 CmpLog [31] FOX [28] Comparison logging Online stochastic control C4 G2Fuzz [17] LLAMAFUZZ [25] SeedAIchemy [26] LLM-synthesized input generator LLM-assisted mutation LLM-assisted seed corpus generation
+
+TABLE 7: Magma targets with approximate size (LoC), CVE counts, input formats and types.                                         
+
+> Target LoC CVE Count Format Type
+> libpng 95k 7png Binary libsndfile 83k 18 wav, aiff, au, caf Binary libtiff 95k 14 tiff Binary libxml2 320k 17 xml Text Lua 21k 4lua Text poppler 260k 22 pdf Binary SQLite 387k 20 sql Text OpenSSL 630k 20 cryptography Binary PHP 1.6M 16 php, json, exif, jpeg Text and Binary
+
+## .2 Oracle Synthesis Case Studies 
+
+To complement the quantitative evaluation, we present repre-sentative case studies illustrating DIG’s oracle synthesis under different categories. We include examples corresponding to 
+
+L1 (Syntactic Equivalence) , L2 (Semantic Equivalence) , L3 (Sufficient-Condition Correctness) , Synthesis Errors , and 
+
+Reference Errors .
+
+L1 (Syntactic Equivalence) In this case, a synthesized ora-cle is considered correct if it is syntactically identical to the ground-truth oracle. CVE-2019-14494 (PDF001), shown in Fig-ure 11, is an example where the synthesized oracle is identical to the ground-truth oracle, which is O(surface_width == 0 || surface_height == 0) .
+
+L2 (Semantic Equivalence) In this case, a synthesized ora-cle is considered correct if it is semantically equivalent to the ground-truth oracle, even though the two predicates are syn-tactically different. CVE-2016-1836 (XML012) is an exam-ple where the synthesized oracle is O(ctxt->input->base != initial_base) while the ground-truth oracle is O((end - len) != (BASE_PTR + startPosition)) . Although the two predicates differ syntactically, they are semantically equiv-alent because both compare the current buffer pointer with its initial base pointer. The expressions (end - len) and 
+
+(BASE_PTR + startPosition) correspond to these two pointers, so both oracles characterize the same condition. 16 TABLE 8: TTE, measured in minutes, for each CVE in the Magma benchmark. T.O. indicates that the fuzzer failed to generate a PoC within the time budget. ∅ denotes missing data, and N.A. denotes that fuzzer deployment is not applicable. 
+
+Vul ID DIG PBFuzz Cursor G2fuzz LLAMA FUZZ *
+
+SeedAI chemy *
+
+AFL Go Select fuzz Titan AFL AFL++ CmpLog FOX vs. Avg. vs. Best 
+
+PNG001 2.8 10.8 2.0 12.6 T.O. T.O. 1422.2 T.O. T.O. 1208.7 1261.7 1416.3 T.O. 373 .04 × 0.71 ×
+
+PNG003 1.5 6.7 5.6 5.7 0.4 2.0 0.3 0.3 0.3 0.3 0.3 0.3 0.3 1.25 × 0.20 ×
+
+PNG006 8.6 4.5 T.O. T.O. 0.3 3.0 T.O. T.O. T.O. T.O. T.O. 0.3 46.3 98 .20 × 0.03 ×
+
+PNG007 1.4 11.9 7.5 121.9 300.0 300.0 55.4 87 209 407.7 46.4 41.8 77.1 99 .15 × 5.36 ×
+
+SND001 1.6 1.4 2.0 T.O. 1.0 540.0 2.9 2.2 10 4.3 6.4 12.6 1.9 105 .45 × 0.62 ×
+
+SND005 15.1 4.0 7.8 T.O. 16.0 420.0 0.5 0.6 1.2 0.8 41.8 63.5 2.5 11 .03 × 0.03 ×
+
+SND006 10.3 T.O. T.O. T.O. 5.0 9.0 3.9 2.9 441 21.7 61.5 168.9 71.8 41 .31 × 0.28 ×
+
+SND007 8.4 T.O. T.O. T.O. 8.0 11.0 3.7 2.9 11.7 5.4 57.9 137.1 77.5 45 .98 × 0.35 ×
+
+SND016 22.5 6.4 T.O. T.O. T.O. 41.0 T.O. T.O. T.O T.O. T.O. T.O. 326.5 49 .38 × 0.28 ×
+
+SND017 1.6 3.3 4.7 26.2 7.0 13.0 17.7 12.3 9.8 19.5 72.8 69.3 0.7 13 .35 × 0.44 ×
+
+SND020 0.8 2.0 4.5 88.7 23.0 20.0 32.3 222.9 173.9 69.8 120.8 159.8 18.1 97 .48 × 2.50 ×
+
+SND024 3.8 T.O. T.O. T.O. 1.0 8.0 3.5 2.8 11.7 5.3 13.3 43.3 26.5 97 .27 × 0.26 ×
+
+TIF001 38.5 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 1415.1 T.O. T.O. 37 .35 × 36 .76 ×
+
+TIF002 43.3 T.O. T.O. 168.3 T.O. 480.0 895.3 961.4 1312.3 622.9 394.1 513.1 426.7 19 .43 × 3.89 ×
+
+TIF005 1.0 9.7 3.8 T.O. 15.0 5.0 T.O. T.O. T.O. T.O. T.O. 103.8 56.2 736 .12 × 3.80 ×
+
+TIF006 3.0 1.9 11.0 48.3 12.0 9.0 997.5 1305.3 933.3 836 669.1 100.6 133.3 140 .48 × 0.63 ×
+
+TIF007 3.1 6.8 2.7 3.8 0.5 1.0 0.5 0.5 5.8 0.5 0.3 0.3 2.2 0.67 × 0.10 ×
+
+TIF008 99.8 7.6 T.O. 537.5 2880.0 660.0 1140.2 1345.7 1314.4 1016.3 1241.2 1084.2 1374.4 11 .72 × 0.08 ×
+
+TIF009 13.3 20.2 T.O. 620.8 2880.0 180.0 565.1 210.8 1030.8 836.9 141.7 327.6 148.2 52 .64 × 1.52 ×
+
+TIF012 28.3 19.6 16.0 6 3.0 36.0 16.1 4.9 69.2 6.5 2.9 2.7 3.6 0.55 × 0.10 ×
+
+TIF014 21.0 12.8 T.O. 3.8 8.0 2.0 32.3 122.7 52.6 24.3 8.1 5.6 51.8 7.00 × 0.10 ×
+
+XML001 10.7 3.4 T.O. 106.3 8.0 1200.0 1174.2 1034.3 T.O. 645.5 632.3 681.2 0.3 65 .15 × 0.03 ×
+
+XML002 0.5 1.8 1.6 T.O. 10080.0 T.O. T.O. 1419.9 T.O. T.O. 1266.1 1225.9 788.3 3663 .93 × 3.20 ×
+
+XML003 1.7 2.8 2.1 T.O. 59.0 300.0 596.6 792.4 1222.4 434.0 329.2 669.9 0.3 286 .70 × 0.18 ×
+
+XML006 5.1 T.O. T.O. T.O. 10080.0 T.O. T.O. T.O. T.O. T.O. T.O. T.O. 1431.2 423 .39 × 280 .63 ×
+
+XML008 16.1 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 89 .44 × 89 .44 ×
+
+XML009 5.5 7.9 T.O. 41.3 13.0 60.0 5.9 27.4 69.5 6.0 60.4 118.2 52.8 28 .82 × 1.07 ×
+
+XML010 17.4 8.5 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 75 .90 × 0.49 ×
+
+XML011 20.6 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 69 .90 × 69 .90 ×
+
+XML012 44.1 T.O. T.O. 434.0 2880.0 T.O. 835.9 835.4 T.O. 960.5 1116.2 1294.7 T.O. 29 .40 × 9.84 ×
+
+XML017 1.2 3.4 1.1 40.8 0.7 2.0 0.3 0.3 0.6 0.3 0.4 1.2 0.3 3.57 × 0.25 ×
+
+LUA001 1.1 2.1 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 1200 .16 × 1.91 ×
+
+LUA002 5.2 7.2 5.3 T.O. T.O. T.O. T.O. T.O. T.O. T.O. 1111.9 T.O. 1355.9 224 .36 × 1.02 ×
+
+LUA003 0.8 5.5 1.5 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 1309.7 1487 .16 × 1.88 ×
+
+LUA004 15.3 4.0 2.7 6.3 23.0 180.0 205.4 253.3 983.3 105.6 970 876.9 672 23 .33 × 0.18 ×
+
+PDF001 110.7 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 13 .01 × 13 .01 ×
+
+PDF002 0.8 2.9 T.O. T.O. T.O. T.O. 1208.0 1353.1 1405.1 1348.7 T.O. T.O. T.O. 1603 .94 × 3.62 ×
+
+PDF003 4.7 5.3 2.5 7.9 60.0 360.0 351.5 416.2 609.5 273.4 113.0 267.6 1156.4 64 .24 × 0.53 ×
+
+PDF004 383.2 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 3.76 × 3.76 ×
+
+PDF005 5.3 12.4 7.9 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 226 .73 × 1.49 ×
+
+PDF006 772.7 T.O. T.O. 35.0 10080.0 T.O. T.O. T.O. T.O. T.O. 1432.0 T.O. 1334.9 2.63 × 0.05 ×
+
+PDF008 2.2 3.2 2.1 T.O. 10080.0 T.O. T.O. T.O. 1437.4 1375.9 T.O. 1419.8 T.O. 869 .64 × 0.95 ×
+
+PDF009 0.9 3.1 3.1 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 1333 .91 × 3.44 ×
+
+PDF010 6.5 8.4 4.2 384.7 28.0 120.0 26.9 9.1 7.8 15.2 222.6 272.4 57.5 14 .83 × 0.65 ×
+
+PDF011 139.2 T.O. T.O. T.O. T.O. 300.0 T.O. 1293.0 1232.4 1353.8 1116.9 970.4 1304.2 8.84 × 2.16 ×
+
+PDF012 1.9 5.6 3.9 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 632 .00 × 2.05 ×
+
+PDF014 1313.3 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 1.10 × 1.10 ×
+
+PDF016 1.7 3.2 1.4 6.8 0.8 8.0 0.9 1.1 0.5 1.0 0.4 0.5 3.4 1.37 × 0.24 ×
+
+PDF018 0.9 3.1 1.7 T.O. 120.0 300.0 1094.7 11.3 T.O. 28.2 549.5 1328.4 31.7 587 .83 × 1.89 ×
+
+PDF019 4.0 22.9 T.O. T.O. T.O. T.O. 1396.2 T.O. 1182.4 1296.8 179.7 736.6 T.O. 280 .30 × 5.72 ×
+
+PDF021 4.4 8.1 10.1 T.O. 10080.0 960.0 T.O. T.O. 1402.3 T.O. 1205.4 912.7 1423.6 412 .16 × 1.84 ×
+
+PDF022 1.3 3.1 2.0 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 923 .40 × 1.54 ×
+
+SQL001 1.4 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 1371.0 1374.8 T.O. T.O. 1020 .58 × 979 .29 ×
+
+SQL002 60.1 T.O. T.O. 104.1 1.0 7.0 19.8 15.0 T.O. 16.9 3.3 9.8 46.4 6.30 × 0.02 ×
+
+SQL003 4.2 2.4 T.O. T.O. 2880.0 T.O. T.O. T.O. T.O. 1249.0 1282.1 1378.6 T.O. 334 .76 × 0.57 ×
+
+SQL004 1.8 T.O. T.O. T.O. T.O. T.O. T.O. 1337.1 T.O. T.O. T.O. T.O. T.O. 795 .24 × 742 .83 ×
+
+SQL005 20.7 T.O. T.O. T.O. T.O. T.O. 1165.1 927.8 T.O. 756.5 902 860.4 T.O. 59 .15 × 36 .55 ×
+
+SQL006 1.5 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 960 .00 × 960 .00 ×
+
+SQL007 6.2 5.7 2.7 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 193 .66 × 0.44 ×
+
+SQL010 3.0 5.6 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 440 .16 × 1.87 ×
+
+SQL011 33.0 T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. T.O. 43 .64 × 43 .64 ×
+
+SQL012 4.5 2.0 2.7 T.O. 2880.0 1020.0 854.6 1105.6 T.O. 1232.6 1024 1104.6 1324.3 248 .71 × 0.44 ×
+
+SQL013 5.8 T.O. T.O. T.O. 23.0 1260.0 1168 T.O. T.O. 1004.1 1141.8 1293.4 T.O. 208 .77 × 3.97 ×
+
+SQL014 14.5 T.O. T.O. T.O. 33.0 480.0 378.3 272.5 T.O. 325.8 30.5 23.7 254.1 43 .44 × 1.63 ×
+
+SQL015 3.0 8.2 3.7 T.O. 2880.0 T.O. 1387.2 1375.1 T.O. T.O. 1092.7 1224.9 T.O. 421 .44 × 1.23 ×
+
+SQL018 7.6 3.5 T.O. 9.8 1.0 8.0 27.3 33.4 T.O. 30.1 20.5 12.2 212.7 35 .51 × 0.13 ×
+
+SQL020 0.6 2.1 2.4 T.O. 60.0 720.0 615.2 1322.6 T.O. 944.3 732.1 903.7 1298.2 1316 .75 × 3.50 ×
+
+SSL001 10.8 T.O. T.O. 180.8 T.O. 360.0 852.5 N.A. 24.0 288.8 487.1 524.5 802.0 65 .99 × 2.22 ×
+
+SSL002 5.5 4.0 7.3 11.3 33.0 T.O. 2.5 N.A. T.O. 1.4 0.6 1.4 0.5 48 .63 × 0.09 ×
+
+SSL003 0.9 7.7 1.9 5.8 0.2 0.5 2.9 N.A. T.O. 1.8 0.7 1.8 0.3 147 .84 × 0.22 ×
+
+SSL006 T.O. 24.0 T.O. T.O. T.O. T.O. T.O. N.A. T.O. T.O. T.O. T.O. T.O. – –SSL009 3.2 T.O. T.O. T.O. T.O. T.O. 1098.6 N.A. T.O. 477.5 158.7 1208.3 0.7 329 .09 × 0.22 ×
+
+SSL016 33.7 T.O. T.O. T.O. T.O. T.O. T.O. N.A. T.O. T.O. T.O. T.O. T.O. 42 .73 × 42 .73 ×
+
+SSL020 T.O. 9.1 T.O. T.O. 10080.0 T.O. 1327.4 N.A. T.O. 842.2 254.2 538.1 555.3 – –PHP001 1.8 11.0 9.8 T.O. T.O. T.O. T.O. N.A. N.A. T.O. T.O. T.O. T.O. 641 .16 × 5.44 ×
+
+PHP002 1.1 T.O. T.O. 12.3 T.O. T.O. 0.3 N.A. N.A. 0.3 0.3 0.3 0.3 524 .89 × 0.27 ×
+
+PHP003 T.O. 12.3 T.O. T.O. T.O. T.O. T.O. N.A. N.A. T.O. T.O. T.O. T.O. – –PHP004 2.4 10.0 4.0 T.O. 10.0 360.0 7.8 N.A. N.A. 45.4 4.3 12.8 629.3 105 .15 × 1.67 ×
+
+PHP005 2.1 T.O. T.O. T.O. T.O. T.O. T.O. N.A. N.A. T.O. T.O. T.O. T.O. 685 .71 × 685 .71 ×
+
+PHP009 2.7 15.4 12.9 13.6 2.0 840.0 477.2 N.A. N.A. 1058.5 384.2 357.1 0.3 117 .08 × 0.11 ×
+
+PHP010 T.O. 19.6 T.O. T.O. T.O. T.O. T.O. N.A. N.A. T.O. T.O. T.O. T.O. – –PHP011 3.3 10.2 T.O. T.O. 1.0 5.0 T.O. N.A. N.A. T.O. T.O. T.O. T.O. 305 .95 × 0.30 ×
+
+PHP013 1.8 6.7 3.0 T.O. T.O. T.O. T.O. N.A. N.A. T.O. T.O. T.O. T.O. 640 .54 × 1.67 ×
+
+PHP014 0.8 3.9 3.5 T.O. T.O. T.O. T.O. N.A. N.A. T.O. T.O. T.O. T.O. 1440 .92 × 4.38 ×
+
+CVE Cov. 80 57 (-23) 38 (-42) 28 (-52) 46 (-34) 41 (-39) 45 (-35) 37 (-43) 29 (-51) 48 (-32) 52 (-28) 51 (-29) 48 (-32) – –
+
+L3 (Sufficient-Condition Correctness) In this case, a synthe-sized oracle is considered correct if it captures a sufficient con-dition for the ground-truth oracle. CVE-2019-9200 (PDF007) is an example where the synthesized oracle is O(readChars 
+
+17 == -1) , while the ground-truth oracle is O(readChars < 0) .Here, readChars == -1 implies readChars < 0 , so the syn-thesized oracle captures a valid but more restrictive condition. 
+
+Synthesis Errors In this case, a synthesized oracle is consid-ered incorrect with respect to the ground-truth oracle. For ex-ample, in CVE-2017-11362 (PHP013), the ground-truth ora-cle checks slocale_len > INTL_MAX_LOCALE_LEN , where 
+
+INTL_MAX_LOCALE_LEN is 255. However, the synthesized oracle incorrectly infers this macro value and checks 
+
+slocale_len > 80 instead. As a result, the synthesized ora-cle characterizes a different condition from the ground-truth oracle and is classified as a synthesis error. This differs from Sufficient-Condition Correctness, where the synthesized or-acle must be a sufficient condition for the ground-truth ora-cle. Here, slocale_len > 80 is not a sufficient condition for 
+
+slocale_len > 255 .
+
+Reference Errors In this case, the Magma reference or-acle itself is incorrect with respect to the ground-truth vulnerability condition. For example, in CVE-2016-10270 (TIF007), the reference oracle uses the predicate 
+
+nstrips > TIFFhowmany_32(td->td_imagelength, rowsperstrip) , whereas the correct condition is 
+
+nstrips32 < TIFFhowmany_32(td->td_imagelength, rowsperstrip) . This discrepancy indicates that the reference oracle characterizes an incorrect condition, and we therefore classify this case as a reference error. 
+
+// poppler/SplashOutputDev.cc:4220-4299 // Semantic constraint: XStep/YStep must match BBox dimensions ,→
+
+const double *bbox = tPat->getBBox(); width = bbox[2] - bbox[0]; // BBox width height = bbox[3] - bbox[1]; // BBox height if (xStep != width || yStep != height) return false; // PoC: both are 1e-340 // ... (lines 4222-4245: CTM processing and initial transform) ,→
+
+// Step 1: Floating-point underflow result_width = (int)ceil(fabs(kx * width * (x1 - x0))); // kx=1e-5 (from CTM), width=1e-340 (from BBox), (x1-x0)=1 (clip) ,→
+
+// -> 1e-5 x 1e-340 x 1 = 1e-345 < 4.94e-324 (IEEE 754 min subnormal) ,→
+
+// -> underflows to 0.0 -> result_width = 0 result_height = (int)ceil(fabs(ky * height * (y1 - y0))); // ... (lines 4248-4259: matrix setup with DPI and pattern matrix) ,→
+
+// Step 2: Zero propagation through scaling factor sx = (double)result_width / (surface_width * (x1 - x0)); // sx = 0 / (non-zero) = 0 sy = (double)result_height / (surface_height * (y1 - y0)); m1.m[0] *= sx; // m1.m[0] becomes 0 m1.m[3] *= sy; m1.transform(width, height, &kx, &ky); // kx = 0 x width + 0 x height + 0 = 0 // Step 3: Branch selection (small tile path) if (fabs(kx) < 1 && fabs(ky) < 1) { // ... (lines 4267-4275: special handling for tiny tiles) ,→
+
+} else { // ... (lines 4277-4286: size limit checks) // Step 4: Final surface_width computation surface_width = (int)ceil(fabs(kx)); // kx = 0 -> surface_width = 0 ,→
+
+surface_height = (int)ceil(fabs(ky)); // Step 5: DIG 's oracle: Division by zero O(surface_width == 0 || surface_height == 0); repeatX = result_width / surface_width; repeatY = result_height / surface_height; }
+
+FIGURE 11: CVE-2019-14494: a division-by-zero error caused by floating-point underflow. 
+
+// poppler/Gfx.cc:2001-2005 (Gfx::doTilingPatternFill) det = ctm[0] * ctm[3] - ctm[1] * ctm[2]; if (fabs(det) < 0.000001) { // 1e-6 threshold error(errSyntaxError, getPos(), "Singular matrix in tiling pattern fill"); ,→
+
+return; }
+
+FIGURE 12: Singularity check in Gfx::doTilingPatternFill() 
+
+for CVE-2019-14494. 
+
+// poppler/SplashOutputDev.cc (patched version) surface_width = (int) ceil (fabs(kx)); surface_height = (int) ceil (fabs(ky)); // adjust repeat values to completely fill region + if (unlikely(surface_width == 0 || surface_height == 0)) {,→
+
++ state->setCTM(savedCTM[0], savedCTM[1], savedCTM[2], savedCTM[3], savedCTM[4], savedCTM[5]); ,→
+
++ return false; + } repeatX = result_width / surface_width; repeatY = result_height / surface_height; if (surface_width * repeatX < result_width) 
+
+FIGURE 13: Patch for CVE-2019-14494 that adds a zero-check before division. 
+
+18 1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj 2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj 3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] ,→
+
+/Resources << /Pattern << /P1 5 0 R >> >> /Contents 4 0 R >> endobj ,→
+
+4 0 obj << /Length 77 >> stream q0 0 1 1 re W n %0.00001 0 0 1 0 0 cm %/Pattern cs /P1 scn 0 0 200 200 re f %Qendstream endobj 5 0 obj << /Type /Pattern /PatternType 1 /PaintType 1 /TilingType 2 ,→
+
+/BBox [0 0 1e-340 16] %/XStep 1e-340 /YStep 16 %/Matrix [1 0 0 1 0 0] /Resources << >> /Length 25 >> stream ,→
+
+1 0 0 rg 0 0 1e-340 16 re f endstream endobj 
+
+FIGURE 14: Complete PoC for CVE-2019-14494. 
+
+Prompt template for Cursor agent 
+
+## Mission 
+
+You are a security expert who finds PoC input for bugs in C/C++ programs. Your goal is to find a PoC input that triggers the bug predicate. 
+
+## System Input 
+
+You will receive structured input containing: 1. ENTRY_SOURCE_CODE : Entry functions (main/-FuzzerTestOneInput) and target location functions with line numbers 2. TARGET_LOCATIONS : Bug predicate locations with format ‘loc=file:line, code=source_line’ Use this information to analyze the program, locate the bug predicate, and write a Python script that generates a PoC input which triggers the bug at the target location. FIGURE 16: Prompt template for Cursor agent. 
+
+// tif_next.c NeXTDecode() #define SETPIXEL(op, v) { switch (npixels++ & 3) { case 0: op[0] = (unsigned char)((v) << 6); break; case 1: op[0] |= (v) << 4; break; case 2: op[0] |= (v) << 2; break; case 3: *op++ |= (v); op_offset++; break; // advances op 1 byte every 4 pixels ,→
+
+}} static int NeXTDecode(TIFF* tif, uint8_t* buf, tmsize_t occ, uint16_t s) { ,→
+
+tmsize_t scanline = tif->tif_scanlinesize; // from td_imagewidth via TIFFScanlineSize ,→
+
+... for (row = buf; cc > 0 && occ > 0; occ -= scanline, row += scanline) { ,→
+
+// row points to current output row; allocated size = scanline bytes ,→
+
+n = *bp++; cc--; switch (n) { // ... LITERALROW / LITERALSPAN cases omitted ... default: { uint32_t npixels = 0, grey; tmsize_t op_offset = 0; uint32_t imagewidth = tif->tif_dir.td_imagewidth; ,→
+
+if (isTiled(tif)) imagewidth = tif->tif_dir.td_tilewidth; // C5: tilewidth overrides ,→
+
+op = row; for (;;) { grey = (uint32_t)((n >> 6) & 0x3); n &= 0x3f; ,→
+
+while (n-- > 0 && npixels < imagewidth) { O(op_offset >= scanline); // oracle: op past row boundary ,→
+
+SETPIXEL(op, grey); // OOB write past row[scanline-1] ,→
+
+}if (npixels >= imagewidth) break; n = *bp++; cc--; }}} }}// tif_strip.c TIFFScanlineSize64() — sets tif->tif_scanlinesize ,→
+
+uint64_t TIFFScanlineSize64(TIFF* tif) { TIFFDirectory *td = &tif->tif_dir; // ... YCbCr path omitted; NeXT takes the contig non-YCbCr branch: ,→
+
+uint64_t scanline_samples; scanline_samples = _TIFFMultiply64(tif, td->td_imagewidth, td->td_samplesperpixel, module); ,→
+
+// scanline_size depends solely on td_imagewidth scanline_size = TIFFhowmany_64( _TIFFMultiply64(tif, scanline_samples, td->td_bitspersample, module), 8); return (scanline_size); }
+
+FIGURE 15: CVE-2015-8784 (TIF008): heap buffer over-write in 
+
+NeXTDecode (tif_next.c ). SETPIXEL writes past the scanline buffer when op_offset ≥ scanline , triggered via a tiled TIFF where td_tilewidth > td_imagewidth .
+
+19

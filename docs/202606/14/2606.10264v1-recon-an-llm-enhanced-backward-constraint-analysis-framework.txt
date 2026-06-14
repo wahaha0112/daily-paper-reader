@@ -1,0 +1,495 @@
+Title: RECON: An LLM-Enhanced Backward Constraint Analysis Framework
+
+URL Source: https://arxiv.org/pdf/2606.10264v1
+
+Published Time: Wed, 10 Jun 2026 00:22:03 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# RECON: An LLM-Enhanced Backward Constraint Analysis Framework 
+
+Babangida Bappah, Lamine Noureddine, Umar Farooq, Aisha Ali-Gombe Louisiana State University 
+
+{bbappa1, lnoureddine, ufarooq, aaligombe }@lsu.edu 
+
+Abstract —While traditional techniques, such as symbolic exe-cution, provide a principled foundation for precise constraint reasoning in program analysis, they struggle to scale to modern software systems mainly due to path explosion, the need for function modeling, and the loss of semantic intent at low-level program representations. In complex execution environments such as Android, characterized by extensive framework inter-actions and event-driven behavior, these limitations are even more amplified. Thus, in this paper, we present a novel large language model (LLM)-enhanced backward constraint analysis framework that combines the precision of static program analysis with LLM’s semantic understanding to extract precise execution constraints from Android bytecode. Our approach, titled RECON, performs backward path discovery from target method(s) to the application entry point(s), discovers method-level control-flow constraints, and leverages LLM reasoning to transform bytecode conditions into interpretable specifications. We evaluated RECON using five LLMs across 78 Android constraint-extraction scenarios and compared it with tradi-tional symbolic execution on real-world applications. Results demonstrate that our approach operates 5.8X faster than traditional symbolic execution, with a 100% success rate, while maintaining logical equivalence and providing significantly more precise and interpretable output. We further evaluated RECON for malware analysis on 100 samples. The results indicate an 84% success rate in generating semantic constraints that lead to the execution of dangerous API behaviors and in detecting complex constraints across multiple execution paths. 
+
+## 1. Introduction 
+
+Understanding the conditions under which sensitive op-erations become reachable in large, framework-intensive applications remains a fundamental challenge in program analysis. Traditional symbolic execution is widely used for constraint analysis and discovering program behaviors. Yet, its scalability is affected by path explosion and its accuracy is constrained by the need for precise function models—two problems that are particularly severe in object-oriented, event-driven, and framework-based programs. Current en-gines such as KLEE [12], JPF [5], Soot [56], angr [55], SymCC [50], Frama-C [20] either punt on modeling, rely on hand-written stubs, or explode on heap / OO programs. They struggle to determine the conditions under which specific program contexts or target methods are reachable, especially in real-world applications where framework logic, callbacks, and library code obscure the true control-flow structure. In modern Android applications, particularly complex control flow, extensive framework interactions, and event-driven execution obscure the execution prerequisites of sensitive behaviors, making manual analysis costly and traditional symbolic techniques difficult to scale. While static analysis provides broad coverage and dynamic analysis offers high fidelity, both struggle to recover interpretable execution con-straints in real-world applications. At the same time, large language models (LLMs) possess unprecedented ability to infer high-level semantics of methods, classes, and API behavior. Yet, these capabilities remain largely unused in constraint analysis pipelines. This creates a fundamental research gap: how can we design a constraint reasoning framework that leverages LLM semantic insight to infer method behavior, discover constraints along targeted call paths, and assemble them into a feasible global path condi-tion—without exhaustive exploration or manual modeling. Thus, in this work, we present RECON, a target-driven constraint analysis framework that accurately recov-ers human-interpretable reachability requirements for tar-get operations in Android applications. RECON combines backward call-graph discovery, upward intraprocedural con-straint analysis, and LLM-assisted semantic interpretation to transform low-level bytecode conditions into execution requirements. Rather than constructing fully formal sym-bolic path formulas, our approach focuses on recovering the necessary reachability conditions suitable for scalable security analysis and human interpretation. Our evaluation results show that the LLM-assistant semantic extraction integrated with GPT-4o in RECON consistently achieves 92.6% semantic interpretation accu-racy across Android framework APIs and demonstrates constraint recovery precision of 88.2% even in complex control-flow scenarios, significantly outperforming open-source LLM alternatives. Our comparative analysis against angr [55] shows that RECON recovers logically equivalent reachability conditions when both analyses complete, while achieving markedly lower analysis time and higher com-pletion rates (5.8X faster) on real-world applications. Ad-ditionally, evaluation on Android malware demonstrated the framework’s ability to identify and explain execution prereq-uisites for security-sensitive behaviors across diverse mal-ware families, translating complex bytecode dependencies into human-interpretable requirements. Collectively, these 
+
+> arXiv:2606.10264v1 [cs.CR] 9 Jun 2026
+
+results validate RECON as a practical and scalable approach for understanding execution reachability in modern Android applications, particularly in security analysis contexts where finding and interpreting the necessary conditions for a sen-sitive operation to occur are critical, rather than exhaustive symbolic search. This paper makes the following contributions:  
+
+> •
+
+We present a constraint reasoning framework that combines static program analysis with LLM–assisted semantic reasoning to interpret bytecode-level conditions that are difficult to reason using traditional symbolic analysis.  
+
+> •
+
+We introduce a scalable framework design that em-ploys target-driven backward call-graph discovery, upward intraprocedural constraint reasoning, and lightweight path-level constraint assembly to effi-ciently recover reachability requirements in large, event-driven Android applications.  
+
+> •
+
+Our approach accurately recovers human-interpretable reachability constraints that explain the execution prerequisites of target operations, enabling practical use in security analysis.  
+
+> •
+
+We evaluate RECON on benign real-world applica-tions and Android malware, demonstrating its practi-cal utility, scalability, and effectiveness in recovering execution constraints across diverse analysis scenar-ios. 
+
+## 2. Background 
+
+Constraint analysis evaluates the conditions that must hold for a program to reach specific execution points or produce particular behaviors. These conditions, commonly expressed as logical predicates over program variables, are typically derived from control-flow decisions, data depen-dencies, and interactions with external libraries or sys-tem components. Constraint-based reasoning has therefore served as a foundational technique for a wide range of software engineering tasks, including testing, verification, vulnerability discovery, and security analysis [11], [28], [47]. Many such program analysis tasks can be formu-lated as constraint-solving problems, in which verification conditions, invariants, or program properties are encoded as logical constraints and discharged using SAT or SMT solvers [28]. By solving these constraints, analysis frame-works can automatically reason about program behavior, enabling capabilities such as test generation, detection of unreachable states, and identification of security-sensitive behaviors [43]. 
+
+2.1. Techniques for Constraint Analysis 
+
+Static Techniques: . Static constraint analysis tech-niques derive execution conditions from program structure without executing the program. These approaches rely on symbolic reasoning, abstract interpretation, data-flow anal-ysis, and constraint encoding to approximate program be-havior across feasible execution paths. Symbolic execution is one of the most widely adopted static analysis techniques for constraint analysis. It construct path constraints by rep-resenting inputs symbolically and reasoning over control-flow decisions, enabling automated analysis of reachability, test generation, and verification properties [11], [47], [48]. Abstract interpretation is another static analysis technique for creating approximate semantics of programs, allowing for sound reasoning about their dynamic behaviors [17]– [19], [26]. CEGAR on the other hand is lazy approach that start with a coarse abstraction and refining only when needed [15]. In general, static analysis provides broad be-havioral coverage by reasoning about paths that may be difficult or infeasible to observe during runtime testing. Many static techniques also provide conservative guarantees through over-approximation, which is particularly valuable for security verification and policy enforcement. Since static analysis does not require program execution, it can be ap-plied to incomplete programs, unsafe binaries, or unavailable runtime environments. Dynamic Techniques: . Dynamic constraint analysis techniques, on the other hand, infer execution constraints from observed program behavior during concrete program execution. These methods commonly combine runtime exe-cution tracing with symbolic reasoning, such as concolic execution, which explores alternative execution paths by collecting path constraints during execution and generat-ing new inputs to trigger unexplored behaviors [27], [54]. Modern symbolic execution engines extend this paradigm by combining runtime exploration with solver-based path-feasibility checking and model-checking techniques [48]. Other techniques, such as taint analysis, dynamically mon-itor the data flow from source to sink, often optimizing concolic analysis by concentrating symbolic computation solely on tainted variables [16], [46]. Dynamic execution trace leverages instrumentation to monitor user/program/sys-tem interaction at runtime [33], [37], while invariant mining techniques explore the inherent linear characteristics of run-time program workflows, which are often used for detecting anomalies [14], [38], [42]. In general, dynamic approaches provide high precision because constraints are derived from real execution states, naturally capturing interactions with the environment and runtime behaviors that are difficult to model statically. This makes dynamic techniques particu-larly effective in event-driven systems and security testing scenarios where accurate modeling of runtime behavior is critical [25], [43]. As a result, dynamic constraint analysis is widely used in vulnerability discovery, exploit development, and malware analysis. 
+
+2.2. Challenges of Existing Constraint Analysis 
+
+Despite significant progress in constraint-based program reasoning, existing techniques face well-known limitations that restrict their scalability, precision, and applicability to modern software systems. Modern software systems exhibit complex control flows, extensive framework interactions, and large input spaces, all of which substantially increase the difficulty of accurately discovering and solving execution constraints [10], [47]. Static constraint analysis techniques, in particular, often suffer from precision loss due to neces-sary over-approximation of program behavior. To preserve soundness, static analyses frequently model multiple poten-tial execution paths simultaneously, which can introduce spurious constraints and false positives. These challenges are especially pronounced in the presence of heap aliasing, indirect calls, and extensive library or framework interac-tions, where precise modeling of program state becomes difficult [47], [49]. Dynamic constraint analysis techniques mitigate some precision limitations by deriving constraints from concrete executions, but introduce a different set of challenges. Be-cause dynamic approaches rely on observed executions, they inherently provide incomplete coverage and may fail to discover constraints associated with unexecuted yet feasible paths. Their effectiveness depends heavily on input qual-ity, test generation strategies, and user interactions, mak-ing comprehensive constraint discovery difficult to guaran-tee [27], [54]. Moreover, dynamic constraint analysis does not provide soundness guarantees with respect to unobserved behaviors, as the absence of an observed execution does not imply infeasibility. These techniques can also incur substan-tial runtime overhead and exhibit nondeterministic behavior, particularly in concurrent or event-driven applications where execution traces may vary across runs [11]. 
+
+2.3. Leveraging Static Analysis and LLM Reason-ing 
+
+To address the limitations of both static and dynamic constraint analysis paradigms, we propose a framework that combines static inference with LLM-assisted reasoning for backward constraint analysis. Static analysis provides struc-tural coverage, while LLM reasoning is leveraged to inter-pret semantic information that is implicit in framework inter-actions, variable usage, and conditional logic. By restricting analysis to control-flow paths that are relevant to a speci-fied target operation, the framework reduces spurious path exploration and improves precision. As execution paths are discovered, LLM-assisted semantic reasoning incrementally refines path conditions by interpreting conditional seman-tics and assembling precise reachability constraints across complex, event-driven execution flows. Rather than aiming for full semantic soundness or completeness, our approach prioritizes the discovery of human-interpretable reachability constraints that support practical security analysis tasks. 
+
+## 3. Design of RECON 
+
+This section presents the design of RECON —a back-ward constraint analysis framework for discovering and extracting human-interpretable reachability constraints from Android applications. The framework addresses the funda-mental challenge of understanding what conditions must be satisfied to reach target operations in an unknown applica-tion. Our framework consists of four main phases: 1) Back-ward Path Discovery; 2) Intraprocedural Constraint Discov-ery; 3) LLM-Assisted Semantic Extraction; and 4) Con-straint Path Assembly. These phases work together se-quentially to identify execution paths, extract control-flow conditions, interpret semantic meaning, and generate path constraint specifications, as shown in Figure 1. 
+
+> Figure 1. RECON Framework workflow
+
+3.1. Backward Path Discovery 
+
+In backward path discovery, we identify interprocedural execution paths from target methods to application entry points through call graph traversal. Let T denote a target method within an Android application, and G = ( V, E )
+
+denote the application’s call graph where V is the set of reachable methods and E represents caller-callee relation-ships. To accurately model Android lifecycle transitions and callback-driven execution—and thereby reduce spurious call edges—we construct G using FlowDroid’s call graph [6]. The backward path discovery phase then computes a set of execution paths P = {p1, p 2, . . . , p n} where each path pi is defined as: 
+
+pi = ⟨m1, m 2, . . . , m k, T ⟩ (1) where:  
+
+> •
+
+T is the target method requiring constraint analysis;  
+
+> •
+
+m1 is an application entry point, such as an An-droid lifecycle callback, event handler, or broadcast receiver;  
+
+> •
+
+{m2, . . . , m k} are intermediate methods that form a valid interprocedural execution sequence;  
+
+> •
+
+Each consecutive method pair (mi, m i+1 ) ∈ E
+
+corresponds to a caller–callee relationship in the call graph. The backward path discovery algorithm, shown in Al-gorithm 1, performs a breadth-first traversal over the re-verse call graph. To ensure termination and scalability, the algorithm explicitly encodes the following mechanisms: (1) Cycle detection, where a method is expanded only if it does not already appear in the current path. This check is enforced in Algorithm 1, line 9, by preventing revisits of methods already present in the active path. This mechanism prevents infinite exploration caused by recursion or cyclic call rela-tionships. (2) Depth bounding, which limits exploration to paths of finite length using a configurable maximum depth parameter, denoted as M AX DEP T H . It is important to note that cycle detection is path-sensitive rather than global, allowing the same method to appear in multiple distinct execution paths while preventing infinite recursion within any single path. This design preserves backward-discovered candidate execution paths from application entry points to the target method. We note that the feasibility of RECON finding constraints on complete execution paths is relative to the precision of this static call graph. 
+
+Algorithm 1 Backward Path Discovery  
+
+> 1:
+
+procedure DISCOVER PATHS (T , G, M AX DEP T H ) 
+
+> 2:
+
+Initialize queue Q ← { T } and path set P ← ∅  
+
+> 3:
+
+while Q̸ = ∅ and depth < M AX DEP T H do  
+
+> 4:
+
+Dequeue current method mi 
+
+> 5:
+
+Find all callers C(mi) = {mj | (mj , m i) ∈ E} 
+
+> 6:
+
+for each caller mj ∈ C(mi) do  
+
+> 7:
+
+if mj is an entry point then  
+
+> 8:
+
+Add complete path to P 
+
+> 9:
+
+else if mj not in current path then  
+
+> 10:
+
+Enqueue mj 
+
+> 11:
+
+end if  
+
+> 12:
+
+end for  
+
+> 13:
+
+end while  
+
+> 14:
+
+return complete path set P (T ) 
+
+> 15:
+
+end procedure 
+
+This target-driven backward analysis approach is chosen over forward exploration to focus the analysis on execution paths relevant to the target method. We avoid exploring large portions of the program that do not contribute to target reachability by initiating analysis from a target method and tracing its prerequisites backward through the call graph. As a result, our approach achieves significantly improved scal-ability compared to exhaustive forward symbolic execution, particularly in large, event-driven Android applications. 
+
+3.2. Intraprocedural Constraint Discovery 
+
+For each execution path identified during backward path discovery, this phase analyzes all of its methods individ-ually using an upward traversal algorithm to determine the reachability constraints that govern execution of the target method T . Given an discovered path in Equation 1 
+
+pi = ⟨m1, . . . , m k, T ⟩, we start with the immediate caller 
+
+mk of the target method T . For this method, the analysis evaluates all conditional constructs that influence whether execution reaches T , aggregating the constraints required for invocation. The analysis then proceeds iteratively to each predecessor method along the path, continuing until all methods in pi have been analyzed. By restricting analysis to control-flow elements only along the candidate backward paths, the approach avoids the path explosion associated with forward symbolic execution while ensuring comprehen-sive coverage of constraints relevant to target reachability. We construct an intraprocedural control-flow graph for each method mi, denoted as CF G mi , that captures only the control-flow elements relevant to constraint discovery. Unlike a traditional control-flow graph that includes all pro-gram statements, CF G mi is a simplified representation that focuses on: (i) conditional statements that introduce branch-ing behavior, (ii) switch statements representing multi-way decisions, (iii) method invocation sites, including calls to the target method, (iv) allocation sites relevant to variable definition, and (v) the control-flow edges connecting these elements. Formally, we define CF G m as a directed graph (D, E i),where Di denotes decision nodes (IF NODE), switch nodes (SW NODE) and invocation nodes (INVOKE NODE), and Ei represents control-flow relationships between these nodes. Each node encodes its corresponding Jimple state-ment along with the execution context required for subse-quent constraint extraction. Given CF G m and a target invocation site callsiteT 
+
+for T , the upward traversal algorithm, as shown on Al-gorithm 2, initializes from callsiteT and proceeds using a worklist-based exploration strategy. At each step, the algorithm examines only those predecessor nodes that can reach the current node in CF G m, as returned by the GET BRANCH function, which returns only the predecessor IF NODEs and SW NODEs that can reach the current node c in CF G m. This reachability filtering ensures that analysis remains restricted to control-flow elements relevant to the target invocation and avoids exploring infeasible or unrelated paths. When the traversal encounters a decision point—IF NODEs or SW NODEs—the algorithm then in-vokes the LLM-assisted semantic interpretation component (explained in the next phase). Non-decision nodes, such as straight-line control-flow segments or allocation sites, are traversed without constraint extraction but are evaluated by the LLM for variable semantic analysis and framework interpretation. The traversal continues until all relevant pre-decessor nodes have been explored or the method entry point is reached. A visited set is maintained to prevent redundant analysis and ensure termination, even in the presence of cyclic intraprocedural control-flow structures. 
+
+3.3. LLM-Assisted Semantic Analysis 
+
+Recent studies have demonstrated that large language models are capable of program summarization [1], [2], [64], code analysis [7], [36], [45], [58], and code genera-tion [29], [44], suggesting that LLMs can capture semantic, syntactic, and control-flow relationships in code artifacts through carefully designed prompting strategies. Motivated by these findings, we leverage LLMs to interpret bytecode-level conditions that are difficult to reason about using purely syntactic or structural analysis. RECON ’s LLM-assisted semantic analysis is integrated directly into the intraprocedural upward constraint discov-Algorithm 2 Upward Traversal for Intraprocedural Con-straint Discovery                                                                              
+
+> Input: CF G m: simplified intraprocedural CFG for m
+> Input: callsite T: target invocation node in CF G m
+> Input: entry m: method entry node in CF G m
+> Input: κm: method bytecode/context (e.g., Jimple)
+> Output: C: reachability constraints required to reach callsite T
+> 1: C← ∅
+> 2: W← { callsite T}▷Worklist (stack/queue)
+> 3: visited ← ∅
+> 4: while W̸=∅do
+> 5: c←POP (W)
+> 6: if c∈visited then
+> 7: continue
+> 8: end if
+> 9: visited ←visited ∪ { c}
+> 10: if c=entry mthen
+> 11: continue
+> 12: end if
+> 13: P reds ←GET BRANCH (c, CF G m)
+> 14: if P reds =∅then
+> 15: continue
+> 16: end if
+> 17: for all p∈P reds do
+> 18: if pis I FNODE or pis S WITCH NODE then
+> 19: C←ΦLLM (p, κ m, C )
+> 20: end if
+> 21: PUSH (W, p )
+> 22: end for
+> 23: end while
+> 24: return C
+
+ery phase, as shown in Algorithm 2. As upward traversal progresses from the target invocation toward the method entry, the analysis visits decision points in reverse order. At each step, the LLM interprets the current decision node in the context of previously accumulated constraints, enabling incremental interpretation and refinement of reachability constraints as additional program context becomes available. Let Ci denote the evolving reachability-constraint state after processing decision node di. For each decision node, the LLM produces a candidate semantic interpretation: 
+
+ˆri = Φ LLM (di, κ i, C i−1), (2) where κi represents the bytecode-level scope and contextual information associated with di, and ΦLLM infers the control-flow outcome required for target reachability, resolves vari-able semantics under the current program state, and inter-prets relevant framework or library method calls. The output 
+
+ˆri represents an LLM-generated candidate reachability con-straint. Our Semantic analysis in this phase is guided by a structured prompt design (Appendix B) that directs the LLM through a sequence of well-defined reasoning tasks with explicit requirements on output structure. These tasks include: 
+
+Branch Direction Analysis : Inferring the control-flow outcome required for target reachability, including whether execution proceeds along the true or false branch of a conditional predicate or through a specific switch-case se-lection. This analysis leverages contextual information about conditional variables and execution flow that may not be evident from conditional syntax alone. 
+
+Variable Semantic Analysis : Resolving the semantic interpretation of variables appearing in conditional expres-sions. Bytecode-level analysis yields low-level variable iden-tifiers that lack explicit semantic meaning. The LLM per-forms variable tracing and data-flow–aware interpretation, incorporating allocation sites and reaching definitions to characterize variable semantics under the current program state and within the conditional context. We note that this variable semantic analysis relies on available reaching def-initions, not full interprocedural value resolution. 
+
+Framework Method Interpretation : Interpreting the semantic behavior of framework and library method calls appearing within conditional expressions. Android applica-tions extensively rely on framework APIs whose behavior significantly influences control flow but is difficult to infer from bytecode alone. The LLM leverages its exposure to large-scale code repositories to infer the semantics of such framework methods and their impact on execution flow. 
+
+Constraint Reassessment : Aggregating the results of branch direction analysis, variable semantic analysis, and framework method interpretation to update the accumulated constraint state. At each decision point, previously produced constraints are reconsidered in light of newly inferred se-mantics, enabling incremental refinement as traversal pro-ceeds. LLM Output Validation & Hallucination Mitiga-tion. LLM-generated candidate interpretations ˆri are treated as candidate semantic explanations and are accepted into the analysis only when consistent with evidence extracted by static analysis. Specifically, inferred branch outcomes are validated against control-flow reachability within the 
+
+CF G m, variable semantics are checked against def–use relationships and variable types, and framework method interpretations are constrained by known method signatures and invocation context. Thus, each candidate interpretation ˆri is accepted only if it is consistent with the available structural evidence: 
+
+C = ˆ ri, IF Consistent (ˆ ri, d i, κ i, C i−1) == T rue 
+
+Accepted interpretations update the constraint state Ci,while inconsistent interpretations are discarded or revised. This validation step ensures that incremental constraint re-finement is grounded in extracted control-flow and data-flow evidence. This formulation checks for hallucination and prevents the LLM from introducing reachability conditions unsupported by the underlying program structure. To illustrate intraprocedural constraint discovery with LLM-assisted semantic analysis, consider the bytecode for the onOptionsItemSelected method shown in Figure 2. Let T denote the target callsite corresponding to the savePrice(String, float) invocation. During upward traversal of the method’s CF G m,the first decision point encountered is the conditional 1 $i0 = interfaceinvoke $r1.<MenuItem: int getItemId()>();                                                         
+
+> 2$i1 =<R$id: int save_note>;
+> 3if $i0 != $i1 goto label3;
+> 4$r2 =virtualinvoke r0.<Intent getIntent()>();
+> 5$z0 =virtualinvoke $r2.<Intent: boolean hasExtra(String) >
+> 6("EXTRA_ID");
+> 7if $z0 == 0goto label2;
+> 8$z0 =virtualinvoke $r2.<Intent: boolean hasExtra(String) >
+> 9("EXTRA_PRICE_CHECK");
+> 10 if $z0 == 0goto label1;
+> 11 $r3 =virtualinvoke $r2.<Intent: String getStringExtra( String)>
+> 12 ("EXTRA_TITLE");
+> 13 $f0 =virtualinvoke $r2.<Intent: float getFloatExtra( String,float)>
+> 14 ("EXTRA_QUANTITY", 0.0F);
+> 15 specialinvoke r0.<void savePrice(String,float)>($r3, $f0);
+> Figure 2. Jimple bytecode from onOptions() showing conditional statements and the target invocation, with decision points represented as
+> D=⟨d1, . . . , d n⟩.
+
+statement if z0 == 0gotolabel 1 (line 10). The LLM receives this conditional node together with the complete method bytecode and the target method savePrice .By analyzing the surrounding control-flow structure, the LLM determines that taking the true branch transfers execution to label1 , which leads to an alternative code path rather than the target invocation. Consequently, reaching savePrice requires the condition to evaluate to false, yielding the local reachability constraint z0! = 0 .However, the low-level variable z0 provides little semantic insight on its own. To resolve its meaning, the variable semantic analysis task traces z0 to its most recent definition: z0 = virtualinvoke r2.<Intent: boolean hasExtra(String)>("EXTRA_PRICE_CHECK") 
+
+(line 8 in Figure 2). From this variable assignment, the LLM infers that z0 represents the boolean result of checking whether an Android Intent contains the parameter "EXTRA_PRICE_CHECK" . The variable is therefore mapped to the human-readable concept 
+
+intentHasExtraPriceCheck , reflecting its role in the application’s execution logic. To complete the interpretation, the framework method interpretation task evaluates the API call Intent.hasExtra(String) .The LLM recognizes this as an Android framework method that returns true if the specified key is present in the 
+
+Intent ’s data bundle and false otherwise. Combining this semantic understanding with the inferred branch outcome, the LLM refines the low-level constraint z0! = 0 
+
+into the human-readable reachability requirement: the Intent must contain the "EXTRA_PRICE_CHECK" parameter. After processing this decision point, the algorithm replaces the current node with its predecessor and continues the upward traversal to the next conditional statement. Applying the same semantic interpretation process to each encountered decision node, the intraprocedural analysis ultimately derives three boolean reachability constraints for the savePrice target: menuItemId == saveNoteId , intentHasExtraId == true , and 
+
+intentHasExtraPriceCheck == true .Therefore the reachability constraint need to reach the 
+
+savePrice from onOptionsItemSelected is: 
+
+C(savePrice ) = ( menuItemId == saveNoteId )∧
+
+(intentHasExtraId == true )∧
+
+(intentHasExtraPriceCheck == true ) (3) 
+
+3.4. Constraint Path Assembly 
+
+The final phase assembles complete execution path requirements by conjunctively composing the finalized intraprocedural constraint sets across methods along abackward-discovered call path. Given the backward-discovered execution path p =
+
+⟨m1, m 2, . . . , m k, T ⟩, where each method mi contributes a set of intraprocedural reachability constraints Cmi required to reach the callsite to mi+1 (or T when i = k), the target-relevant path constraint for pi is: 
+
+Cp =
+
+> k
+
+^
+
+> i=1
+
+ ^
+
+> c∈Cmi
+
+c
+
+ . (4) Each Cmi represents a conjunction of necessary reacha-bility predicates within method mi; disjunctive alternatives within a method are not enumerated because our goal is to recover necessary reachability requirements rather than complete symbolic path formulas, trading exhaustive formal precision for scalability and human interpretability. Conse-quently, each Cmi summarizes the predicates required to reach the next callsite within mi, and conjunctive com-position across methods captures the joint preconditions for end-to-end reachability. Variable naming consistency is enforced during semantic extraction, enabling direct com-position without additional interprocedural renaming. This design yields a scalable and interpretable approximation well suited for security analysis. The output of this phase is a Constraint Path Specifica-tion that includes a Unique Path Identifier for tracking and reference purposes, the complete Method Sequence from application entry point to target method, the Target-relevant path Constraint Expression representing all execution re-quirements, and a Natural Language Execution Summary 
+
+that describes the complete execution constraints in human readable terms. 
+
+## 4. Implementation 
+
+We implement RECON as an automated analysis frame-work for extracting reachability constraints from Android applications. The framework which has ≈ 7000 lines of code is developed in Java and built on top of the Soot static-analysis framework [56], enabling bytecode parsing and call-graph construction. Our implementation operates directly on Jimple, Soot’s typed three-address intermediate representation, which provides a structured and analyzable form of Dalvik bytecode. The pipeline accepts an Android APK file and target method(s) as inputs and produce struc-tured reachability constraint specifications without requiring manual configuration or environment modeling. The static-analysis component constructs an interpro-cedural call graph using FlowDroid [6] for each applica-tion and performs backward traversal from he input target method(s)s to identify candidate execution paths. For each discovered method on each path, RECON builds a CFG that selectively retains conditional statements, switch constructs, and invocation sites relevant to reachability. Extracted state-ments and their execution context are packaged in structured form and provided to the semantic-interpretation module, where constraint information is incrementally aggregated to produce complete execution-path specifications. The semantic-interpretation module integrates multiple large language models through a structured prompting in-terface. For each decision node, the framework invokes the integrated models to analyze the current context for reachability constraints. The LLM returns structured JSON outputs describing branch-direction requirements, variable semantics, and inferred constraints. To improve reliability, RECON includes a validation layer that checks generated constraints against control-flow reachability and def–use re-lationships derived from static analysis. All intermediate and final constraints are stored in structured JSON format to sup-port automated aggregation and downstream analysis. The framework supports both local inference for open-source models and API-based inference for commercial models 
+
+## 5. Evaluation 
+
+We evaluate RECON with respect to its core objectives: accuracy, interpretability, and scalability, through a series of empirical studies designed to assess both the quality of extracted reachability constraints and the framework’s prac-tical performance. In particular, we address the following research questions.  
+
+> •
+
+RQ1 : How accurately can different LLMs per-form task-specific semantic interpretation of An-droid framework APIs and bytecode-level conditions for reachability constraint extraction?  
+
+> •
+
+RQ2 : How does LLM-enhanced backward con-straint analysis compare to traditional symbolic ex-ecution in terms of accuracy, performance, and in-terpretability?  
+
+> •
+
+RQ3 : Can our framework effectively identify and explain security-relevant execution constraints in real-world malicious Android applications? 
+
+5.1. Experimental Setup 
+
+5.1.1. Benchmarks. Existing Android analysis benchmarks, such as DroidBench [6] and ICCBench [62], primarily tar-get taint analysis and data-flow tracking, making them un-suitable for evaluating constraint-extraction capabilities that require semantic understanding of execution prerequisites. To address this limitation, we construct a comprehensive test suite from real-world Android applications specifically designed to evaluate LLM performance on backward con-straint analysis. We describe how we constructed the test suite in the following: 
+
+1. API-Only: We constructed a corpus of 156 Android framework methods spanning six major API categories: intent operations, menu item handling, activity lifecycle, UI component events, platform compatibility, and security APIs. These categories cover commonly used framework methods that introduce conditional control-flow dependen-cies in Android applications. The ground-truth semantic descriptions for each framework method were manually curated by the research team through consultation of official Android documentation and validated via manual review. 
+
+2. Real-world applications: We selected 50 Android applications from F-Droid [24] based on four criteria: (1) recent updates within the past 12 months to reflect modern development practices, (2) complex control-flow patterns with at least three conditional branches or switch cases, (3) diverse Android framework-method usage spanning multiple API categories, and (4) variable reuse across distinct seman-tic contexts that challenge traditional static analysis. This methodology ensures coverage of challenging constraint patterns observed in production Android applications while maintaining reproducibility through open-source availability. From these applications, we identified 78 target methods representing diverse interaction patterns, including menu handlers, intent processors, activity lifecycle methods, au-thentication flows, platform compatibility checks, and secu-rity validation routines. The ground-truth reachability con-straints were constructed by the research team through static, call-graph–guided execution tracing over the Jimple byte-code of the selected applications. For each target method, tracing proceeded from the method entry point toward the target, analyzing statements sequentially to identify condi-tional checks along the execution path. At each conditional statement, the required branch outcome was determined and the corresponding reachability constraint was derived. This process continued until the target method was reached, yielding a conjunction of constraints that characterizes the execution requirements along the path. Constraint Complexity.. We further categorize test cases based on the number of constraints in the final speci-fication and the presence of variable reuse across constraints:  
+
+> •
+
+SIMPLE: 0–3 constraints with no variable reuse across predicates (26 test cases)  
+
+> •
+
+MEDIUM: 4–10 constraints with limited variable reuse across predicates (38 test cases)  
+
+> •
+
+COMPLEX: More than 10 constraints and exten-sive variable reuse across predicates (14 test cases) 
+
+3. Malware: We downloaded the 100 most recent An-droid malware samples from established malware reposito-ries [4], [57]. This benchmark targets 42 dangerous Android APIs spanning six security categories. TABLE 1. O VERVIEW OF SELECTED LARGE LANGUAGE MODELS                          
+
+> Model Arch. Context Params Release Length Date
+> GPT-4o GPT-4 128k Undiscl. May 2024 DeepSeek-Coder DeepSeek 16k 6.7B Jun 2024 Qwen-Coder Qwen2 32k 7B Apr 2024 CodeLlama Llama2 16k 7B Aug 2023 Llama-3 Llama3 8k 8B Apr 2024
+
+Our evaluation uses this benchmark to assess different aspects of RECON’s constraint-extraction capability. For 
+
+RQ1 , we use the API-only dataset for framework-method interpretation and the real-world applications for constraint reasoning. For RQ2 , we evaluate a representative subset of 15 applications for the real-world dataset (three per category across five major categories), ensuring balanced comparison while maintaining computational feasibility for symbolic execution. For RQ3 , we leverage the malware dataset to evaluate the framework’s robustness under malicious sce-narios. 
+
+5.1.2. LLM Model Selection. To evaluate the effectiveness of LLM-based semantic analysis, we selected five repre-sentative models based on architectural diversity, parameter scale, and practical availability for reproducible research. The set includes one commercial model (GPT-4o, Ope-nAI) and four open-source alternatives with 6.7–8B param-eters: DeepSeek-Coder (6.7B), Qwen-Coder (7B), CodeL-lama (7B), and Llama-3 (8B). This diversity enables evalu-ation across architectures, training paradigms, and resource requirements, as summarized in Table 1. All models received identical structured prompts containing full method byte-code, the conditional statement under analysis, the target method, and complete variable-definition context. Prompts averaged 4,500 tokens and requested structured JSON out-puts specifying branch directions, constraint expressions, logical interpretations, and path-level constraint specifica-tions. The temperature was fixed at 0.1 for all models to promote deterministic constraint extraction and minimize variability that could confound comparative analysis. 
+
+5.1.3. Hardware Configuration. All experiments were conducted on a local server equipped with an RTX 4090 GPU (24 GB VRAM), an Intel i9-13900KF CPU (24 cores), and 64 GB DDR5 RAM to ensure consistent performance across evaluations. Open-source models were executed lo-cally with GPU acceleration for transformer inference, while GPT-4o was accessed via the OpenAI API under stan-dard rate-limiting constraints. This configuration enabled controlled, reproducible evaluation for open-source models while maintaining identical environmental conditions across all experimental runs. 
+
+5.2. Results 
+
+5.2.1. RQ1: Accuracy of LLM semantic Interpretation. 
+
+RQ1a: Android Framework Method Semantic In-terpretation.. We first assess framework-method interpre-tation accuracy, as correct understanding of Android API semantics is a prerequisite for reachability-constraint ex-traction and cannot be recovered through structural consis-tency checks alone. This evaluation examines the ability of LLMs to correctly identify and interpret Android framework methods appearing within conditional statements or deci-sion node context. Specifically, we evaluate each model’s ability to (i) identify variable assignments originating from framework-method invocations, (ii) describe the invoked method’s behavior, and (iii) specify possible return values and their semantic meaning. 
+
+Evaluation Methodology: LLM-generated framework method interpretations are compared against the 156 API-only manually curated ground truth descriptions. To ac-count for paraphrased but semantically equivalent descrip-tions, we measure semantic similarity between the ground truth and LLM-generated descriptions using Sentence-BERT (SBERT) embeddings [52] with cosine similarity: similarity (v1, v 2) = v1 · v2
+
+∥v1∥ × ∥ v2∥ (5) where v1 and v2 denote the embedding vectors of the ground truth and LLM-generated descriptions, respectively. Since each framework invocation corresponds to a single semantic interpretation decision, we use accuracy as the primary evaluation metric rather than precision or recall. For each API category C, accuracy is computed as: Accuracy (C) = Number of methods with similarity ≥ T
+
+Total methods in category C (6) An interpretation is considered correct if its accuracy score meets or exceeds the threshold T = 0 .6. This simi-larity threshold tolerates lexical variation while preserving semantic equivalence, consistent with prior work on LLM-based semantic evaluation. 
+
+RQ1a Results: GPT-4o achieved the highest framework-method interpretation accuracy across all evaluated API cat-egories, exceeding 90% accuracy in five of the six categories (Table 2). The model consistently produced semantically aligned interpretations that reflected framework-method be-havior and return semantics. For example, when analyzing 
+
+Intent.hasExtra("EXTRA_ID") , GPT-4o correctly identified the method as checking for the presence of a specific parameter in an Intent and returning a boolean indicating whether the parameter exists, consistent with the Android framework specification. The largest performance gap between GPT-4o and open-source models occurred for 
+
+Platform Compatibility APIs , which often require awareness of Android version evolution and API deprecation patterns that may be underrepresented in general-purpose code cor-pora. Notable disparities were also observed for Security APIs .RQ1b: Constraint Reasoning.. Next, we evaluate end-to-end constraint reasoning on 50 real-world Android applications comprising 78 target methods. It is important to distinguish structural consistency checks in RECON from correctness as measured in RQ1b. Consistency checks TABLE 2. A NDROID FRAMEWORK METHOD MODELING ACCURACY BY API C ATEGORY                                                                                                      
+
+> API Category Method Example Methods GPT-4o DeepSeek Qwen CodeLlama Llama-3 Count (%) (%) (%) (%) (%) Intent Operations 42 hasExtra(), getStringExtra(), setFlags() 95.2 67.3 73.8 52.4 58.1
+> Menu Item Handling 28 getItemId(), setVisible(), findItem() 96.4 71.4 78.6 60.7 64.3
+> Activity Lifecycle 24 finish(), getIntent(), onBackPressed() 91.7 58.3 66.7 45.8 50.0
+> UI Component Events 18 onClick(), setOnClickListener(), findViewById() 94.4 66.7 72.2 55.6 61.1
+> Platform Compatibility 22 SDK INT, getOnBackPressedDispatcher() 86.4 45.5 54.5 31.8 36.4
+> Security APIs 22 authenticate(), secureDialog(), checkNotNull() 90.9 54.5 63.6 40.9 45.5
+> Overall Average 156 –92.6 62.2 68.6 49.4 54.5
+> Note: Accuracy measured using semantic embeddings (SBERT) with threshold of 0.6 between LLM-generated framework method descriptions and validated ground truth interpretations.
+> TABLE 3. O VERALL CONSTRAINT EXTRACTION PERFORMANCE BY COMPLEXITY CATEGORY
+> Test Case Category Total GPT-4o DeepSeek-Coder Qwen-Coder CodeLlama Llama-3 Cases P/R/F1 P/R/F1 P/R/F1 P/R/F1 P/R/F1 SIMPLE 26 96.2/94.2/95.2 78.3/72.1/75.1 82.7/76.9/79.7 71.4/65.4/68.3 73.1/67.3/70.1
+> MEDIUM 38 91.6/87.3/89.4 69.4/61.2/65.1 74.2/68.1/71.0 58.7/52.3/55.3 61.3/55.8/58.4
+> COMPLEX 14 88.2/83.6/85.8 52.4/45.7/48.9 67.3/58.9/62.8 41.2/35.1/37.9 44.6/38.2/41.2
+> Overall 78 92.3/88.7/90.4 69.1/61.4/65.0 75.2/68.3/71.6 58.4/52.1/55.1 61.0/55.2/58.0
+> Note: P = Precision, R = Recall, F1 = F1-Score (%). Precision measures correctly identified constraints versus total generated; Recall measures identified constraints versus ground truth requirements.
+
+ensure that LLM-generated interpretations do not contradict extracted control-flow or data-flow evidence, thereby pre-venting hallucinations and infeasible reachability conditions. However, multiple semantically distinct interpretations may remain structurally consistent. RQ1b therefore evaluates whether the framework identifies the correct reachability constraints among these structurally valid candidates relative to manually curated ground truth. The assessment covers the full constraint-extraction pipeline, including interpreta-tion of conditional statements, framework-method seman-tics, variable-context resolution, and synthesis of human-readable constraint specifications. We evaluate all five LLMs across the 78 target methods, categorizing test cases by complexity to analyze performance degradation as constraint complexity increases. 
+
+Evaluation Methodology: A generated constraint set is considered completely correct if: (i) the number of gener-ated constraints matches the ground truth specification, and (ii) each generated constraint is logically equivalent to its corresponding ground truth constraint. Partial matches are not considered successful. For each complexity category C, accuracy is computed as: Accuracy C = # of test cases w/ complete correct constraint sets Total test cases in category C (7) This strict accuracy metric ensures the resulting output from LLM produce accurate, end-to-end constraint specifications. To further provide a more granular view of constraint qual-ity, we additionally compute precision, recall, and F1-score across all test cases: Precision = Number of correctly identified constraints Total generated constraints (8) Recall = Number of correctly identified constraints Total required constraints (9) F1-score = 2 × Precision × Recall Precision + Recall (10) A constraint is considered correctly identified when it matches the corresponding ground truth constraint in both logical structure and semantic interpretation. We report both strict accuracy and precision/recall metrics to distinguish complete constraint synthesis failures from partial semantic understanding. 
+
+RQ1b Results. The evaluation results show that GPT-4o consistently outperformed all other evaluated models across all complexity categories, achieving an overall F1-score of 90.4% (Table 3). The performance gap is most pro-nounced in Complex scenarios, where GPT-4o attained an F1-score of 85.8%. These cases involve dense, interdepen-dent conditional logic, platform compatibility checks, and security-related validation constraints. DeepSeek-Coder and Qwen-Coder exhibited moderate performance, with overall F1-scores of 65.0% and 71.6%, respectively. In contrast, CodeLlama and Llama-3 showed more limited constraint-reasoning capability, with F1-scores below 60%. Manual inspection of failure cases indicates that open-source models struggled primarily with accurate interpretation of Android framework-method semantics, further supporting RQ1a, and with complex variable-reuse patterns in which the same bytecode variables represent distinct semantic concepts across multiple conditional statements. Beyond absolute per-formance metrics, consistency of constraint extraction across varying complexity levels is critical for practical analysis workflows. Figure 3 in Appendix A presents a consistency analysis revealing substantial reliability differences across evaluated LLMs. GPT-4o demonstrates not only the highest overall precision but also the most stable performance across complexity categories, with precision ranging from 88.2% to 96.2%—a narrow 8-percentage-point span. This stabil-ity indicates robust constraint-extraction performance even as execution paths and constraint interactions grow more complex. In contrast, open-source models exhibit signifi-cantly higher variance with increasing complexity. CodeL-lama shows the largest variability, with precision ranging from 41.2% to 71.4%, while DeepSeek-Coder and Llama-3 display similarly wide fluctuations. Such variability makes constraint-extraction reliability difficult to predict across target methods, posing challenges for consistent analyst use in real-world settings. 
+
+> RQ1 Key Findings
+> Results show that stronger LLMs (notably GPT-4o) achieve high accuracy and robust performance, particularly for complex, multi-constraint execution paths, while weaker models degrade significantly as semantic complexity increases. These results highlight the importance of strong semantic reasoning capabil-ities for reliable constraint extraction from Android bytecode. In particular, the increasing variance observed for open-source models as complexity grows underscores the role of advanced semantic interpretation in bridging the gap between low-level bytecode analysis and human-interpretable constraint specifica-tions.
+
+5.2.2. RQ2: Comparative Analysis with Traditional Symbolic Execution. Given GPT-4o’s strong overall per-formance across the RQ1 metrics, we integrate this model into the final version of RECON and conduct a compara-tive evaluation against traditional symbolic execution. Using 15 applications from our F-Droid benchmark subset, we compare RECON with angr [55], a widely used symbolic-execution framework. This evaluation addresses a central question in pro-gram analysis: although LLM-assisted techniques can rea-son about program semantics, do they provide measurable advantages over established symbolic-execution methods in scalability and practical utility while preserving practical precision in reachability constraint discovery? We assess this using three complementary metrics: RQ2a , analysis time as a measure of scalability; RQ2b , constraint equivalence relative to ground truth as a measure of precision; and RQ2c ,interpretability for security-analysis workflows. 
+
+RQ2a Results. Our framework operates as an end-to-end analysis pipeline that constructs call graphs, performs backward traversal from target methods to application entry points, and incrementally generates semantic reachability constraints within a single execution. The reported analysis time therefore reflects a deployment-oriented workflow in which an analyst specifies a target method and receives human-interpretable constraints without intermediate config-uration. In contrast, traditional symbolic-execution tools typ-ically require substantial upfront configuration for Android                                    
+
+> TABLE 4. C ONSTRAINT DISCOVERY PERFORMANCE COMPARISON
+> App Category Target Method RECON Angr Constraint Type (sec) (sec) Equivalence
+> Productivity Menu Event Handler 24 114 ✓
+> Financial SMS Verification 31 287 ✓
+> Social Media Location Access 45 —* N/A Gaming Network Request 18 156 ✓
+> Utility Permission Check 22 98 ✓
+> Average 28.0 163.8 80% Success Rate 100% 80%
+> * Analysis timeout exceeded the 30-minute threshold.
+
+applications, including manual identification of entry points, symbolic state initialization for Android framework compo-nents, and integration of appropriate SDK and bytecode-analysis support. To account for these differing operational models, the reported analysis time for RECON covers the complete workflow from target-method specification to constraint gen-eration. For angr, we measure constraint-discovery time after completing the required setup phases, including An-droid SDK integration and symbolic-state configuration. A timeout of 30 minutes per target method bounds symbolic-execution path exploration within practical limits. Across the evaluation dataset, our approach demonstrates consistent performance advantages, achieving a 5.8 × faster average analysis time and completing analysis for 100% of target methods, compared to an 80% completion rate for symbolic execution, as shown in Table 4. Timeouts occur primarily in applications with extensive Android framework interactions or complex control-flow structures, reflecting known scala-bility challenges of applying traditional symbolic execution to real-world, framework-intensive Android applications. RQ2b: Constraint Equivalence.. For applications where both approaches successfully completed analysis, we observe logical equivalence between the constraint sets pro-duced by RECON and by angr. In these cases, both systems identify the same logical prerequisites required to reach the target methods, despite differences in analysis strategy and representation. This equivalence provides validation that the LLM-assisted semantic extraction in RECON preserves the reachability constraints identified by traditional symbolic execution, while expressing them in a more interpretable, analyst-oriented form. These results demonstrate that our ap-proach maintains semantic alignment with established anal-ysis techniques, supporting its use as a practical alternative for constraint discovery in real-world Android applications. RQ2c: Interpretability Analysis.. Differences in con-straint representation are particularly relevant for practical analysis workflows. Using the Bazarnote productivity ap-plication as an illustrative case study, traditional symbolic execution produces constraints such as: 
+
+unc_int_getItemId_0_32 == default_value_int_1_32 ,
+
+unc_boolean_hasExtra_3_32 != 0x0 , and 
+
+unc_boolean_hasExtra_4_32 != 0x0 
+
+In contrast, RECON generates semantically equivalent but human-interpretable constraints: menuItemId == saveNoteItemId , !intentHasExtraId ,and intentHasExtraPriceCheck == true .Interpreting the symbolic execution output requires additional manual reasoning to infer that the first constraint corresponds to menu item selection validation, while the remaining predicates check for specific Intent parameter states. By contrast, the constraints generated by RECON explicitly encode these semantics, directly conveying the execution requirements: the user must select a specific menu item, the Intent must not contain a particular identifier, and a price validation check must be enabled. This semantic clarity reduces interpretation effort and facilitates integration into security analysis workflows. 
+
+RQ2 Key Findings 
+
+RECON achieves higher completion rates while producing con-straint sets that are logically equivalent to those generated by angr when both analyses terminate. Additionally, RECON pro-vides significantly more interpretable constraint representations, reducing analyst effort and improving practical usability without sacrificing semantic alignment. 
+
+5.2.3. RQ3: Malware Constraint Extraction Capability. 
+
+Using our malware test cases, we evaluate whether RE-CON can be effectively applied to security analysis in real-world adversarial settings. Specifically, we assess whether the framework can identify execution constraints leading to the invocation of security-sensitive Android APIs across multiple malware families. 
+
+Key Terms. Dangerous API identification refers to de-tecting occurrences of security-sensitive framework method calls within malware code. Constraint extraction denotes the generation of human-readable execution requirements for identified APIs. Completion rate measures the percentage of identified API instances for which the framework suc-cessfully produces constraint specifications. As shown in Table 5, RECON identifies dangerous API invocations across all six security categories in the malware dataset. Table 6 further shows that network data-exfiltration APIs are the most prevalent, appearing in 78% of analyzed samples and reflecting the reliance of many malware families on outbound communication. In contrast, privacy-sensor APIs, while less frequent (34% of samples), exhibit the highest average constraint complexity at 8.9 conditions per execution path, indicating more restrictive and layered execution requirements for accessing sensitive device data. Overall, RECON achieves an 84% constraint-extraction completion rate, successfully generating semantic reachability constraints for 325 of 387 identified danger-ous API instances. This result indicates robustness in the presence of real-world malware behaviors and obfuscation. Failures occur primarily in samples employing heavy code obfuscation or complex reflection-based execution patterns, which restrict static control-flow and data-flow recovery. 
+
+Constraint Complexity Demonstration. Figure 5in Appendix C presents an illustrative execution path discovered during malware analysis, corre-                                   
+
+> TABLE 5. M ALWARE CONSTRAINT EXTRACTION RESULTS
+> Metric Value
+> Malware Samples Analyzed 100 Total Dangerous API Types Found 387 Average APIs per Sample 3.9 (Range: 1–8) Constraint Extraction Success Rate 325/387 (84%) Total Number of Paths 1154 Total Number of Expression 14472 Average Constraint Complexity 6.2 conditions/path TABLE 6. API C ATEGORY DISTRIBUTION AND COMPLEXITY
+> API Category Samples Instances Avg (%) Complex.
+> Network Exfiltration 78% 145 4.3 Device Info 67% 98 7.1 SMS/Phone 45% 76 5.8 Privacy Sensors 34% 42 8.9 File System 23% 19 3.2 Dynamic Loading 12% 74.6
+
+sponding to one of 53 distinct paths leading to the 
+
+getLastKnownLocation() API within a single malware sample. The path illustrates location access triggered during application termination (onDestroy )through integration with the Kiip advertising SDK, followed by background thread execution that ultimately invokes location data collection. Further exploration of this malware use case is provided in the Appendix C 
+
+RQ3 Key Findings 
+
+RECON can identify and interpret execution constraints for dangerous API invocations across diverse malware families. Additionally, the constraint complexity case study illustrate RECON ’s ability to translate complex, multi-stage execution dependencies into human- readable constraints, supporting its applicability to practical malware analysis. 
+
+5.3. Limitations and Future Work 
+
+First, our evaluation reveals a clear performance gap be-tween proprietary LLMs (notably GPT-4o) and open-source alternatives. This dependence raises practical concerns re-garding deployment cost, model availability, and long-term reproducibility as LLM ecosystems evolve. Although RECON is model-agnostic by design, its performance is currently limited by the semantic-reasoning capability of the underlying model. Second, RECON does not provide formal guarantees of soundness or completeness. Similar to prior static-analysis and symbolic-execution techniques, the framework aims to recover plausible and practically useful execution constraints rather than exhaustively enu-merate all feasible paths. Third, RECON relies on recov-erable control-flow and data-flow information. As observed in RQ3, malware employing heavy obfuscation, dynamic reflection, or runtime code loading can restrict static path recovery and reduce constraint-extraction coverage. This limitation is inherent to static-analysis–based approaches and is shared by traditional symbolic-execution frameworks. Finally, although our evaluation includes multiple real-world applications and malware families, the dataset size remains limited relative to the diversity of Android applications in the wild. Broader evaluation on larger and more diverse datasets may reveal additional edge cases and performance variability. 
+
+Future Work will focus on improving framework-method interpretation for open-source LLMs through lightweight fine-tuning or domain-adaptive instruction tuning on Android-specific APIs. Enhanced API semantic understand-ing is expected to improve downstream constraint-reasoning accuracy and narrow the performance gap observed in RQ1 and RQ2. We also plan to integrate execution paths and reachability constraints recovered by RECON with in-memory analysis and runtime artifact extraction. Combining static constraint reasoning with memory-resident state infor-mation may enable partial dynamic validation of execution paths, improving coverage in the presence of reflection or dynamically constructed control flows. 
+
+## 6. Related Work 
+
+Constraints Reasoning and Symbolic Execution :Prior work has investigated multiple approaches for extracting and reasoning about execution constraints, with symbolic execution emerging as one of the dominant techniques. Despite its effectiveness, symbolic execution faces well-known scalability challenges. The path explosion problem causes the number of possible execution paths to grow exponentially as programs encounter branching conditions, quickly exceeding available analysis resources.Several tech-niques attempt to mitigate path explosion through path prioritization or heuristic state selection [32], [63], but these strategies typically rely on manually designed heuristics that do not generalize across diverse application domains. Constraint solving also limits symbolic execution scalability. Complex path conditions involving nonlinear arithmetic, library calls, or environmental dependencies remain difficult for traditional solvers to handle efficiently. Researchers have explored alternative solving strategies, including heuris-tic search [22], machine-learning–guided constraint solving [10], [41], and constraint reuse or normalization techniques [9], [34]. Additional symbolic execution extensions, such as probabilistic symbolic execution [8] and counterfactual symbolic execution [30], improve reasoning capabilities but still rely heavily on precise constraint modeling. Android applications rely heavily on platform APIs whose behavior cannot be fully captured through static modeling alone. Prior work demonstrates that accurate framework modeling is essential for preserving constraint correctness during symbolic execution [25], [43]. Similar semantic challenges arise in specialized domains such as secure enclave analysis [60] and cryptographic protocol verification [3], [13]. Compilation-based and binary-level symbolic execution techniques improve execution efficiency [21], [50], [51], but they continue to struggle when program behavior depends on high-level semantic understanding or obfuscated control flows [61]. 
+
+AI-Enhanced Constraint Reasoning : Recent research integrates machine learning and language models into pro-gram analysis workflows to improve constraint reasoning and path discovery. Learning-guided symbolic execution uses trained policies to prioritize symbolic states and im-prove coverage efficiency [31], [32]. State-aware symbolic execution further enhances analysis of programs with state-dependent behaviors, such as finite-state systems [65]. Ma-chine learning has also been applied to assist constraint solving by identifying feasible solution regions for complex path conditions [10], [41]. Large language models have recently been explored as semantic reasoning engines for program analysis and security applications. Prior studies demonstrate that LLMs can generate semantic summaries and assist vulnerability discovery, improving analyst understanding of program be-havior [58]. However, recent benchmarking studies show that LLMs still struggle to accurately reason about pro-gram execution paths and path-specific constraints when generating targeted test inputs or coverage-driven test cases [59]. These findings indicate that while LLMs offer strong semantic reasoning capabilities, effectively integrating them into structured constraint extraction workflows remains an open research challenge. 
+
+AI in Malware and Android Security Analysis : Ar-tificial intelligence has been increasingly applied to mal-ware detection and Android security analysis [39], [40]. Some researchers uses neural approaches to learn behavioral patterns directly from dynamic execution reports, reducing reliance on manual feature engineering and improving gen-eralization across malware families [35]. Network traffic and behavioral modeling techniques have also been used to detect advanced malware communication channels [23]. Despite these advances, Android security analysis remains challenging due to the platform’s event-driven architecture and heavy reliance on framework APIs [53]. 
+
+## 7. Conclusion 
+
+Existing techniques for finding execution constraints, particularly symbolic execution, provide precise reasoning but struggle to scale to complex program due to path ex-plosion, framework interactions, and limited interpretabil-ity of low-level program representations. To address these challenges, we presented RECON, an LLM-enhanced back-ward constraint analysis framework that integrates static program analysis with semantic reasoning to extract human-interpretable execution constraints from Android bytecode. Our evaluation demonstrates that RECON improves con-straint discovery scalability and usability while preserv-ing logical correctness. In real-world applications, RECON achieves a 5.8x perfromance improvement over traditional symbolic execution. Additionally, RECON achieves an 84% constraint extraction success rate across 100 malware sam-ples, showcasing its robustness to handle even complex programs. References 
+
+[1] Toufique Ahmed and Premkumar Devanbu. Few-shot training llms for project-specific code-summarization. In Proceedings of the 37th IEEE/ACM international conference on automated software engineer-ing , pages 1–5, 2022. [2] Toufique Ahmed, Kunal Suresh Pai, Premkumar Devanbu, and Earl Barr. Automatic semantic augmentation of language model prompts (for code summarization). In Proceedings of the IEEE/ACM 46th international conference on software engineering , pages 1–13, 2024. [3] Mihhail Aizatulin, Andrew D Gordon, and Jan J¨ urjens. Computational verification of c protocol implementations by symbolic execution. In Proceedings of the 2012 ACM conference on Computer and communications security , pages 712–723, 2012. [4] Kevin Allix, Tegawend´ e F Bissyand´ e, Jacques Klein, and Yves Le Traon. Androzoo: Collecting millions of android apps for the research community. In Proceedings of the 13th international con-ference on mining software repositories , pages 468–471, 2016. [5] Saswat Anand, Corina S P˘ as˘ areanu, and Willem Visser. Jpf–se: A symbolic execution extension to java pathfinder. In International conference on tools and algorithms for the construction and analysis of systems , pages 134–138. Springer, 2007. [6] Steven Arzt, Siegfried Rasthofer, Christian Fritz, Eric Bodden, Alexandre Bartel, Jacques Klein, Yves Le Traon, Damien Octeau, and Patrick McDaniel. Flowdroid: Precise context, flow, field, object-sensitive and lifecycle-aware taint analysis for android apps. ACM sigplan notices , 49(6):259–269, 2014. [7] Scott Blyth, Sherlock A Licorish, Christoph Treude, and Markus Wagner. Static analysis as a feedback loop: Enhancing llm-generated code beyond correctness. In 2025 IEEE International Conference on Source Code Analysis & Manipulation (SCAM) , pages 100–109. IEEE, 2025. [8] Mateus Borges, Antonio Filieri, Marcelo d’Amorim, and Corina S P˘ as˘ areanu. Iterative distribution-aware sampling for probabilistic symbolic execution. In Proceedings of the 2015 10th Joint Meeting on Foundations of Software Engineering , pages 866–877, 2015. [9] Tegan Brennan, Nestan Tsiskaridze, Nicol´ as Rosner, Abdulbaki Ay-din, and Tevfik Bultan. Constraint normalization and parameterized caching for quantitative program analysis. In Proceedings of the 2017 11th Joint Meeting on Foundations of Software Engineering , pages 535–546, 2017. [10] Lei Bu, Yongjuan Liang, Zhunyi Xie, Hong Qian, Yi-Qi Hu, Yang Yu, Xin Chen, and Xuandong Li. Machine learning steered symbolic execution framework for complex software code. Formal Aspects of Computing , 33(3):301–323, 2021. [11] Cristian Cadar, Patrice Godefroid, Sarfraz Khurshid, Corina SP˘ as˘ areanu, Koushik Sen, Nikolai Tillmann, and Willem Visser. Sym-bolic execution for software testing in practice: preliminary assess-ment. In Proceedings of the 33rd International Conference on Software Engineering , pages 1066–1071, 2011. [12] Cristian Cadar and Martin Nowack. Klee symbolic execution engine in 2019. International Journal on Software Tools for Technology Transfer , 23(6):867–870, 2021. [13] Sze Yiu Chau, Moosa Yahyazadeh, Omar Chowdhury, Aniket Kate, and Ninghui Li. Analyzing semantic correctness with symbolic execution: A case study on pkcs# 1 v1. 5 signature verification. In 
+
+Network and Distributed Systems Security (NDSS) Symposium 2019 ,2019. [14] Xueqi Cheng and Michael S Hsiao. Simulation-directed invariant mining for software verification. In Proceedings of the conference on Design, automation and test in Europe , pages 682–687, 2008. [15] Edmund Clarke, Orna Grumberg, Somesh Jha, Yuan Lu, and Helmut Veith. Counterexample-guided abstraction refinement. In Interna-tional Conference on Computer Aided Verification , pages 154–169. Springer, 2000. [16] James Clause, Wanchun Li, and Alessandro Orso. Dytan: a generic dynamic taint analysis framework. In Proceedings of the 2007 international symposium on Software testing and analysis , pages 196– 206, 2007. [17] Patrick Cousot. Abstract interpretation. ACM Computing Surveys (CSUR) , 28(2):324–328, 1996. [18] Patrick Cousot and Radhia Cousot. Abstract interpretation: a unified lattice model for static analysis of programs by construction or approximation of fixpoints. In Proceedings of the 4th ACM SIGACT-SIGPLAN symposium on Principles of programming languages , pages 238–252, 1977. [19] Patrick Cousot and Radhia Cousot. Abstract interpretation: past, present and future. In Proceedings of the Joint Meeting of the Twenty-Third EACSL Annual Conference on Computer Science Logic (CSL) and the Twenty-Ninth Annual ACM/IEEE Symposium on Logic in Computer Science (LICS) , pages 1–10, 2014. [20] Pascal Cuoq, Florent Kirchner, Nikolai Kosmatov, Virgile Prevosto, Julien Signoles, and Boris Yakobowski. Frama-c: A software analysis perspective. In International conference on software engineering and formal methods , pages 233–247. Springer, 2012. [21] Lesly-Ann Daniel, S´ ebastien Bardin, and Tamara Rezk. Binsec/rel: Efficient relational symbolic execution for constant-time at binary-level. In 2020 IEEE Symposium on Security and Privacy (SP) , pages 1021–1038. IEEE, 2020. [22] Peter Dinges and Gul Agha. Solving complex path conditions through heuristic search on induced polytopes. In Proceedings of the 22nd ACM SIGSOFT International Symposium on Foundations of Software Engineering , pages 425–436, 2014. [23] Priyanka Dodia, Mashael AlSabah, Omar Alrawi, and Tao Wang. Exposing the rat in the tunnel: Using traffic analysis for tor-based malware detection. In Proceedings of the 2022 ACM SIGSAC Con-ference on Computer and Communications Security , pages 875–889, 2022. [24] F-Droid Project. F-droid: Free and open source android app reposi-tory. https://f-droid.org, 2026. Accessed: 2025-10-05. [25] Xiang Gao, Shin Hwei Tan, Zhen Dong, and Abhik Roychoudhury. Android testing via synthetic symbolic execution. In Proceedings of the 33rd ACM/IEEE International Conference on Automated Software Engineering , pages 419–429, 2018. [26] Roberto Giacobazzi, Isabella Mastroeni, and Elia Perantoni. Adver-sities in abstract interpretation-accommodating robustness by abstract interpretation. ACM Transactions on Programming Languages and Systems , 46(2):1–31, 2024. [27] Patrice Godefroid, Nils Klarlund, and Koushik Sen. Dart: Directed au-tomated random testing. In Proceedings of the 2005 ACM SIGPLAN conference on Programming language design and implementation ,pages 213–223, 2005. [28] Sumit Gulwani, Saurabh Srivastava, and Ramarathnam Venkatesan. Program analysis as constraint solving. In Proceedings of the 29th ACM SIGPLAN Conference on Programming Language Design and Implementation , pages 281–292, 2008. [29] Lianghong Guo, Yanlin Wang, Ensheng Shi, Wanjun Zhong, Hongyu Zhang, Jiachi Chen, Ruikai Zhang, Yuchi Ma, and Zibin Zheng. When to stop? towards efficient code generation in llms with excess token prevention. In Proceedings of the 33rd ACM SIGSOFT International Symposium on Software Testing and Analysis , pages 1073–1085, 2024. [30] William T Hallahan, Anton Xue, Maxwell Troy Bland, Ranjit Jhala, and Ruzica Piskac. Lazy counterfactual symbolic execution. In 
+
+Proceedings of the 40th acm sigplan conference on programming language design and implementation , pages 411–424, 2019. [31] Jingxuan He, Mislav Balunovi´ c, Nodar Ambroladze, Petar Tsankov, and Martin Vechev. Learning to fuzz from symbolic execution with application to smart contracts. In Proceedings of the 2019 ACM SIGSAC conference on computer and communications security , pages 531–548, 2019. [32] Jingxuan He, Gishor Sivanrupan, Petar Tsankov, and Martin Vechev. Learning to explore paths for symbolic execution. In Proceedings of the 2021 ACM SIGSAC Conference on Computer and Communica-tions Security , pages 2526–2540, 2021. [33] Fazilat Hojaji, Tanja Mayerhofer, Bahman Zamani, Abdelwahab Hamou-Lhadj, and Erwan Bousse. Model execution tracing: a sys-tematic mapping study. Software and Systems Modeling , 2019. [34] Xiangyang Jia, Carlo Ghezzi, and Shi Ying. Enhancing reuse of constraint solutions to improve symbolic execution. In Proceedings of the 2015 International Symposium on Software Testing and Analysis ,pages 177–187, 2015. [35] Chani Jindal, Christopher Salls, Hojjat Aghakhani, Keith Long, Christopher Kruegel, and Giovanni Vigna. Neurlux: dynamic malware analysis without feature engineering. In Proceedings of the 35th Annual Computer Security Applications Conference , pages 444–455, 2019. [36] Rahul Krishna, Rangeet Pan, Saurabh Sinha, Srikanth Tamilselvam, Raju Pavuluri, and Maja Vukovic. Codellm-devkit: A framework for contextualizing code llms with program analysis insights. In Proceed-ings of the 33rd ACM International Conference on the Foundations of Software Engineering , pages 308–318, 2025. [37] James R Larus. Abstract execution: A technique for efficiently tracing programs. Software: Practice and Experience , 20(12):1241–1258, 1990. [38] Caroline Lemieux. Mining temporal properties of data invariants. In 
+
+2015 IEEE/ACM 37th IEEE International Conference on Software Engineering , volume 2, pages 751–753. IEEE, 2015. [39] Adrian Shuai Li, Arun Iyengar, Ashish Kundu, and Elisa Bertino. Revisiting concept drift in windows malware detection: Adaptation to real drifted malware with minimal samples. arXiv preprint arXiv:2407.13918 , 2024. [40] Jiaming Li, Sen Chen, Chunlian Wu, Yuxin Zhang, and Lingling Fan. Foredroid: Scenario-aware analysis for android malware detection and explanation. In Proceedings of the 2025 ACM SIGSAC Conference on Computer and Communications Security , pages 1379–1393, 2025. [41] Xin Li, Yongjuan Liang, Hong Qian, Yi-Qi Hu, Lei Bu, Yang Yu, Xin Chen, and Xuandong Li. Symbolic execution of complex program driven by machine learning based constraint solving. In Proceed-ings of the 31st IEEE/ACM International Conference on Automated Software Engineering , pages 554–559, 2016. [42] Jian-Guang Lou, Qiang Fu, Shenqi Yang, Ye Xu, and Jiang Li. Mining invariants from console logs for system problem detection. In 2010 USENIX Annual Technical Conference (USENIX ATC 10) , 2010. [43] Lannan Luo, Qiang Zeng, Chen Cao, Kai Chen, Jian Liu, Limin Liu, Neng Gao, Min Yang, Xinyu Xing, and Peng Liu. System service call-oriented symbolic execution of android framework with applications to vulnerability discovery and exploit generation. In Proceedings of the 15th Annual International Conference on Mobile Systems, Applications, and Services , pages 225–238, 2017. [44] Niels M¨ undler, Jingxuan He, Hao Wang, Koushik Sen, Dawn Song, and Martin Vechev. Type-constrained code generation with language models. Proceedings of the ACM on Programming Languages ,9(PLDI):601–626, 2025. [45] Daye Nam, Andrew Macvean, Vincent Hellendoorn, Bogdan Vasilescu, and Brad Myers. Using an llm to help with code un-derstanding. In Proceedings of the IEEE/ACM 46th International Conference on Software Engineering , pages 1–13, 2024. [46] James Newsome and Dawn Xiaodong Song. Dynamic taint analysis for automatic detection, analysis, and signaturegeneration of exploits on commodity software. In NDSS , volume 5, pages 3–4, 2005. [47] Corina S P˘ as˘ areanu, Rody Kersten, Kasper Luckow, and Quoc-Sang Phan. Symbolic execution and recent applications to worst-case execution, load testing, and security analysis. Advances in Computers ,113:289–314, 2019. [48] Corina S P˘ as˘ areanu, Willem Visser, David Bushnell, Jaco Gelden-huys, Peter Mehlitz, and Neha Rungta. Symbolic pathfinder: inte-grating symbolic execution with model checking for java bytecode analysis. Automated Software Engineering , 20(3):391–425, 2013. [49] Long H Pham, Quang Loc Le, Quoc-Sang Phan, Jun Sun, and Shengchao Qin. Enhancing symbolic execution of heap-based pro-grams with separation logic for test input generation. In International Symposium on Automated Technology for Verification and Analysis ,pages 209–227. Springer, 2019. [50] Sebastian Poeplau and Aur´ elien Francillon. Symbolic execution with SymCC: Don’t interpret, compile! In 29th USENIX Security Symposium (USENIX Security 20) , pages 181–198. USENIX As-sociation, August 2020. URL: https://www.usenix.org/conference/ usenixsecurity20/presentation/poeplau. [51] Sebastian Poeplau and Aur´ elien Francillon. Symqemu: Compilation-based symbolic execution for binaries. In Ndss 2021, network and distributed system security symposium . Internet Society, 2021. [52] Nils Reimers and Iryna Gurevych. Sentence-bert: Sentence embed-dings using siamese bert-networks. arXiv preprint arXiv:1908.10084 ,2019. [53] Antonio Ruggia, Dario Nisi, Savino Dambra, Alessio Merlo, Davide Balzarotti, and Simone Aonzo. Unmasking the veiled: A comprehen-sive analysis of android evasive malware. In Proceedings of the 19th ACM Asia Conference on Computer and Communications Security ,pages 383–398, 2024. [54] Koushik Sen and Gul Agha. Cute and jcute: Concolic unit testing and explicit path model-checking tools: (tool paper). In International Conference on Computer Aided Verification , pages 419–423. Springer, 2006. [55] Yan Shoshitaishvili, Ruoyu Wang, Christopher Salls, Nick Stephens, Mario Polino, Audrey Dutcher, John Grosen, Siji Feng, Christophe Hauser, Christopher Kruegel, and Giovanni Vigna. SoK: (State of) The Art of War: Offensive Techniques in Binary Analysis. In IEEE Symposium on Security and Privacy , 2016. [56] Raja Vall´ ee-Rai, Phong Co, Etienne Gagnon, Laurie Hendren, Patrick Lam, and Vijay Sundaresan. Soot - a java bytecode optimization framework. In Proceedings of the 1999 Conference of the Centre for Advanced Studies on Collaborative Research , pages 13–23, 1999. [57] VirusShare. Virusshare malware repository. https://virusshare.com. Accessed: 2025. [58] Brandon J Walton, Mst Eshita Khatun, James M Ghawaly, and Aisha Ali-Gombe. Exploring large language models for semantic analysis and categorization of android malware. In 2024 Annual Computer Security Applications Conference Workshops (ACSAC Workshops) ,pages 248–254. IEEE, 2024. [59] Wenhan Wang, Chenyuan Yang, Zhijie Wang, Yuheng Huang, Zhaoyang Chu, Da Song, Lingming Zhang, An Ran Chen, and Lei Ma. Testeval: Benchmarking large language models for test case generation. In Findings of the Association for Computational Linguistics: NAACL 2025 , pages 3547–3562, 2025. [60] Yuanpeng Wang, Ziqi Zhang, Ningyu He, Zhineng Zhong, Shengjian Guo, Qinkun Bao, Ding Li, Yao Guo, and Xiangqun Chen. Symgx: Detecting cross-boundary pointer vulnerabilities of sgx applications via static symbolic execution. In Proceedings of the 2023 ACM SIGSAC Conference on Computer and Communications Security ,pages 2710–2724, 2023. [61] Babak Yadegari and Saumya Debray. Symbolic execution of obfus-cated code. In Proceedings of the 22nd ACM SIGSAC Conference on Computer and Communications Security , pages 732–744, 2015. [62] Jiwei Yan, Shixin Zhang, Yepang Liu, Xi Deng, Jun Yan, and Jian Zhang. A comprehensive evaluation of android icc resolution techniques. In Proceedings of the 37th IEEE/ACM International Conference on Automated Software Engineering , pages 1–13, 2022. [63] Shuangjie Yao and Dongdong She. Empc: Effective path prioritization for symbolic execution with path cover. In 2025 IEEE Symposium on Security and Privacy (SP) , pages 2995–3013. IEEE, 2025. [64] Yang Zhang, Hanlei Jin, Dan Meng, Jun Wang, and Jinghua Tan. A comprehensive survey on automatic text summarization with explo-ration of llm-based methods. Neurocomputing , page 131928, 2025. [65] Shunfan Zhou, Zhemin Yang, Dan Qiao, Peng Liu, Min Yang, Zhe Wang, and Chenggang Wu. Ferry: State-Aware symbolic execution for exploring State-Dependent program paths. In 31st USENIX Se-curity Symposium (USENIX Security 22) , pages 4365–4382, Boston, MA, August 2022. USENIX Association. URL: https://www.usenix. org/conference/usenixsecurity22/presentation/zhou-shunfan. 
+
+## Appendix A. LLM Performance Consistency Analysis 
+
+Figure 3. LLM Performance Consistency Analysis. Box plot showing preci-sion score distributions across complexity categories (SIMPLE, MEDIUM, COMPLEX). Box height indicates performance variability, while position shows overall performance level. 
+
+## Appendix B. RECON’s LLM Prompt Template 
+
+1. Task: You are an expert static analysis engineer specializing in Android bytecode constraint extraction. Analyze conditional statements in Android Jimple bytecode to determine execution constraints for target method reachability. 
+
+2. Input: {{ conditional_node }} — Conditional node from CFG 
+
+{{ target_node }} — Target node or Target method callsite 
+
+{{ method_bytecode }} — Complete Jimple bytecode of containing method 
+
+3. Instructions: (1) Trace variables to recent assignments, (2) Interpret framework method semantics, (3) Determine branch direction (TRUE/FALSE/CASE X), (4) Replace byte-code names with semantic equivalents, (5) Generate boolean logic and human-readable constraints 
+
+4. Output: Provide response in this exact JSON format: 
+
+{
+
+"branch_direction": "TRUE|FALSE|CASE_X", "variable_mappings": {"original_name": "semantic_name" },"framework_methods": [{"method": "name", "purpose": "function" }], "boolean_constraint": "semantic_variable == value", "business_constraint": "Human readable requirement" 
+
+}
+
+Figure 4. LLM prompt template for semantic constraint extraction using structured JSON output. 
+
+## Appendix C. Illustrative Malware Constraint-Complexity Use Case 
+
+Reaching the getLastKnownLocation() API requires satisfaction of eight semantic constraints, including the initialization state of the advertising SDK (mKiipInitialized == true ), specific permission configurations (coarse location granted while fine location denied), and system service availability checks. These constraints capture layered execution dependencies that complicate straightforward static analysis. The semantic constraints shown in Figure 5 highlight execution patterns in which malware leverages legitimate third-party frameworks and application lifecycle transitions to access sensitive device information. By translating these dependencies into human-interpretable execution require-ments, RECON enables security analysts to quickly un-derstand the conditions under which sensitive behaviors are triggered, without requiring extensive manual reverse engineering.  
+
+> GSGameWrapperActivity onDestroy()
+> GSKiipSupport onDestroy()
+> Handler post(Runnable)
+> Flurry Background Processing
+> getLastKnownLocation()
+> (Target API)
+> mKiipInitialized == true
+> FlurryAgentStateCheck == false
+> isLocationRequired == true
+> permissionFineLocationNotGranted
+> ACCESS COARSE LOCATION == GRANTED
+> LocationManagerFieldC != null
+> criteriaObject == null
+> bestProviderName != null
+> Execution Path Required Constraints (8 total)
+
+Figure 5. Malware location access execution path and constraint require-ments. Shows one of 53 discovered paths to getLastKnownLocation() API, demonstrating location access through advertising SDK integration during application termination.

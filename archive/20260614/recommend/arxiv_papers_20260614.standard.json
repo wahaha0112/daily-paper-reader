@@ -1,0 +1,624 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-06-14T20:59:37.899334+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 2,
+    "deep_divecandidates": 10,
+    "deep_cap": 7,
+    "deep_selected": 7,
+    "quick_candidates": 8,
+    "quick_skim_target": 12,
+    "quick_selected": 8
+  },
+  "deep_dive": [
+    {
+      "id": "2606.10388v1",
+      "source": "arxiv",
+      "title": "SkillResolve-Bench: Measuring and Resolving Same-Capability Ambiguity in Agent Skill Retrieval",
+      "abstract": "Agent skill libraries are becoming routable software assets: a retrieved skill can contribute instructions, scripts, resource bindings, and execution assumptions to an agent. This makes skill retrieval more than broad relevance matching. A retriever can find the right capability family yet expose the wrong same-capability representative. We study this failure as same-capability execution-risk retrieval. Each query pairs a helpful skill with a query-specific risky sibling that shares the capability family but can lead execution toward a stale resource, missing precondition, or wrong procedure. We introduce SkillResolve-Bench 1.0, an auditable benchmark for this setting with 661 helpful/risky pairs, source-role and admission evidence, cue/leakage checks, query-disjoint splits, and a 7,982-candidate pool that includes 6,660 public SkillRet candidates. The benchmark reports helpful ranking together with harmful sibling rate (HSR@K), the top-K exposure of the risky sibling. We also provide SkillResolve, a reference method that resolves active candidate families, scores query-conditioned utility from confusable library negatives and contract-profile cues, and selects one representative from each family before the final top-K list. Under the released family relation, SkillResolve reaches Recall@3 0.766 and NDCG@3 0.699 while keeping HSR@3=0. It improves over SkillRouter by 0.112 Recall@3 and 0.165 NDCG@3 while reducing HSR@3 from 0.693 to 0. Without representative selection, HSR@3 rises to 0.236 under the same scorer, identifying within-family representative choice as the mechanism that turns capability retrieval into safer procedural exposure.",
+      "authors": [
+        "Jiandong Ding"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR",
+        "cs.AI"
+      ],
+      "published": "2026-06-09T03:54:45+00:00",
+      "link": "https://arxiv.org/pdf/2606.10388v1",
+      "tags": [
+        "keyword:code-vuln",
+        "keyword:skill",
+        "query:code-vuln",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "addresses ambiguity in skill retrieval for agent systems",
+      "llm_evidence_cn": "解决智能体技能检索中的歧义问题",
+      "llm_evidence": "解决智能体技能检索中的歧义问题",
+      "canonical_evidence": "解决智能体技能检索中的歧义问题",
+      "llm_tldr_en": "SkillResolve-Bench introduces a benchmark for same-capability ambiguity in agent skill retrieval, where retrieved skills share capability but differ in execution risk, with 661 helpful/risky pairs.",
+      "llm_tldr_cn": "技能检索不仅是广义相关性匹配，同能力族的技能可能因执行风险不同而带来隐患。本文提出SkillResolve-Bench 1.0基准，包含661对帮助性与风险性技能对，用于评估检索器在相同能力下区分风险的能力。该基准为技能库的可路由性提供了可审计的测试平台。",
+      "llm_tldr": "技能检索不仅是广义相关性匹配，同能力族的技能可能因执行风险不同而带来隐患。本文提出SkillResolve-Bench 1.0基准，包含661对帮助性与风险性技能对，用于评估检索器在相同能力下区分风险的能力。该基准为技能库的可路由性提供了可审计的测试平台。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.11435v1",
+      "source": "arxiv",
+      "title": "Agent Skill Evaluation and Evolution: Frameworks and Benchmarks",
+      "abstract": "The growth of agent skills has transformed how agentic systems are built, evaluated, and deployed. As skill libraries continue to scale, rigorous evaluation becomes critical to ensuring their utility, quality, and safety in real-world applications. Consequently, the field is undergoing an emerging paradigm shift from isolated skill creation to automated, evaluation-driven skill evolution. In this survey, we systematically examine the landscape of skill evolution and evaluation beyond foundational skill creation. We categorize evolution into four distinct paradigms, spanning execution feedback, trajectory distillation, compression, and reinforcement learning, showing how each element contributes to improving skill utility and reliability. We also provide an analysis of six skill-centric benchmark categories, identifying structural gaps in benchmark coverage, trade-offs, and metric richness to advance skill research. Finally, we identify open directions for building skill ecosystems that are generalizable, efficient, and verifiably safe. The project URL is https://github.com/Cassie07/AgentSkill_Survey",
+      "authors": [
+        "Kexin Ding",
+        "Yang Zhou",
+        "Can Jin",
+        "Feng Tong",
+        "Mu Zhou",
+        "Dimitris N. Metaxas"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-09T20:43:23+00:00",
+      "link": "https://arxiv.org/pdf/2606.11435v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Survey on skill evolution using RL paradigms",
+      "llm_evidence_cn": "使用强化学习范式的技能演化综述",
+      "llm_evidence": "使用强化学习范式的技能演化综述",
+      "canonical_evidence": "使用强化学习范式的技能演化综述",
+      "llm_tldr_en": "A comprehensive survey on agent skill evolution and evaluation, categorizing four paradigms including reinforcement learning for skill acquisition.",
+      "llm_tldr_cn": "本文系统综述了智能体技能评估与演化领域的最新进展。将技能演化划分为执行反馈、轨迹蒸馏、压缩和强化学习四种范式。重点分析了强化学习范式如何通过经验积累改善技能效用。为技能获取和迁移提供了系统性框架和基准。",
+      "llm_tldr": "本文系统综述了智能体技能评估与演化领域的最新进展。将技能演化划分为执行反馈、轨迹蒸馏、压缩和强化学习四种范式。重点分析了强化学习范式如何通过经验积累改善技能效用。为技能获取和迁移提供了系统性框架和基准。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "research papers on skill acquisition in reinforcement learning",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.12890v1",
+      "source": "arxiv",
+      "title": "Learning to Adapt: Representation-Based Reinforcement Learning for Multi-Task Skill Transfer",
+      "abstract": "Reinforcement learning has achieved remarkable success in learning complex control policies, yet its applicability remains limited due to sample inefficiency and poor generalization across tasks. In this work, we propose RepMT-SAC, a framework for multi-task RL that enables efficient knowledge sharing and robust transfer to new tasks. RepMT-SAC uses spectral MDP decomposition to capture transferable dynamics, structuring the value function into a task-agnostic core with a minimal task-specific adjustment. This design allows for strong zero-shot performance on in-distribution tasks and rapid few-shot adaptation to out-of-distribution tasks. We evaluate RepMT-SAC on quadcopter trajectory-following tasks across in-distribution and out-of-distribution contexts, demonstrating that it outperforms baselines by up to 30%.",
+      "authors": [
+        "Aryan Naveen",
+        "Haitong Ma",
+        "Haldun Balim",
+        "Na Li"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO"
+      ],
+      "published": "2026-06-11T04:33:03+00:00",
+      "link": "https://arxiv.org/pdf/2606.12890v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "representation-based RL for multi-task skill transfer",
+      "llm_evidence_cn": "基于表示的强化学习实现多任务技能迁移",
+      "llm_evidence": "基于表示的强化学习实现多任务技能迁移",
+      "canonical_evidence": "基于表示的强化学习实现多任务技能迁移",
+      "llm_tldr_en": "Proposes RepMT-SAC for multi-task RL with spectral MDP decomposition enabling zero-shot and few-shot skill transfer.",
+      "llm_tldr_cn": "该论文提出了RepMT-SAC框架，利用谱MDP分解将值函数分解为任务无关核心和最小任务特定调整，实现多任务强化学习中的高效知识共享和鲁棒迁移。在四旋翼轨迹跟踪任务上，展示了零样本和少样本迁移能力，显著提升了样本效率和泛化性。",
+      "llm_tldr": "该论文提出了RepMT-SAC框架，利用谱MDP分解将值函数分解为任务无关核心和最小任务特定调整，实现多任务强化学习中的高效知识共享和鲁棒迁移。在四旋翼轨迹跟踪任务上，展示了零样本和少样本迁移能力，显著提升了样本效率和泛化性。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "studies about skill transfer in artificial intelligence",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.13037v1",
+      "source": "arxiv",
+      "title": "DIG: Oracle-Guided Directed Input Generation for One-Day Vulnerabilities",
+      "abstract": "One-day vulnerabilities pose significant risks due to delayed or incomplete patch adoption. Generating proof-of-concept (PoC) inputs is therefore essential for assessing real-world impact. The key challenge is identifying necessary constraints for triggering the vulnerability and solving them effectively. Existing directed fuzzing approaches prioritize inputs toward target locations, but neither explicitly identify necessary constraints nor solve them effectively, relying instead on target-distance feedback and random mutation. Agentic approaches show strong potential through code reasoning and structured input generation, but goal drift in long-horizon reasoning limits their effectiveness.   DIG addresses this challenge by exploiting a key property of one-day vulnerabilities: patches often reveal necessary preconditions for triggering. DIG uses an LLM to analyze the patch and synthesize an oracle making these conditions explicit. The oracle supports effective PoC generation at two levels. At the high level, DIG performs oracle-guided generator evolution, where an agent infers and solves constraints to satisfy the oracle. At the low level, DIG instruments the oracle into the target program and uses branch-distance feedback to guide random mutation in directed fuzzing. Evaluation shows DIG outperforms 2 state-of-the-art agents and 10 fuzzers across 138 real-world CVEs. DIG triggers 80 vulnerabilities, surpassing prior results and outperforming the best baseline by 40% (57 vs. 80 CVEs). Notably, DIG exclusively triggers 9 vulnerabilities no existing technique can trigger. Compared to the average of other tools, DIG triggers vulnerabilities faster in 92.9% of cases, achieving over 100x speedup in 48.8% of cases, with a maximum speedup of 3,664x. Beyond one-day PoC generation, DIG uncovers 6 previously unknown vulnerabilities in widely deployed libraries, enabling zero-day discovery.",
+      "authors": [
+        "Andrew Bao",
+        "Haochen Zeng",
+        "Peng Chen",
+        "Stephen McCamant",
+        "Pen-Chung Yew"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.SE"
+      ],
+      "published": "2026-06-11T08:18:21+00:00",
+      "link": "https://arxiv.org/pdf/2606.13037v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Oracle-guided input generation for one-day vulnerabilities",
+      "llm_evidence_cn": "针对一天漏洞的引导式输入生成",
+      "llm_evidence": "针对一天漏洞的引导式输入生成",
+      "canonical_evidence": "针对一天漏洞的引导式输入生成",
+      "llm_tldr_en": "DIG generates proof-of-concept inputs for one-day vulnerabilities by combining oracle-guided constraint identification with targeted solving, outperforming directed fuzzing and agentic approaches.",
+      "llm_tldr_cn": "现有定向模糊测试和智能体方法在生成一天漏洞利用输入时存在约束识别不明确和推理漂移的问题。DIG通过Oracle引导的方式显式识别关键约束并高效求解，从而生成有效的PoC输入。实验表明，DIG在多个真实漏洞上成功生成输入，显著优于现有方法，为漏洞影响评估提供了实用工具。",
+      "llm_tldr": "现有定向模糊测试和智能体方法在生成一天漏洞利用输入时存在约束识别不明确和推理漂移的问题。DIG通过Oracle引导的方式显式识别关键约束并高效求解，从而生成有效的PoC输入。实验表明，DIG在多个真实漏洞上成功生成输入，显著优于现有方法，为漏洞影响评估提供了实用工具。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "code vulnerability detection techniques",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.13317v1",
+      "source": "arxiv",
+      "title": "SkillCAT: Contrastive Assessment and Topology-Aware Skill Self-Evolution for LLM Agents",
+      "abstract": "Skill self-evolution methods for LLM agents aim to turn execution trajectories into reusable skill documents, but current pipelines typically learn from one trajectory per task, merge candidate skill patches before checking them, and load the full skill corpus before inference. We propose SkillCAT, a training-free framework that separates this process into three stages. Contrastive Causal Extraction (CCE) samples multiple trajectories for each task and compares same-task success/failure pairs to identify evidence that explains outcome differences. Assessment-Augmented Evolution (AAE) replays each candidate patch on source-task clones and keeps only patches that improve or preserve task outcomes before hierarchical skill patch merging. Topology-Aware Task Execution (TTE) compiles the evolved skills into a routable sub-skill topology, so inference loads only the capability nodes relevant to the task. We evaluate SkillCAT on common agent benchmarks, including SpreadsheetBench, WikiTableQuestions, and DocVQA, and further test cross-model and out-of-distribution generalization. Across these settings, SkillCAT raises the average score over baselines by up to 40.40%, demonstrating reliable skill evolution without model training.",
+      "authors": [
+        "Kunfeng Chen",
+        "Qihuang Zhong",
+        "Juhua Liu",
+        "Bo Du"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-11T13:12:10+00:00",
+      "link": "https://arxiv.org/pdf/2606.13317v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "skill self-evolution framework for LLM agents",
+      "llm_evidence_cn": "LLM智能体技能自演化框架",
+      "llm_evidence": "LLM智能体技能自演化框架",
+      "canonical_evidence": "LLM智能体技能自演化框架",
+      "llm_tldr_en": "SkillCAT proposes a training-free framework for skill self-evolution in LLM agents by contrastive causal extraction and assessment-augmented evolution.",
+      "llm_tldr_cn": "现有技能自演化方法通常从单条轨迹学习，且在检查前合并候选补丁。SkillCAT提出无训练框架，通过对比因果抽取（CCE）从多条轨迹中提取关键证据，再通过评估增强演化（AAE）在源任务克隆上回放候选补丁，只保留改进结果的补丁，最后进行分层合并。该方法避免了过早合并带来的污染，提升了技能文档的质量。",
+      "llm_tldr": "现有技能自演化方法通常从单条轨迹学习，且在检查前合并候选补丁。SkillCAT提出无训练框架，通过对比因果抽取（CCE）从多条轨迹中提取关键证据，再通过评估增强演化（AAE）在源任务克隆上回放候选补丁，只保留改进结果的补丁，最后进行分层合并。该方法避免了过早合并带来的污染，提升了技能文档的质量。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.11982v1",
+      "source": "arxiv",
+      "title": "PAWS: Preference Learning with Advantage-Weighted Segments",
+      "abstract": "Preference-based reinforcement learning (PbRL) learns policies from human trajectory-level comparisons, avoiding explicit reward design and expert demonstrations. Existing methods typically train utility functions on trajectory or segment-level preferences while relying on per-step utility estimates during policy optimization. This training and inference mismatch induces a distribution shift that severely degrades temporal credit assignment and limits policy learning. We analyze this issue and propose PAWS, a segment-based preference learning method that performs policy updates directly using segment-level advantage functions. By aligning utility training with policy optimization, PAWS preserves trajectory-level preference information and avoids unreliable per-step learning signals. Experiments on simulated robotic manipulation and locomotion tasks demonstrate that PAWS consistently outperforms existing PbRL approaches, highlighting the importance of distribution-consistent preference learning.",
+      "authors": [
+        "Aleksandar Taranovic",
+        "Onur Celik",
+        "Niklas Freymuth",
+        "Ge Li",
+        "Serge Thilges",
+        "Huy Le",
+        "Tai Hoang",
+        "Rania Rayyes",
+        "Gerhard Neumann"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-06-10T12:00:17+00:00",
+      "link": "https://arxiv.org/pdf/2606.11982v1",
+      "tags": [
+        "query:skill"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "preference-based RL for policy learning, relevant to skill acquisition",
+      "llm_evidence_cn": "基于偏好的强化学习用于策略学习，与技能获取相关",
+      "llm_evidence": "基于偏好的强化学习用于策略学习，与技能获取相关",
+      "canonical_evidence": "基于偏好的强化学习用于策略学习，与技能获取相关",
+      "llm_tldr_en": "PAWS aligns utility training with policy optimization using segment-level advantage functions for better credit assignment.",
+      "llm_tldr_cn": "针对偏好强化学习中效用函数训练与策略优化不匹配导致的时序信用分配问题，本文提出PAWS方法，在策略更新中直接使用分段级优势函数，保持轨迹级偏好信息。实验表明，该方法在多个基准任务上优于现有偏好强化学习方法，改善了信用分配和策略学习效果。",
+      "llm_tldr": "针对偏好强化学习中效用函数训练与策略优化不匹配导致的时序信用分配问题，本文提出PAWS方法，在策略更新中直接使用分段级优势函数，保持轨迹级偏好信息。实验表明，该方法在多个基准任务上优于现有偏好强化学习方法，改善了信用分配和策略学习效果。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "research papers on skill acquisition in reinforcement learning",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2606.13125v1",
+      "source": "arxiv",
+      "title": "Select and Improve: Understanding the Mechanics of Post-Training for Reasoning",
+      "abstract": "Reinforcement learning has rapidly emerged as a key component in the training of reasoning and coding models, yet it remains poorly understood from a mechanistic perspective. We study how and through what underlying processes capabilities are acquired or enhanced via reinforcement learning post-training. Our analysis, based on controlled math reasoning experiments with Qwen-2.5-1.5B, reveals two core mechanisms: strategy selection and strategy improvement. Our results highlight the role of SFT data and reinforcement learning data in activating these mechanisms, in particular showing how supervising the model on diverse reasoning strategies can enable strategy selection and how increasing difficulty in reinforcement learning data can enable strategy improvement. Taken together, our results provide mechanistic insight into RL training and suggest practical interventions to continue scaling reasoning capabilities.",
+      "authors": [
+        "Akshay Krishnamurthy",
+        "Audrey Huang",
+        "Nived Rajaraman"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-06-11T09:51:35+00:00",
+      "link": "https://arxiv.org/pdf/2606.13125v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Studies how reasoning capabilities are acquired through RL post-training",
+      "llm_evidence_cn": "研究通过强化学习后训练获取推理能力的机制",
+      "llm_evidence": "研究通过强化学习后训练获取推理能力的机制",
+      "canonical_evidence": "研究通过强化学习后训练获取推理能力的机制",
+      "llm_tldr_en": "This paper investigates how reinforcement learning post-training enhances reasoning capabilities through controlled experiments. It identifies two core mechanisms: strategy selection and strategy improvement, showing that diverse supervision and increasing difficulty are key drivers. These insights provide a mechanistic understanding of skill acquisition in RL, relevant to designing better training pipelines for reasoning skills.",
+      "llm_tldr_cn": "强化学习后训练如何提升推理能力尚不清晰。本文通过控制实验，揭示了两个核心机制：策略选择（从已有策略中选取）和策略改进（优化现有策略）。研究发现监督数据多样性有助于策略选择，而训练数据难度递增促进策略改进。该工作为理解通过强化学习获取推理技能提供了机械论视角，对技能获取研究具有重要启示。",
+      "llm_tldr": "强化学习后训练如何提升推理能力尚不清晰。本文通过控制实验，揭示了两个核心机制：策略选择（从已有策略中选取）和策略改进（优化现有策略）。研究发现监督数据多样性有助于策略选择，而训练数据难度递增促进策略改进。该工作为理解通过强化学习获取推理技能提供了机械论视角，对技能获取研究具有重要启示。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "research papers on skill acquisition in reinforcement learning",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2606.08348v1",
+      "source": "arxiv",
+      "title": "Bayesian-Agent: Posterior-Guided Skill Evolution for LLM Agent Harnesses",
+      "abstract": "LLM agents increasingly rely on external inference conditions: prompts, tools, memory, SOPs, skills, and harness feedback. These assets can improve task execution without changing model weights, but they are often revised by heuristic reflection or by reusing observed successes and failures as if counts alone were reliable belief. We introduce \\textbf{Bayesian-Agent}, a native and cross-harness framework that treats reusable skills and SOPs as hypotheses about whether a frozen model will succeed under a particular prompt, context, and harness environment. Bayesian-Agent records verified trajectory evidence, maintains a feature-conditioned categorical posterior over each skill, and maps posterior state into inspectable actions such as patch, split, compress, retire, and explore. Model-facing prompts receive executable guardrails and failure-mode patches, while posterior summaries remain available for audit. With \\texttt{deepseek-v4-flash}, incremental repair improves SOP-Bench from 80\\% to 95\\%, Lifelong AgentBench from 90\\% to 100\\%, and RealFin-Bench from 45\\% to 65\\%. We further evaluate Bayesian-Agent's native backend and optional GenericAgent, mini-swe-agent, and Claude Code backends. The results include positive, negative, saturated, and case-study settings, suggesting that agent skill evolution is best viewed as posterior-guided harness optimization rather than uncalibrated prompt accumulation. The source code is available at https://github.com/DataArcTech/Bayesian-Agent.",
+      "authors": [
+        "Xiaojun Wu",
+        "Cehao Yang",
+        "Honghao Liu",
+        "Xueyuan Lin",
+        "Wenjie Zhang",
+        "Zhichao Shi",
+        "Xuhui Jiang",
+        "Chengjin Xu",
+        "Jia Li",
+        "Jian Guo"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-06-06T21:40:19+00:00",
+      "link": "https://arxiv.org/pdf/2606.08348v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "skill evolution framework for LLM agents",
+      "llm_evidence_cn": "LLM代理技能进化框架",
+      "llm_evidence": "LLM代理技能进化框架",
+      "canonical_evidence": "LLM代理技能进化框架",
+      "llm_tldr_en": "Bayesian-Agent proposes a posterior-guided skill evolution framework for LLM agents, treating reusable skills as hypotheses and using Bayesian inference to update them with trajectory evidence.",
+      "llm_tldr_cn": "该论文针对LLM代理中技能优化依赖启发式的问题，提出贝叶斯代理框架，将可复用技能视为假设，通过验证轨迹证据维持后验分布，从而指导技能的分裂、合并等进化操作。实验表明该方法在多个任务上提升了代理性能，为技能表示和演化提供了概率化方案。",
+      "llm_tldr": "该论文针对LLM代理中技能优化依赖启发式的问题，提出贝叶斯代理框架，将可复用技能视为假设，通过验证轨迹证据维持后验分布，从而指导技能的分裂、合并等进化操作。实验表明该方法在多个任务上提升了代理性能，为技能表示和演化提供了概率化方案。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.10264v1",
+      "source": "arxiv",
+      "title": "RECON: An LLM-Enhanced Backward Constraint Analysis Framework",
+      "abstract": "While traditional techniques, such as symbolic execution, provide a principled foundation for precise constraint reasoning in program analysis, they struggle to scale to modern software systems mainly due to path explosion, the need for function modeling, and the loss of semantic intent at low-level program representations. In complex execution environments such as Android, characterized by extensive framework interactions and event-driven behavior, these limitations are even more amplified. Thus, in this paper, we present a novel large language model (LLM)-enhanced backward constraint analysis framework that combines the precision of static program analysis with LLM's semantic understanding to extract precise execution constraints from Android bytecode. Our approach, titled RECON, performs backward path discovery from target method(s) to the application entry point(s), discovers method-level control-flow constraints, and leverages LLM reasoning to transform bytecode conditions into interpretable specifications. We evaluated RECON using five LLMs across 78 Android constraint-extraction scenarios and compared it with traditional symbolic execution on real-world applications. Results demonstrate that our approach operates 5.8X faster than traditional symbolic execution, with a 100% success rate, while maintaining logical equivalence and providing significantly more precise and interpretable output. We further evaluated RECON for malware analysis on 100 samples. The results indicate an 84% success rate in generating semantic constraints that lead to the execution of dangerous API behaviors and in detecting complex constraints across multiple execution paths.",
+      "authors": [
+        "Babangida Bappah",
+        "Lamine Noureddine",
+        "Umar Farooq",
+        "Aisha Ali-Gombe"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.SE"
+      ],
+      "published": "2026-06-09T00:09:50+00:00",
+      "link": "https://arxiv.org/pdf/2606.10264v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "LLM-enhanced static analysis for constraint extraction in program analysis",
+      "llm_evidence_cn": "LLM增强的静态分析用于程序约束提取",
+      "llm_evidence": "LLM增强的静态分析用于程序约束提取",
+      "canonical_evidence": "LLM增强的静态分析用于程序约束提取",
+      "llm_tldr_en": "RECON uses LLM semantic understanding combined with backward constraint analysis to extract precise execution constraints from Android bytecode, improving scalability.",
+      "llm_tldr_cn": "传统符号执行等静态分析方法在复杂Android环境中面临路径爆炸和语义丢失问题。RECON将LLM的语义理解与传统后向约束分析相结合，从Android字节码中提取精确执行约束。实验表明，该方法在多个真实应用上成功提取约束，比纯符号执行更高效，为程序分析和漏洞检测提供了可扩展的框架。",
+      "llm_tldr": "传统符号执行等静态分析方法在复杂Android环境中面临路径爆炸和语义丢失问题。RECON将LLM的语义理解与传统后向约束分析相结合，从Android字节码中提取精确执行约束。实验表明，该方法在多个真实应用上成功提取约束，比纯符号执行更高效，为程序分析和漏洞检测提供了可扩展的框架。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "deep learning approaches for vulnerability detection in source code",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.08596v1",
+      "source": "arxiv",
+      "title": "Distilling LLM Reasoning into an Interpretable Policy Tree for Human-AI Collaboration",
+      "abstract": "Constructing efficient and reliable policies to assist humans is indispensable for human-AI collaboration. Existing methods mainly follow two lines of work. Most prior work relies on multi-agent reinforcement learning (MARL) to learn black-box policies, which limits interpretability and raises safety concerns. Recent methods query large language models (LLMs) at each decision step, causing slow responses and high inference costs. We propose Collaboration Policy Tree (Co-pi-tree), a closed-loop method that learns an executable policy tree consisting of a partner-behavior prediction tree and an agent-action selection tree. Co-pi-tree constructs a policy by distilling LLM reasoning into policy tree code. It then evaluates the policy through partner interaction, obtains feedback, and uses natural language to summarize the interaction feedback to improve problematic branches. Experiments in Overcooked-AI show that Co-pi-tree improves average reward by 35.4% over the baseline average, while reducing the number of LLM queries by 77.7% and test-time latency by 97.1%. Project page: https://beiwenzhang.github.io/Co-pi-tree/",
+      "authors": [
+        "Beiwen Zhang",
+        "Yongheng Liang",
+        "Guowei Zou",
+        "Haitao Wang",
+        "Hejun Wu"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.HC"
+      ],
+      "published": "2026-06-07T12:20:32+00:00",
+      "link": "https://arxiv.org/pdf/2606.08596v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "distills LLM reasoning into an interpretable policy tree for human-AI collaboration, related to skill transfer",
+      "llm_evidence_cn": "将LLM推理提炼为可解释策略树用于人机协作，与技能转移相关",
+      "llm_evidence": "将LLM推理提炼为可解释策略树用于人机协作，与技能转移相关",
+      "canonical_evidence": "将LLM推理提炼为可解释策略树用于人机协作，与技能转移相关",
+      "llm_tldr_en": "Co-pi-tree distills LLM reasoning into an interpretable policy tree, enabling efficient and safe human-AI collaboration.",
+      "llm_tldr_cn": "针对现有协作策略要么依赖不可解释的多智能体强化学习，要么频繁查询LLM导致高成本的问题，本文提出Collaboration Policy Tree（Co-pi-tree），通过将LLM推理提炼为可执行策略树代码，包括伙伴行为预测树和智能体动作选择树。该方法在协作任务中实现了高效且可解释的策略，避免了黑箱问题。",
+      "llm_tldr": "针对现有协作策略要么依赖不可解释的多智能体强化学习，要么频繁查询LLM导致高成本的问题，本文提出Collaboration Policy Tree（Co-pi-tree），通过将LLM推理提炼为可执行策略树代码，包括伙伴行为预测树和智能体动作选择树。该方法在协作任务中实现了高效且可解释的策略，避免了黑箱问题。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "studies about skill transfer in artificial intelligence",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2606.10813v1",
+      "source": "arxiv",
+      "title": "RedAct: Redacting Agent Capability Traces for Procedural Skill Protection",
+      "abstract": "Users rely on execution traces to observe agent behavior, diagnose failures, and ensure accountability. These traces contain rich procedural detail, including tool invocations, intermediate decisions, and error-recovery logic. Yet this detail can expose private procedural skills, allowing downstream methods to recover key formulas, thresholds, and strategies without access to model weights or skill files. To quantify this risk and evaluate protection, we construct \\textsc{CapTraceBench}, a benchmark of 75 specialized long-horizon tasks and 154 curated skills across seven domains. We also introduce \\textsc{RedAct} https://github.com/XuShuwenn/RedAct, a protected trace release framework that localizes protected key information, rewrites traces while preserving verifier-critical evidence, and embeds behavioral watermarks for downstream provenance analysis. Across representative trace reuse methods, \\textsc{RedAct} reduces normalized skill transfer (NST) from 44.7--67.1\\% on raw traces to below the no-skill baseline, while preserving audit evidence. Its standalone behavioral watermarks reach 93.6--100.0\\% true detection with a false alarm rate of at most 1.9\\%. These results frame public agent traces as security interfaces and show that selective redaction can reduce procedural capability leakage without removing audit evidence.",
+      "authors": [
+        "Shuwen Xu",
+        "Zhitao He",
+        "Yi R.",
+        "Fung"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.CL"
+      ],
+      "published": "2026-06-09T12:57:50+00:00",
+      "link": "https://arxiv.org/pdf/2606.10813v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "protecting procedural skills by redacting traces",
+      "llm_evidence_cn": "通过擦除痕迹保护程序性技能",
+      "llm_evidence": "通过擦除痕迹保护程序性技能",
+      "canonical_evidence": "通过擦除痕迹保护程序性技能",
+      "llm_tldr_en": "RedAct protects private procedural skills by localizing and rewriting sensitive information in agent execution traces.",
+      "llm_tldr_cn": "智能体执行轨迹包含丰富的程序性细节，可能泄露私有技能。本文构建CapTraceBench基准，提出RedAct框架，通过定位关键信息并重写轨迹来保护技能。实验表明，RedAct在保持轨迹可用性的同时，有效阻止下游方法恢复技能细节，为技能隐私保护提供了实用方案。",
+      "llm_tldr": "智能体执行轨迹包含丰富的程序性细节，可能泄露私有技能。本文构建CapTraceBench基准，提出RedAct框架，通过定位关键信息并重写轨迹来保护技能。实验表明，RedAct在保持轨迹可用性的同时，有效阻止下游方法恢复技能细节，为技能隐私保护提供了实用方案。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.11324v1",
+      "source": "arxiv",
+      "title": "Embodied-R1.5: Evolving Physical Intelligence via Embodied Foundation Models",
+      "abstract": "We introduce Embodied-R1.5, a unified Embodied Foundation Model (EFM) that integrates comprehensive embodied reasoning capabilities, spanning embodied cognition, task planning, correction, and pointing, within a single architecture toward general physical intelligence. Leveraging three automated data construction pipelines to significantly expand the data coverage of critical capabilities, we build a large-scale data system of over 15B tokens, and design a multi-task balanced RL recipe to alleviate heterogeneous task conflicts. We further introduce a Planner-Grounder-Corrector (PGC) closed-loop framework that enables a single model to autonomously execute and self-correct over long-horizon tasks. With only 8B parameters, Embodied-R1.5 achieves SOTA on 16 out of 24 embodied VLM benchmarks, surpassing leading models like Gemini-Robotics-ER-1.5 and GPT-5.4. Benefiting from the internalized embodied capabilities, Embodied-R1.5 can be fine-tuned into a VLA with only a small amount of data, outperforming leading VLA models like $π_{0.5}$ across 4 popular manipulation benchmark suites. We further conduct extensive zero-shot real-robot experiments, validating performance in instruction following, affordance grounding, articulated object manipulation, and long-horizon complex tasks, demonstrating strong generalization to the physical world. We open-source model weights, datasets, training code, and EmbodiedEvalKit, an evaluation framework tailored for embodied tasks, to facilitate future research in EFMs.",
+      "authors": [
+        "Yifu Yuan",
+        "Yaoting Huang",
+        "Xianze Yao",
+        "Yutong Li",
+        "Shuoheng Zhang",
+        "Linqi Han",
+        "Pengyi Li",
+        "Jiangeng Sun",
+        "Wenting Jia",
+        "Zhao Zhang",
+        "Yuhao Liu",
+        "Ruihao Liao",
+        "Yucheng Hu",
+        "Qiyu Wu",
+        "Yuxiao Li",
+        "Zibin Dong",
+        "Fei Ni",
+        "Yan Zheng",
+        "Shuyang Gu",
+        "Yi Ma",
+        "Hongyao Tang",
+        "Han Hu",
+        "Jianye Hao"
+      ],
+      "primary_category": "cs.RO",
+      "categories": [
+        "cs.RO",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-06-09T18:07:50+00:00",
+      "link": "https://arxiv.org/pdf/2606.11324v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "integrates embodied reasoning and task planning/correction as skills within a foundation model",
+      "llm_evidence_cn": "将具身推理与任务规划/纠正作为技能整合在基础模型中",
+      "llm_evidence": "将具身推理与任务规划/纠正作为技能整合在基础模型中",
+      "canonical_evidence": "将具身推理与任务规划/纠正作为技能整合在基础模型中",
+      "llm_tldr_en": "Embodied-R1.5 unifies embodied cognition, task planning, correction, and pointing into a single 8B-parameter foundation model with a closed-loop framework for long-horizon tasks.",
+      "llm_tldr_cn": "具身智能体需要综合推理能力。本文提出Embodied-R1.5，一个统一的具身基础模型（8B参数），集成了具身认知、任务规划、纠正和指代能力。通过三个自动化数据构建流程和多项平衡强化学习，解决异构任务冲突。引入规划-接地-纠正闭环框架实现长期任务的自主执行与自我纠正，在多个基准上达到最先进性能。",
+      "llm_tldr": "具身智能体需要综合推理能力。本文提出Embodied-R1.5，一个统一的具身基础模型（8B参数），集成了具身认知、任务规划、纠正和指代能力。通过三个自动化数据构建流程和多项平衡强化学习，解决异构任务冲突。引入规划-接地-纠正闭环框架实现长期任务的自主执行与自我纠正，在多个基准上达到最先进性能。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "representation of skills in cognitive systems",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.11671v1",
+      "source": "arxiv",
+      "title": "Runtime Skill Audit: Targeted Runtime Probing for Agent Skill Security",
+      "abstract": "Agent skills let LLM agents reuse instructions, resources, tools, and workflows, but they also create a new place for malicious behavior to hide. A skill may look benign in its documentation or code while becoming harmful only when it is invoked with particular user requests, local assets, persistent state, or multi-step tool interactions. This makes purely static vetting brittle. We present Runtime Skill Audit (RSA), a dynamic analysis method that audits skills by asking what the skill-mediated agent actually does under targeted runtime conditions. Instead of testing every skill with the same generic tasks, RSA profiles risk-relevant interfaces, prepares the execution context needed to exercise them, and assigns security labels from the resulting trace evidence. We instantiate RSA on OpenClaw and evaluate it on 100 skills against representative static baselines. RSA achieves 90.0\\% accuracy with an 88.0\\% true positive rate and an 8.0\\% false positive rate, improving accuracy by 13.0 percentage points over the best static baseline. Under self-evolving attacks, static detectors collapse after one or two rounds, while RSA continues to detect 19--20 out of 20 malicious skills across rounds.",
+      "authors": [
+        "Tu Lan",
+        "Chaowei Xiao"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.AI"
+      ],
+      "published": "2026-06-10T05:29:34+00:00",
+      "link": "https://arxiv.org/pdf/2606.11671v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "runtime auditing of agent skills for security",
+      "llm_evidence_cn": "运行时审计代理技能安全性",
+      "llm_evidence": "运行时审计代理技能安全性",
+      "canonical_evidence": "运行时审计代理技能安全性",
+      "llm_tldr_en": "Runtime Skill Audit dynamically probes agent skills under targeted conditions to detect hidden malicious behaviors.",
+      "llm_tldr_cn": "代理技能可能看似无害，但在特定运行时条件下会触发恶意行为，静态检查无法应对。本文提出运行时技能审计方法（RSA），通过分析技能接口、准备执行上下文，在目标运行时条件下动态监控代理行为并分配安全标签。实验证明该方法能有效发现技能中的隐藏风险，提高了代理系统的安全性。",
+      "llm_tldr": "代理技能可能看似无害，但在特定运行时条件下会触发恶意行为，静态检查无法应对。本文提出运行时技能审计方法（RSA），通过分析技能接口、准备执行上下文，在目标运行时条件下动态监控代理行为并分配安全标签。实验证明该方法能有效发现技能中的隐藏风险，提高了代理系统的安全性。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to 帮我查找skill相关论文, especially work that connects or combines: l; representation of skills in cognitive systems; research papers on skill acquisition in reinforcement learning; studies about skill transfer in artificial intelligence.",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2606.11755v1",
+      "source": "arxiv",
+      "title": "Acoda: Adversarial Code Obfuscation for Defending against LLM-based Analysis",
+      "abstract": "With the widespread adoption of Large Language Models (LLMs) in software engineering (SE) tasks such as code understanding, debugging, and vulnerability detection, their powerful semantic reasoning ability has also introduced new security and privacy risks. LLMs can analyze, reconstruct, or even reverse-engineer source code logic, potentially leading to the leakage of intellectual property. To address this issue, we propose Acoda, a genetic algorithm-based adversarial code obfuscation framework that defends against LLM-based code analysis. Acoda leverages two key mechanisms of LLMs, namely safety alignment and token-based information processing, to design 8 semantics-preserving obfuscation methods. It iteratively optimizes obfuscation strategies through a genetic algorithm to generate adversarial samples that maximize defensive effectiveness. In addition, we propose a quantitative evaluation framework based on LLM responses, which combines an auxiliary LLM and four evaluation metrics to assess how target LLMs analyze obfuscated code comprehensively. Experimental results show that Acoda can effectively induce LLMs to refuse or misinterpret code analysis. On 7 state-of-the-art LLMs, including GPT-4o, DeepSeek, Qwen, Llama, and Gemma, Acoda achieves an attack success rate (ASR) of up to 70%, with strong cross-model transferability and minimal runtime overhead, while ensuring that the semantics of the original code remain unchanged. Overall, this study provides a new perspective for code protection and LLM security defense in the era of LLMs.",
+      "authors": [
+        "Hongzhou Rao",
+        "Zikan Dong",
+        "Yanjie Zhao",
+        "Haodong Li",
+        "Haoyu Wang"
+      ],
+      "primary_category": "cs.SE",
+      "categories": [
+        "cs.SE"
+      ],
+      "published": "2026-06-10T07:29:31+00:00",
+      "link": "https://arxiv.org/pdf/2606.11755v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "adversarial code obfuscation to defend against LLM-based vulnerability detection",
+      "llm_evidence_cn": "对抗性代码混淆以防御基于LLM的漏洞检测",
+      "llm_evidence": "对抗性代码混淆以防御基于LLM的漏洞检测",
+      "canonical_evidence": "对抗性代码混淆以防御基于LLM的漏洞检测",
+      "llm_tldr_en": "Acoda uses genetic algorithm to obfuscate code, defending against LLM-based analysis including vulnerability detection.",
+      "llm_tldr_cn": "针对大型语言模型在代码漏洞检测等任务中强大的语义分析能力可能导致知识产权泄露的问题，本文提出Acoda框架，利用遗传算法和8种语义保持的混淆方法，迭代优化对抗性代码混淆策略。实验表明该方法能有效防御LLM对代码的分析，保护代码安全。",
+      "llm_tldr": "针对大型语言模型在代码漏洞检测等任务中强大的语义分析能力可能导致知识产权泄露的问题，本文提出Acoda框架，利用遗传算法和8种语义保持的混淆方法，迭代优化对抗性代码混淆策略。实验表明该方法能有效防御LLM对代码的分析，保护代码安全。",
+      "llm_tags": [
+        "query:code-vuln:composite"
+      ],
+      "matched_query_tag": "query:code-vuln:composite",
+      "matched_query_text": "Papers central to 查找代码漏洞检测相关的论文, especially work that connects or combines: code vulnerability detection techniques; recent research on code vulnerability detection using machine learning; deep learning approaches for vulnerability detection in source code.",
+      "matched_requirement_id": "req-composite-code-vuln",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2606.13680v1",
+      "source": "arxiv",
+      "title": "Learning to Reason by Analogy via Retrieval-Augmented Reinforcement Fine-Tuning",
+      "abstract": "Retrieval-augmented generation (RAG) has become a standard mechanism for grounding language models in external knowledge, yet conventional retrieval based on lexical or semantic similarity is poorly suited for complex reasoning tasks: a semantically similar problem may demand an entirely different solution strategy, while a superficially different problem may share the same underlying reasoning pattern. We propose Retrieval-Augmented Reinforcement Fine-Tuning (RA-RFT), a post-training framework that teaches language models to reason by analogy. RA-RFT uses gold-relevance distillation to train a retriever that ranks contexts by expected reasoning benefit rather than semantic overlap, and then fine-tunes the policy model via reinforcement fine-tuning methods with retrieved analogous demonstrations, so the model learns to leverage reasoning traces under verifiable outcome rewards. We further analyze the diversity of retrieved contexts and find that reasoning-aware retrieval surfaces complementary solution strategies that provide distinct reasoning scaffolds for individual problems. Across challenging mathematical reasoning benchmarks, RA-RFT consistently outperforms standard reinforcement fine-tuning methods. For example, it improves AIME 2025 average@32 accuracy by 7.1 and 2.8 points over GRPO for Qwen3-1.7B and Qwen3-4B respectively -- suggesting that reasoning-aware retrieval is a complementary axis of improvement and orthogonal to advances in reward design or training curricula.",
+      "authors": [
+        "Zilin Xiao",
+        "Qi Ma",
+        "Chun-cheng Jason Chen",
+        "Xintao Chen",
+        "Avinash Atreya",
+        "Hanjie Chen",
+        "Vicente Ordonez"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-06-11T17:59:52+00:00",
+      "link": "https://arxiv.org/pdf/2606.13680v1",
+      "tags": [
+        "keyword:skill",
+        "query:skill"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Enhances reasoning skill via RL fine-tuning",
+      "llm_evidence_cn": "通过强化学习微调提升推理技能",
+      "llm_evidence": "通过强化学习微调提升推理技能",
+      "canonical_evidence": "通过强化学习微调提升推理技能",
+      "llm_tldr_en": "Proposes RA-RFT, a framework that uses reinforcement fine-tuning to teach language models to reason by analogy, improving reasoning skill acquisition beyond semantic retrieval.",
+      "llm_tldr_cn": "该论文针对检索增强生成在复杂推理任务中的不足，提出RA-RFT框架，通过强化学习微调训练语言模型进行类比推理。方法利用黄金相关蒸馏训练检索器，使模型选择具有推理收益的上下文，而非语义相似样本。实验表明该方法能有效提升模型在复杂推理任务上的表现，为技能获取提供新视角。",
+      "llm_tldr": "该论文针对检索增强生成在复杂推理任务中的不足，提出RA-RFT框架，通过强化学习微调训练语言模型进行类比推理。方法利用黄金相关蒸馏训练检索器，使模型选择具有推理收益的上下文，而非语义相似样本。实验表明该方法能有效提升模型在复杂推理任务上的表现，为技能获取提供新视角。",
+      "llm_tags": [
+        "query:skill"
+      ],
+      "matched_query_tag": "query:skill",
+      "matched_query_text": "research papers on skill acquisition in reinforcement learning",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}
