@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-07-18T20:59:09.641818+00:00",
-  "updated_date": "20260718",
+  "generated_at": "2026-07-19T20:29:43.959155+00:00",
+  "updated_date": "20260719",
   "carryover_days": 9,
   "tag_states": {
     "skill": {
-      "updated_date": "20260718",
+      "updated_date": "20260719",
       "carryover_days": 9,
       "items": []
     },
     "code-vuln": {
-      "updated_date": "20260718",
+      "updated_date": "20260719",
       "carryover_days": 9,
       "items": []
     }
