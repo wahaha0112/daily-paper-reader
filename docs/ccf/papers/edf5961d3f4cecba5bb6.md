@@ -1,0 +1,25 @@
+---
+title: "Action-Level Backdoor Attacks Against Deep Reinforcement Learning Systems via Adaptive Reward Exploration"
+authors: "Oubo Ma, Linkang Du, Yang Dai, Chunyi Zhou, Qingming Li, Yuwen Pu, Shouling Ji"
+date: "2026"
+source: "TIFS"
+tags: ["query:skill"]
+---
+
+[返回 CCF-A 文献库](https://wahaha0112.github.io/daily-paper-reader/ccf.html)
+
+**来源**：TIFS · CCF-A · 2026（year 精度）
+
+[出版社 / 官方论文页面](<https://doi.org/10.1109/tifs.2026.3729515>)
+
+> 本页依据公开书目与可用摘要整理，未读取或验证论文全文。CCF-A 标签标记来源，不代表单篇论文质量。
+
+## Abstract
+
+来源未提供摘要；请打开官方论文页面阅读。
+
+## 阅读状态
+
+尚未调用模型生成解读；标题关键词匹配仅用于初筛。
+
+<!-- ccf-user-notes -->
