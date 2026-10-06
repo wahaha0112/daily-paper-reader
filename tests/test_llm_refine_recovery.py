@@ -2,6 +2,7 @@ import importlib.util
 import pathlib
 import sys
 import unittest
+from unittest.mock import patch
 
 
 def _load_module(module_name: str, path: pathlib.Path):
@@ -20,6 +21,26 @@ class LlmRefineRecoveryTest(unittest.TestCase):
         if str(src_dir) not in sys.path:
             sys.path.insert(0, str(src_dir))
         cls.mod = _load_module("llm_refine_mod_recovery", src_dir / "4.llm_refine_papers.py")
+
+    def test_total_api_failure_stops_publication_without_writing_output(self):
+        data = {
+            "papers": [{"id": "p-1", "title": "Vulnerability detection", "abstract": "Test"}],
+            "queries": [{"ranked": [{"paper_id": "p-1", "star_rating": 5}]}],
+        }
+        from contextlib import ExitStack
+        with ExitStack() as stack:
+            stack.enter_context(patch.object(self.mod.os.path, "exists", return_value=True))
+            stack.enter_context(patch.object(self.mod, "load_json", return_value=data))
+            stack.enter_context(patch.object(self.mod, "load_config", return_value={}))
+            stack.enter_context(patch.object(self.mod, "build_user_requirements", return_value=[{"tag": "code-vuln"}]))
+            stack.enter_context(patch.dict(self.mod.os.environ, {"DEEPSEEK_API_KEY": "test-only"}))
+            stack.enter_context(patch.object(self.mod, "_filter_batch", side_effect=RuntimeError("API unavailable")))
+            stack.enter_context(patch.object(self.mod, "_make_filter_client"))
+            stack.enter_context(patch.object(self.mod, "recover_filter_results", side_effect=RuntimeError("API unavailable")))
+            save = stack.enter_context(patch.object(self.mod, "save_json"))
+            with self.assertRaisesRegex(RuntimeError, "no results for 1 candidate"):
+                self.mod.process_file("input.json", "output.json", None, 4, 10, 850, "test-model", 100, 1)
+            save.assert_not_called()
 
     def relevant_result(self, paper_id="p-1", score=8):
         return {

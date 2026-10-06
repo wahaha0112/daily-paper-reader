@@ -911,10 +911,11 @@ def process_file(
                 merge_filter_result(merged, item, requirement_by_index)
 
     if not merged:
-        log("[WARN] no llm results returned.")
-        save_json(data, output_path)
         group_end()
-        return
+        raise RuntimeError(
+            f"LLM refinement failed: no results for {len(docs)} candidate papers. "
+            "Stopping before selection/publication; inspect API and filter errors."
+        )
 
     llm_ranked = sorted(merged.values(), key=lambda x: x.get("score", 0), reverse=True)
     data["llm_ranked"] = llm_ranked
