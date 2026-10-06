@@ -84,6 +84,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Verify official DeepSeek authentication before processing papers
+        run: python src/check_deepseek.py
+
       - name: Cache Python deps
         uses: actions/cache@v5
         with:

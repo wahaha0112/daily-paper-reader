@@ -1,7 +1,7 @@
 name: CCF-A conferences and journals
 on:
   schedule:
-    - cron: '15 21 * * *' # 北京时间 05:15；免费书目更新
+    - cron: '15 21 * * *' # 北京时间 05:15；书目更新与最多 10 篇解读
   workflow_dispatch:
     inputs:
       ai_limit:
@@ -39,7 +39,7 @@ jobs:
       - name: Fetch public metadata and optional budgeted review
         id: fetch
         env:
-          AI_LIMIT: ${{ inputs.ai_limit || '0' }}
+          AI_LIMIT: ${{ github.event_name == 'schedule' && '10' || inputs.ai_limit || '0' }}
           VENUES: ${{ inputs.venues || '' }}
           REVIEW_ONLY: ${{ inputs.review_only || 'false' }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
