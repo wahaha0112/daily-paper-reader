@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "updated_at": "2026-10-06T01:52:52.465887+00:00",
-  "reviewed_at": "2026-10-06T01:52:52.465887+00:00",
+  "reviewed_at": "2026-10-06T01:55:07.561002+00:00",
   "refresh_failed": false,
   "catalog_verified_on": "2026-10-06",
   "catalog_sources": [
@@ -653,9 +653,9 @@
     "年/月精度日期不是精确发表日；首次发现不是首次发表。"
   ],
   "ai": {
-    "attempted_calls": 0,
+    "attempted_calls": 3,
     "failed_calls": 0,
-    "limit": 0
+    "limit": 3
   },
   "papers": [
     {
@@ -693,7 +693,27 @@
       "topic_tags": [
         "code-vuln",
         "code-analysis"
-      ]
+      ],
+      "ai": {
+        "type": "json_object",
+        "title_zh": "“等等，我的工具做不到这个？”现代静态污点分析器的细粒度能力研究",
+        "score": 8,
+        "summary_zh": "该论文提出 xAST，一个细粒度能力基准，包含 844 对配对能力用例，实现为 Python、Go、Java 和 JavaScript 的 1825 个源文件，覆盖 16 个能力维度和 76 个子类别，涉及上下文、流、路径、字段与元素精度，以及函数、模块、并发、表达式和动态特性。每对用例包含一个应检测到 source-to-sink 流的正例和一个应抑制告警的结构相关负例。作者在 14 种工具-语言配置下评估了八款主流静态污点分析器，最高配对通过率为 CodeQL 在 JavaScript 上的 61.7%。细粒度分析识别出字段与元素精度、路径可行性推理、传递规则覆盖、并发与异步建模、高级语言惯用法、别名分析和模块解析等方面的反复弱点，为工具开发者、研究者和实践者提供面向能力的诊断补充。",
+        "reason_zh": "论文直接研究静态污点分析器的检测与抑制能力，属于代码漏洞检测与修复方向，关注程序语义、路径可行性、别名分析等，与 code-vuln 高度相关；其细粒度能力基准和工具评测方法也与程序分析与软件测试（code-analysis）中的静态分析、污点分析主题密切相关。",
+        "limitations": "仅凭摘要无法核验：844 对用例与 1825 个源文件的具体构造方式与标注质量；16 个维度、76 个子类别的定义与覆盖完整性；八款工具及 14 种配置的具体选择与版本；61.7%、47.5%、36.1%、14.3%、2.1%、61.9%、83.6% 等数字的实验设置与可复现性；xAST 基准是否公开及评测是否独立第三方执行；结论对真实漏洞场景的外推有效性。",
+        "model": "deepseek-flash",
+        "input_basis": "title_and_abstract",
+        "usage": {
+          "prompt_tokens": 813,
+          "completion_tokens": 436,
+          "total_tokens": 1249,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "prompt_cache_hit_tokens": 0,
+          "prompt_cache_miss_tokens": 813
+        }
+      }
     },
     {
       "id": "d03f0e88bcbb8b40ff2a",
@@ -756,7 +776,27 @@
       "last_seen": "2026-10-06T01:45:47.019427+00:00",
       "topic_tags": [
         "code-analysis"
-      ]
+      ],
+      "ai": {
+        "type": "json_object",
+        "title_zh": "LLM 见，LLM 行：通过逻辑上下文与用法知识增强大模型仓库感知代码生成",
+        "score": 3,
+        "summary_zh": "该论文针对大语言模型在真实仓库级代码生成任务中缺乏仓库特定知识的问题，提出 LogiCoder 这一检索增强生成方法。它首先构建依赖图以识别候选被调用函数，通过追踪调用关系从整个仓库中检索这些函数的使用示例，再结合语义搜索结果进行重排序，将上下文最相似的示例注入提示词，从而提升模型对仓库的感知能力。作者在 DevEval 基准上对五个常用大模型进行评测，摘要称在需要跨文件调用的困难任务上取得新的最优 Pass@1 44.58%，相对基线在 Pass@1 上最高提升 27.26%、Recall@1 提升 14.71%，并通过消融实验验证各组件有效性。",
+        "reason_zh": "该工作属于代码生成与检索增强，涉及依赖图、调用关系与仓库级上下文，与 code-analysis 中的程序分析（依赖/调用关系）有一定方法关联，但目标不是漏洞检测、修复或安全测试，也未涉及供应链、恶意软件、智能合约或 AI/Agent 提示注入与权限安全，因此与所列安全研究方向整体相关性较低。",
+        "limitations": "摘要未说明依赖图构建与调用关系追踪的具体实现、是否处理动态调用或跨语言场景；未给出数据集规模、基线方法细节、评测指标定义与统计显著性；未报告失败案例、误检索影响或计算开销；无法核验 Pass@1 与 Recall@1 提升数字的实验设置与可复现性。",
+        "model": "deepseek-flash",
+        "input_basis": "title_and_abstract",
+        "usage": {
+          "prompt_tokens": 759,
+          "completion_tokens": 368,
+          "total_tokens": 1127,
+          "prompt_tokens_details": {
+            "cached_tokens": 128
+          },
+          "prompt_cache_hit_tokens": 128,
+          "prompt_cache_miss_tokens": 631
+        }
+      }
     },
     {
       "id": "30b886c6d11e6ecea1f5",
@@ -823,7 +863,27 @@
       "last_seen": "2026-10-06T01:45:47.019427+00:00",
       "topic_tags": [
         "code-analysis"
-      ]
+      ],
+      "ai": {
+        "type": "json_object",
+        "title_zh": "生成具有需求验证意图的项目特定测试用例",
+        "score": 8,
+        "summary_zh": "该论文提出 IntentionTest，用于根据验证意图描述生成项目特定的测试用例。作者指出，现有自动化测试生成技术多聚焦于最大化分支覆盖率或将焦点方法翻译为测试代码，而实际测试往往源于开发者验证某需求是否被满足的意图，即测试场景是什么、该场景下的预期行为是什么。IntentionTest 基于两点洞察：验证意图描述比覆盖率和焦点代码包含更关键的“测什么”信息；实际测试代码高度重复，说明已有测试在“怎么测”上高度可复用。因此方法采用检索加编辑的方式：先根据焦点代码和验证意图检索项目中可复用的测试作为参考，再用大语言模型按验证意图编辑该参考测试，并探索项目以识别关键代码事实作为上下文。论文在 12 个开源项目的 3680 个测试用例上与四个基线比较。",
+        "reason_zh": "该论文属于程序分析与软件测试方向，研究自动化测试生成、测试用例复用与检索、基于大语言模型的测试编辑，并强调需求验证意图与断言生成，与 code-analysis 标签中“测试生成、静态动态分析、代码复用识别”的研究范围高度契合。其检索复用已有测试的思路也与代码克隆和复用识别相关。论文未涉及漏洞检测、供应链、恶意软件、智能合约或 AI Agent 安全，因此不归入其他标签。",
+        "limitations": "仅凭摘要无法核验：IntentionTest 的具体检索与编辑算法细节、关键代码事实的识别方式、提示词设计；实验所用 12 个开源项目的名称与选取标准；3680 个测试用例的构造与标注方式；四个基线（TELPA、DA、ChatTester、EvoSuite）的配置与公平性；变异分数、覆盖率、通过率提升数字的统计显著性与可复现性；验证意图描述的来源与质量；方法对非 Java 或其他语言项目的泛化能力。摘要中给出的提升幅度未在全文层面核实。",
+        "model": "deepseek-flash",
+        "input_basis": "title_and_abstract",
+        "usage": {
+          "prompt_tokens": 933,
+          "completion_tokens": 451,
+          "total_tokens": 1384,
+          "prompt_tokens_details": {
+            "cached_tokens": 128
+          },
+          "prompt_cache_hit_tokens": 128,
+          "prompt_cache_miss_tokens": 805
+        }
+      }
     },
     {
       "id": "fdfef6b09454cdca3b5d",
