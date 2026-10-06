@@ -1,0 +1,503 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-10-06",
+  "catalog_sources": [
+    "https://www.ccf.org.cn/Academic_Evaluation/TCSE_SS_PDL/",
+    "https://www.ccf.org.cn/Academic_Evaluation/NIS/"
+  ],
+  "research_reference": "https://wu-yueming.github.io/",
+  "conference_years": [
+    2025,
+    2026
+  ],
+  "journal_lookback_days": 120,
+  "max_pages_per_provider": 6,
+  "rows_per_page": 100,
+  "metadata_only": true,
+  "ai_max_papers": 0,
+  "venues": [
+    {
+      "key": "tse",
+      "name": "TSE",
+      "area": "软件工程",
+      "kind": "journal",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "0098-5589",
+          "alternate_issns": [
+            "1939-3520",
+            "2326-3881"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "tosem",
+      "name": "TOSEM",
+      "area": "软件工程",
+      "kind": "journal",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "1049-331X",
+          "alternate_issns": [
+            "1557-7392"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "toplas",
+      "name": "TOPLAS",
+      "area": "软件工程",
+      "kind": "journal",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "0164-0925",
+          "alternate_issns": [
+            "1558-4593"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "tsc",
+      "name": "TSC",
+      "area": "软件工程",
+      "kind": "journal",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "1939-1374",
+          "alternate_issns": [
+            "2372-0204"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "tdsc",
+      "name": "TDSC",
+      "area": "安全",
+      "kind": "journal",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "1545-5971",
+          "alternate_issns": [
+            "1941-0018"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "tifs",
+      "name": "TIFS",
+      "area": "安全",
+      "kind": "journal",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "1556-6013",
+          "alternate_issns": [
+            "1556-6021"
+          ],
+          "year_only_dates": true
+        }
+      ]
+    },
+    {
+      "key": "joc",
+      "name": "Journal of Cryptology",
+      "area": "安全",
+      "kind": "journal",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "0933-2790",
+          "alternate_issns": [
+            "1432-1378"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "icse",
+      "name": "ICSE",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "query": "International Conference on Software Engineering",
+          "container_pattern": "(?:international conference on software engineering|\\bicse\\b)",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "fse",
+      "name": "FSE",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "2994-970X",
+          "issue_pattern": "^FSE$"
+        },
+        {
+          "type": "crossref",
+          "query": "foundations of software engineering",
+          "container_pattern": "(?:foundations of software engineering|european software engineering conference)",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "ase",
+      "name": "ASE",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "query": "International Conference on Automated Software Engineering",
+          "container_pattern": "(?:conference|symposium) on automated software engineering",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "issta",
+      "name": "ISSTA",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "2994-970X",
+          "issue_pattern": "^ISSTA$"
+        },
+        {
+          "type": "crossref",
+          "query": "software testing and analysis",
+          "container_pattern": "(?:software testing and analysis|\\bissta\\b)",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "pldi",
+      "name": "PLDI",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "2475-1421",
+          "issue_pattern": "^PLDI\\d*$"
+        },
+        {
+          "type": "crossref",
+          "query": "programming language design and implementation",
+          "container_pattern": "programming language design and implementation",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "popl",
+      "name": "POPL",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "2475-1421",
+          "issue_pattern": "^POPL\\d*$"
+        },
+        {
+          "type": "crossref",
+          "query": "principles of programming languages",
+          "container_pattern": "principles of programming languages",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "oopsla",
+      "name": "OOPSLA",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "issn": "2475-1421",
+          "issue_pattern": "^OOPSLA\\d*$"
+        },
+        {
+          "type": "crossref",
+          "query": "object oriented programming systems languages applications",
+          "container_pattern": "object.oriented programming[,:]? systems[,:]? languages[,:]? (?:and )?applications",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "fm",
+      "name": "FM",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "isbn": "9783032262042",
+          "doi_prefix": "10.1007/978-3-032-26204-2_",
+          "chapters": [
+            3,
+            33
+          ],
+          "verified_from": "https://link.springer.com/book/10.1007/978-3-032-26204-2",
+          "note": "FM 2026 main track only; invited, TAP, tutorial and industry tracks excluded. Update verified book mappings for future editions."
+        },
+        {
+          "type": "crossref",
+          "isbn": "9783032262202",
+          "doi_prefix": "10.1007/978-3-032-26220-2_",
+          "chapters": [
+            1,
+            13
+          ],
+          "verified_from": "https://link.springer.com/book/10.1007/978-3-032-26220-2",
+          "note": "FM 2026 main track only; invited, TAP, tutorial and industry tracks excluded. Update verified book mappings for future editions."
+        }
+      ]
+    },
+    {
+      "key": "sosp",
+      "name": "SOSP",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "query": "Symposium on Operating Systems Principles",
+          "container_pattern": "operating systems principles",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "ccs",
+      "name": "CCS",
+      "area": "安全",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "query": "ACM SIGSAC Conference on Computer and Communications Security",
+          "container_pattern": "(?:acm sigsac conference on computer and communications security|acm conference on computer and communications security)",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "sp",
+      "name": "IEEE S&P",
+      "area": "安全",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "query": "IEEE symposium on security and privacy",
+          "container_pattern": "^20\\d\\d ieee symposium on security and privacy \\(sp\\)$",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "ndss",
+      "name": "NDSS",
+      "area": "安全",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "query": "Network and Distributed System Security Symposium",
+          "container_pattern": "(?:network and distributed system security|\\bndss\\b)",
+          "work_type": "proceedings-article"
+        }
+      ]
+    },
+    {
+      "key": "crypto",
+      "name": "CRYPTO",
+      "area": "安全",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "query": "advances in cryptology CRYPTO",
+          "container_pattern": "^advances in cryptology\\s*[-–—]\\s*crypto\\s+20\\d\\d",
+          "work_type": "book-chapter"
+        }
+      ]
+    },
+    {
+      "key": "eurocrypt",
+      "name": "EUROCRYPT",
+      "area": "安全",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "crossref",
+          "query": "advances in cryptology EUROCRYPT",
+          "container_pattern": "^advances in cryptology\\s*[-–—]\\s*eurocrypt\\s+20\\d\\d",
+          "work_type": "book-chapter"
+        }
+      ]
+    },
+    {
+      "key": "osdi",
+      "name": "OSDI",
+      "area": "软件工程",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "usenix",
+          "stem": "osdi"
+        }
+      ]
+    },
+    {
+      "key": "usenix-security",
+      "name": "USENIX Security",
+      "area": "安全",
+      "kind": "conference",
+      "rank": "A",
+      "enabled": true,
+      "providers": [
+        {
+          "type": "usenix",
+          "stem": "usenixsecurity"
+        }
+      ]
+    }
+  ],
+  "topic_patterns": {
+    "code-vuln": [
+      "vulnerabilit",
+      "bug detect",
+      "program repair",
+      "patch correct",
+      "code security",
+      "buffer overflow",
+      "memory safety"
+    ],
+    "supply-chain": [
+      "supply.chain",
+      "software composition",
+      "\\bsbom\\b",
+      "bill of materials",
+      "third.party librar",
+      "malicious packag",
+      "dependency confus",
+      "package ecosystem"
+    ],
+    "malware": [
+      "malware",
+      "android.*secur",
+      "malicious javascript",
+      "ransomware",
+      "virus detect",
+      "antivirus",
+      "concept drift.*detect"
+    ],
+    "code-analysis": [
+      "code clon",
+      "code reuse",
+      "fuzz",
+      "taint analys",
+      "symbolic execut",
+      "program analys",
+      "static analys",
+      "test generat",
+      "test oracle",
+      "code generat",
+      "program verif",
+      "taint analy[sz]",
+      "source.to.binary",
+      "function locali[sz]"
+    ],
+    "skill": [
+      "prompt inject",
+      "agent.*secur",
+      "secur.*agent",
+      "malicious.*(?:skill|tool|plugin)",
+      "model context protocol",
+      "jailbreak",
+      "language model.*(?:attack|secur|privac|vulnerab)",
+      "(?:attack|secur|privac).*language model",
+      "adversarial.*(?:learn|model)",
+      "backdoor.*(?:model|learn)",
+      "(?:injection|attack|defen[cs]|safety).*(?:agent|\\bllm\\b)",
+      "(?:agent|\\bllm\\b).*(?:injection|attack|defen[cs]|safety)"
+    ],
+    "smart-contract": [
+      "smart contract",
+      "\\bdefi\\b",
+      "ponzi",
+      "scam token",
+      "blockchain.*secur",
+      "ethereum.*(?:fraud|attack|vulnerab)"
+    ]
+  },
+  "conference_lookback_years": 2
+}

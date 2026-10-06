@@ -226,6 +226,8 @@
       }
 
       function appendScript(path, useCdn) {
+        // This fork extends the reader's CCF routes; load its matching local code.
+        if (path === 'app/docsify-plugin.js') useCdn = false;
         return new Promise(function (resolve, reject) {
           var finished = false;
           var script = document.createElement('script');
@@ -414,5 +416,6 @@
       }
     });
   </script>
+<script src="app/ccf-entry.js"></script>
 </body>
 </html>

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>软件工程与安全 · CCF-A 文献库</title>
+<link rel="stylesheet" href="app/ccf-watch.css"></head>
+<body><main>
+<header><div class="eyebrow">DAILY PAPER READER / PERSONAL RESEARCH</div><h1>软件工程与安全</h1>
+<p>CCF-A 会议与期刊文献库 · 按漏洞检测、供应链、恶意软件、程序分析、AI / Agent 与智能合约安全整理</p>
+<nav><a href="./">arXiv 每日阅读</a><a href="https://github.com/wahaha0112/daily-paper-reader/actions/workflows/ccf-paper-reader.yml" target="_blank" rel="noopener">更新文献 / 生成解读</a><a href="https://wu-yueming.github.io/" target="_blank" rel="noopener">研究方向参考</a></nav></header>
+<section class="notice" aria-live="polite" id="status">正在读取文献索引…</section>
+<div class="stats" id="stats"></div>
+<section class="controls" aria-label="文献筛选">
+<label class="search">搜索论文、作者或 DOI<input id="search" type="search" placeholder="如 vulnerability、supply chain、prompt injection"></label>
+<label>来源类型<select id="kind"><option value="">会议与期刊</option><option value="conference">会议</option><option value="journal">期刊</option></select></label>
+<label>会议 / 期刊<select id="venue"><option value="">全部来源</option></select></label>
+<label>研究方向<select id="topic"><option value="">全部方向</option></select></label>
+<label class="check"><input id="related" type="checkbox" checked>只看方向初筛命中</label>
+<label class="check"><input id="abstract" type="checkbox">仅看有摘要</label>
+<label>排序<select id="sort"><option value="date">公布日期（保留精度）</option><option value="seen">首次发现时间</option><option value="score">AI 相关性分数</option></select></label>
+<button id="export" type="button">导出当前筛选 JSON</button>
+</section>
+<p class="result-count" id="count"></p><section id="papers" aria-live="polite"></section>
+<div class="pagination"><button id="previous">上一页</button><span id="page"></span><button id="next">下一页</button></div>
+<details><summary>来源覆盖与检索状态</summary><p>“检索成功”只代表本次接口返回，不代表整届会议完整收录。上限截断、索引延迟、来源故障与无摘要会保留在这里。</p><div id="coverage"></div></details>
+<footer><p>方向初筛使用标题与可用摘要的关键词规则，不是 AI 评分。AI 解读只在明确启动后生成，依据摘要，不冒充全文精读。所有来源覆盖软件工程 / 系统软件 / 程序设计语言及网络与信息安全两类目录。</p><a href="https://www.ccf.org.cn/Academic_Evaluation/TCSE_SS_PDL/">CCF 软件工程目录</a> · <a href="https://www.ccf.org.cn/Academic_Evaluation/NIS/">CCF 安全目录</a></footer>
+</main><script src="app/ccf-watch.js"></script></body></html>

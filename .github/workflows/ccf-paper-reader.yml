@@ -1,0 +1,66 @@
+name: CCF-A conferences and journals
+on:
+  schedule:
+    - cron: '15 21 * * *' # 北京时间 05:15；免费书目更新
+  workflow_dispatch:
+    inputs:
+      ai_limit:
+        description: 'DeepSeek 摘要评审篇数：0 不调用模型；每次最多 20，需要余额'
+        required: true
+        default: '0'
+      venues:
+        description: '来源 key，逗号分隔；留空更新全部 23 个来源'
+        required: false
+        default: ''
+      review_only:
+        description: '只评审已发布书目，不重新采集；搭配 ai_limit 使用'
+        type: boolean
+        default: false
+permissions:
+  contents: write
+  pages: write
+concurrency:
+  group: daily-paper-reader
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install requests beautifulsoup4 pyyaml
+      - name: Check source mapping and budget safeguards
+        run: python -m unittest discover -s tests -p test_ccf_watch.py
+      - name: Fetch public metadata and optional budgeted review
+        id: fetch
+        env:
+          AI_LIMIT: ${{ inputs.ai_limit || '0' }}
+          VENUES: ${{ inputs.venues || '' }}
+          REVIEW_ONLY: ${{ inputs.review_only || 'false' }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          DEEPSEEK_BASE_URL: https://api.deepseek.com
+          DEEPSEEK_MODEL: deepseek-flash
+        run: |
+          EXTRA=()
+          if [ "$REVIEW_ONLY" = "true" ]; then EXTRA+=(--review-only); fi
+          python src/ccf_watch.py --ai-limit "$AI_LIMIT" --venues "$VENUES" "${EXTRA[@]}"
+      - name: Save feed without changing arXiv reading history
+        if: success() || steps.fetch.outcome == 'failure'
+        run: |
+          if [ ! -f docs/ccf/index.json ]; then exit 1; fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/ccf
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'chore: refresh personal CCF-A literature feed'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Request existing Pages build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"

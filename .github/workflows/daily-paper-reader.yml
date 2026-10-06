@@ -39,8 +39,8 @@ jobs:
     timeout-minutes: 120
     env:
       DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-      DEEPSEEK_BASE_URL: ${{ secrets.DEEPSEEK_BASE_URL }}
-      DEEPSEEK_MODEL: ${{ secrets.DEEPSEEK_MODEL }}
+      DEEPSEEK_BASE_URL: https://api.deepseek.com
+      DEEPSEEK_MODEL: deepseek-flash
       RERANK_PROFILE: ${{ secrets.RERANK_PROFILE }}
       RERANK_PROVIDER: ${{ secrets.RERANK_PROVIDER }}
       RERANK_MODEL: ${{ secrets.RERANK_MODEL }}
@@ -60,10 +60,10 @@ jobs:
       DPR_EMBED_API_TIMEOUT: "60"
       DPR_EMBED_API_URL: ${{ secrets.DPR_EMBED_API_URL || 'https://zwwen.online/embed' }}
       DPR_EMBED_API_KEY: ${{ secrets.DPR_EMBED_API_KEY }}
-      LLM_PRIMARY_BASE_URL: ${{ secrets.LLM_PRIMARY_BASE_URL }}
-      SUMMARY_API_KEY: ${{ secrets.SUMMARY_API_KEY }}
-      SUMMARY_BASE_URL: ${{ secrets.SUMMARY_BASE_URL }}
-      SUMMARY_MODEL: ${{ secrets.SUMMARY_MODEL }}
+      LLM_PRIMARY_BASE_URL: https://api.deepseek.com
+      SUMMARY_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+      SUMMARY_BASE_URL: https://api.deepseek.com
+      SUMMARY_MODEL: deepseek-flash
       PYTHONUNBUFFERED: "1"
 
     steps:

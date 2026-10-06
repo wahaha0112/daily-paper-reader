@@ -24,6 +24,25 @@
 
 
 
+## 个人部署：软件工程与安全（2026-10-06）
+
+- [arXiv 每日阅读](https://wahaha0112.github.io/daily-paper-reader/)：六组研究方向写入 `config.yaml`，每日北京时间 02:30 起随机延迟 0–59 分钟更新，回溯 9 天以减少周末和索引延迟漏检。
+- [CCF-A 会议与期刊](https://wahaha0112.github.io/daily-paper-reader/ccf.html)：接入软件工程/系统软件/程序设计语言与网络/信息安全两类目录，共 16 个会议和 7 个期刊。每日北京时间 05:15 更新公开书目，GitHub 排队可能延后。
+- 方向参考 [Yueming Wu 个人主页](https://wu-yueming.github.io/)：漏洞检测与修复、软件供应链、恶意软件与移动安全、程序分析与测试、AI/Agent 安全、智能合约安全。
+- 会议覆盖 ICSE、FSE、ASE、ISSTA、PLDI、POPL、OOPSLA、FM、SOSP、OSDI、CCS、IEEE S&P、NDSS、USENIX Security、CRYPTO、EUROCRYPT；期刊覆盖 TSE、TOSEM、TOPLAS、TSC、TDSC、TIFS、Journal of Cryptology。
+
+CCF 扩展使用 Crossref 出版元数据和 USENIX 官方列表；保留作者、DOI、发表日期精度、可用摘要与来源。默认显示方向初筛命中，取消勾选可浏览全部书目。原站左侧有 CCF-A 入口；每篇命中的论文可进入原站阅读页。CCF 的来源与初筛规则在 `ccf-sources.json`，不与原生“会议管理”面板共用来源配置。
+
+**覆盖边界**：会议滚动回溯两个自然年，期刊通常回溯 120 天。TIFS 在 Crossref 只登记年份，因此保留当年书目并明确标注“仅年份”，不能据此认定论文是最近 120 天发表。每个出版接口最多读取 600 条候选，来源状态公开显示完整查询、上限截断或失败；成功查询不意味着整届会议完整收录。新增文献库的关键词命中不是 AI 相关性分数，也不等于全文精读。没有摘要时不生成模型解读。
+
+**DeepSeek 与费用**：后端固定使用官方 `https://api.deepseek.com` 与官方当前推荐的 `deepseek-flash`，密钥只从仓库 Actions Secret `DEEPSEEK_API_KEY` 注入。arXiv 保持原项目的自动模型评分和摘要流程，会按实际用量产生费用。新增 CCF 工作流默认 `ai_limit=0`，每日仅更新免费公开书目；按需到 Actions → **CCF-A conferences and journals** → Run workflow，设置 `ai_limit`（每次 0–20 篇）。`review_only=true` 只评审已有书目。已评审内容缓存复用；每篇输入限 16000 字符，输出最多 1800 tokens，不自动重试付费请求。模型解读仅基于标题和摘要。
+
+前端原有“论文对话”需要在网页中解锁已有的个人密钥库，或自行配置浏览器端密钥；Actions Secret 仅供后台任务使用，不会下发到公开网页。不要把明文密钥提交到仓库。
+
+FM 采用已核对的 2026 年两册论文集主会章节，后续新一届需要在 `ccf-sources.json` 更新已验证的 ISBN/章节映射；不会仅凭“Formal Methods”名称混入其他会议。
+
+**维护与恢复**：本分支包含个人配置及 `docs/ccf/` 生成结果。同步上游时保留上述个人配置与本次扩展，出现冲突时先检查差异，不要用上游配置覆盖个人订阅。原站历史阅读内容未重置；本次部署前的配置另已保存到本地 `setup-20261006`。如需停用 CCF 更新，可在 GitHub Actions 禁用对应工作流。
+
 ## 🖼️ 界面预览
 <p align="center">
   <img src="others/demo1.png" alt="Daily Paper Reader 界面预览 1" width="80%" />

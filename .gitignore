@@ -5,6 +5,7 @@ __pycache__/
 # 虚拟环境
 venv/
 .venv/
+.venv-ccf/
 
 # 本地数据库文件
 app/chat.db
