@@ -11,6 +11,22 @@ from llm import LLMClient
 
 
 class LlmBaseUrlTest(unittest.TestCase):
+    @patch.dict("llm.os.environ", {"DPR_DEEPSEEK_THINKING": "disabled"})
+    @patch("llm.requests.post")
+    def test_explicit_daily_mode_preserves_visible_summary_budget(self, mock_post):
+        mock_post.return_value = self._mock_response()
+        client = LLMClient("test-key", "deepseek-flash", "https://api.deepseek.com")
+        client.chat([{"role": "user", "content": "summarize"}])
+        self.assertEqual(mock_post.call_args.kwargs["json"]["thinking"], {"type": "disabled"})
+
+    @patch.dict("llm.os.environ", {"DPR_DEEPSEEK_THINKING": "disabled"})
+    @patch("llm.requests.post")
+    def test_deepseek_option_is_not_sent_to_other_providers(self, mock_post):
+        mock_post.return_value = self._mock_response()
+        client = LLMClient("test-key", "other-model", "https://example.com")
+        client.chat([{"role": "user", "content": "summarize"}])
+        self.assertNotIn("thinking", mock_post.call_args.kwargs["json"])
+
     def _mock_response(self):
         resp = MagicMock()
         resp.raise_for_status.return_value = None

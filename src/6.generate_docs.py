@@ -1622,7 +1622,7 @@ def process_paper(
         if section == "deep":
             # 精读区：检查是否已有详细总结
             tail = extract_section_tail(existing, "论文详细总结（自动生成）")
-            if tail:
+            if tail and "（完）" in tail:
                 return paper_id, title
 
             # 生成详细总结

@@ -3,10 +3,26 @@ import json
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
 class GenerateDocsMetaParseTest(unittest.TestCase):
+    def test_incomplete_deep_summary_is_regenerated_but_complete_one_is_reused(self):
+        for ending, expected_calls in (("truncated", 1), ("（完）", 0)):
+            with self.subTest(ending=ending), tempfile.TemporaryDirectory() as folder:
+                md = Path(folder) / "paper.md"
+                txt = Path(folder) / "paper.txt"
+                md.write_text("# English\n# 中文\n\n## 摘要\n中文\n## 速览\n速览\n\n## 论文详细总结（自动生成）\n" + ending)
+                paper = {"id": "2609.1v1", "title": "English", "abstract": "Abstract"}
+                with patch.object(self.mod, "prepare_paper_paths", return_value=(str(md), str(txt), "2609.1v1")), \
+                     patch.object(self.mod, "maybe_generate_paper_media", return_value=([], [])), \
+                     patch.object(self.mod, "create_llm_client"), \
+                     patch.object(self.mod, "ensure_text_content"), \
+                     patch.object(self.mod, "generate_deep_summary", return_value="Complete summary（完）") as generate:
+                    self.mod.process_paper(paper, "deep", "20261006", folder)
+                    self.assertEqual(generate.call_count, expected_calls)
+
     @classmethod
     def setUpClass(cls):
         root = Path(__file__).resolve().parents[1]

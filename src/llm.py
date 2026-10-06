@@ -526,6 +526,12 @@ class LLMClient:
         if response_format is not None:
             payload['response_format'] = response_format
 
+        # Short daily summaries need their output budget for visible text.
+        # Leave provider defaults intact unless explicitly configured.
+        thinking_mode = os.getenv('DPR_DEEPSEEK_THINKING', '').strip().lower()
+        if self._provider_name() == 'deepseek' and thinking_mode in ('enabled', 'disabled'):
+            payload['thinking'] = {'type': thinking_mode}
+
         # 对输出 token 上限做保护；DeepSeek V4 支持更长输出，默认按 384K 预留。
         try:
             max_output_tokens = resolve_max_output_tokens()

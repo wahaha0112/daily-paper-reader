@@ -1,3 +1,5 @@
+> 本轮已检索评分 42 篇候选并生成 17 条推荐（包含同一论文的不同版本）。5 篇精读正文被截断、5 篇速读缺少中文摘要，今日简报为规则生成的临时摘要；测试后半段 DeepSeek 返回密钥无效，待更新后补齐。
+
 # 日报 · 2026-10-06
 
 - 生成时间：2026-10-06 02:23:10 UTC
@@ -5,7 +7,7 @@
 - 精读区：6
 - 速读区：11
 
-## 今日简报（AI）
+## 临时简报（规则生成）
 - 今日共生成 17 篇推荐（精读 6 篇，速读 11 篇）
 - 精读：《Breaking Windows Malware Detection: A Comprehensive Evaluation of Problem-Space Adversarial Robustness》（9.0/10）, 《Retrieve, Reproduce, Reveal: Dissecting Retrieval-Augmented Software Vulnerability Detection》（9.0/10）
 - 速读：《A Function-level Dataset of Vulnerable and Fixed Source Code in JavaScript and TypeScript》（8.0/10）, 《PatchHolmes: Agentic Patch Retrieval via Listwise Selection》（8.0/10）, 《COMPASS: Predicting the Relationship of Multiple Patches for Vulnerabilities with LLMs》（8.0/10）
