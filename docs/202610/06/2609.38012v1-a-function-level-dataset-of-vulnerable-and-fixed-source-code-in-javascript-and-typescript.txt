@@ -1,0 +1,249 @@
+Title: A Function-level Dataset of Vulnerable and Fixed Source Code in JavaScript and TypeScript
+
+URL Source: https://arxiv.org/pdf/2609.38012v1
+
+Published Time: Wed, 30 Sep 2026 02:24:03 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# A Function-level Dataset of Vulnerable and Fixed Source Code in JavaScript and TypeScript 
+
+Tamás Viszkok 1,* and Péter Hegedűs 11University of Szeged, Szeged, Hungary 
+
+Abstract 
+
+JavaScript and TypeScript are widely used in modern web development, making their security critical; however, automated vulnerability detection is often constrained by the availability of high-quality training data. Here we present JsVul, a dataset curated from seven major sources. Unlike generic multi-language datasets that may retain noise – such as minified code and cosmetic edits – JsVul utilizes a language-specific pipeline. We collected pre-fix and post-fix versions of files around security fixes and, by filtering irrelevant artifacts and applying automated syntax normalization, isolated security-related changes. We ensured data integrity through multi-stage deduplication and heuristic-based labeling. Provided in a time-ordered JSONL format, JsVul supports robust model training in the JavaScript and TypeScript ecosystem and demonstrates the importance of language-aware preprocessing in building vulnerability datasets. 
+
+# Background & Summary 
+
+The widespread use of JavaScript in both client-side and server-side environments has made it a prime target for attackers, particularly within the npm ecosystem where high interconnectivity allows vulner-abilities to propagate rapidly 1. As the software industry increasingly adopts Large Language Models (LLMs) for code generation, concerns have arisen regarding the security of the generated code, as models may reproduce vulnerabilities present in their training data 2. Consequently, the development of ro-bust machine learning-based vulnerability detection systems depends on the availability of high-quality, reliable training data 3;4 .Constructing such datasets presents specific difficulties. Foundational approaches, such as DeepBugs 5
+
+and VulDeePecker 6, demonstrated the potential of applying probabilistic models and deep learning to vulnerability detection. However, in the broader domain of AI for Code, code duplication has been shown to artificially inflate model performance metrics, leading to poor generalization on novel data 7.Crucially, subsequent evaluations 8 established that realistic class distributions and rigorous deduplication are essential for valid evaluation. Furthermore, standard experimental setups often ignore the evolution of vulnerabilities over time, introducing “temporal bias” (or data snooping) where models inadvertently learn from future patterns to predict past events 9;10 . While benchmarks like Big-Vul 11 have standardized assessment for C/C++, the JavaScript ecosystem has historically lacked a comparable resource utilizing strict cleaning methodologies. Vulnerability dataset curation generally follows either manual curation or automated mining . Manual curation yields high precision but is difficult to scale, whereas automated mining scales well but often introduces noise. Datasets providing only metadata (repository URLs and commit hashes) introduce 
+
+> ∗Corresponding author
+> Email addresses: tviszkok@inf.u-szeged.hu (T. Viszkok), hpeter@inf.u-szeged.hu (P. Hegedűs)
+
+1arXiv:2609.38012v1 [cs.CR] 29 Sep 2026 the risk of "link rot," where data is lost when URLs become invalid due to repositories being deleted or made private. Furthermore, multi-language datasets may not account for ecosystem-specific artifacts, such as minified code or the flexible syntax of JavaScript. Without language-specific filtering, automated scrapers may include irrelevant files (e.g., tests, build configurations) or cosmetic edits, inflating the scope of modified lines and misleading automated detection methods. JsVul employs a hybrid approach to bridge the gap between precision and scale. We aggregated raw fixing commits from seven sources using automated retrieval, then refined these data through a pipeline that integrates language-specific automated cleaning with targeted manual verification. By applying JavaScript-specific syntax normalization and custom heuristics for minified code, JsVul isolates security-relevant fixes, resulting in a function-level dataset suitable for deep learning applications. 
+
+# Methods 
+
+JsVul was constructed using a three-stage pipeline – Merge , Process , and Unify – designed to transform raw metadata into a structured dataset (see Figure 1). The pipeline addresses challenges including minified code, duplicated commits, syntax errors, and temporal data leakage. 
+
+Figure 1: Overview of the data collection and processing pipeline. The system aggregates multiple vulnerability datasets, standardizes metadata via the GitHub API, and applies strict filtering and custom labeling to ensure data quality. 
+
+Data Acquisition ( Merge )
+
+We aggregated fixing commits from seven primary sources. For static datasets, data were downloaded directly from the referenced archives: CrossVul 12 , CVEFixes 13 , JS Vulnerability Dataset 14 , OSSF CVE benchmark 15 , and SecBench.JS 16 .For continuously updated sources, we recorded specific retrieval dates to ensure reproducibility: • OSV 17 : Retrieved on 2025-11-18 15:20 CET directly from the Google Cloud Storage bucket. • NVD 18 : Collected on 2025-10-31 15:23 CET via our pipeline’s collection module, which queries the NVD API. 2We encountered significant data quality issues impacting the identification, selection, and retrieval of relevant commits. First, metadata validity was often compromised; for instance, the OSSF CVE Benchmark 15 in CVE-2020-11021.json mentioned a commit in its “prePatch” field that modified only test files, while the “postPatch” commit in CVE-2018-8035.json does not exist. Similarly, SecBench.js 16 
+
+occasionally referenced commits updating only non-JavaScript files (e.g., citing the C++ related com-mit fe52854 in incubator/hermes-engine_0.6.0/package.json ) or test-only commits rather than the actual fix (e.g., citing b80d699 instead of 9c74056 in redos/html-dom-parser_0.1.2/package.json ), while the JS Vulnerability Dataset 14 sometimes identified a “vulnerable” parent commit several versions older than the direct parent (e.g., citing 83cd07f instead of 40d73e2 from project nodebb/nodebb ), unnecessarily inflating the diff. Second, resource identifiers in continuously updated sources like OSV 17 occasionally contained malformed URLs (e.g., ...github.com/tensorflow/issues/... instead of ...github.com/tensorflow/tensorflow/issues/... in CVE-2021-29617.json ). Third, reposi-tory evolution posed a universal challenge; as repositories are frequently renamed or transferred over time, datasets often contained the same fixing commit URL but with different repository names, which leads to duplication if these divergent references are not unified. Fourth, inconsistent commit hash formatting led to duplication; for example, in the OSSF CVE Benchmark, the “postPatch” hash in 
+
+CVE-2017-18352.json differed from CVE-2017-18353.json only by missing characters. Fifth, content integrity and storage methods required overhaul; CrossVul 12 entries occasionally contained HTTP “404 Not Found” error messages saved as file content, while CVEFixes 13 utilized a monolithic SQLite database that created performance bottlenecks. Finally, the programming_language field in the file_change ta-ble of CVEFixes was often unreliable, classifying files with C++, Java or Go extensions as JavaScript, and vice versa. To resolve these, we first manually verified and corrected erroneous commit references and URLs encountered during the merge process. Subsequently, to address the broader inconsistencies, our pipeline treats the source datasets primarily as seed lists of fixing commits; while we do not rely on their provided metadata (except the fixing commit references) or file contents for processing, we preserve the original identifiers and descriptive attributes to ensure traceability and completeness. We engineered the pipeline to query the GitHub API for every entry, utilizing the authoritative response to standardize commit hashes to full-length SHA-1 identifiers, resolve up-to-date repository names, and strictly retain only those fixing commits that modify at least one JavaScript or TypeScript file. Furthermore, to address the frequent absence or inaccuracy of pre-fix commit references in the source data, we implemented an algorithm to identify the vulnerable parent commit (see get_parent_sha in merge_datasets/merge.py 19 ), which selects the direct parent for single-parent commits and resolves the appropriate parent in the case of merge commits to ensure a reliable pre-fix state. Using these validated parameters, the pipeline retrieves the fixing commit’s metadata alongside the fresh source files for both the post-fix and identified pre-fix versions – preserving their original relative file paths – and unifies the standardized metadata into the format described as merged_data in the Data Records section. 
+
+Data Processing ( Process )
+
+This stage addresses noise reduction and labeling accuracy. Among the sourced datasets, only the JS Vulnerability Dataset 14 , OSSF CVE Benchmark 15 , and SecBench.js 16 provided function- or line-level vulnerability labels, yet each required refinement. We observed that the JS Vulnerability Dataset in-cluded test files (e.g., spec/quantitiesSpec.js ) contrary to the filtering described in their publication, and potential flaws in their automated processing often mislabeled code units (e.g., flagging unmodified functions in actionhero/initializers/utils.js as vulnerable). Similarly, the OSSF CVE Benchmark occasionally implicated files unrelated to the fix; for instance, in CVE-2017-16018.json , lib/server.js 
+
+is marked as the vulnerability source despite being unrelated to the fix and remaining unchanged by the fixing commit 24c57ce . SecBench.js also exhibited data gaps, with missing line-level information 3in entries such as incubator/command_injection/heroku-addonpool_0.0.1/package.json . To over-come these inconsistencies and the absence of granular labels in other sources, our processing pipeline disregards the provided vulnerability metadata. Instead, it employs custom labeling heuristics along with specific filters, normalizers, and extractors to independently isolate vulnerable functions: 1. File Filtering : Non-JS/TS files, test files, and build/configuration files were removed. To re-duce duplication, minified files—which cannot always be identified by filename alone—were fil-tered using a heuristic-based detection script. Each file was preprocessed with our custom utility, 
+
+js-minify-helper , to remove comments and replace regex literals with placeholders. The script evaluated the file based on average line length, ratio of long lines, whitespace density, punctuation frequency, and single-letter identifier prevalence. 2. Commit Deduplication : Duplicated commits were identified by checking for intersections in the lists of file hashes corresponding to the files modified by each entry. Overlapping entries were manually verified, retaining the version that best isolated the fix. 3. Syntax and Format Normalization : To ensure diffs reflect only semantic changes, code struc-ture was normalized. We applied ESLint 20 to both pre- and post-fix files to standardize variable declarations and keyword usage (e.g., let vs const ), followed by Prettier 21 to standardize format-ting. For an illustrative example, see Supplementary Figure S1 and S2. All diffs and file hashes were then regenerated. 4. Function Extraction : Using our custom tool, js-function-extractor , we generated Abstract Syntax Trees (AST) via Babel 22 , then utilized recast 23 to extract and reprint function bodies, stripping comments to isolate executable logic. 5. Labeling and Intra-Commit Deduplication : Initially, functions were labeled as "vulnerable" if they appeared in the pre-fix file and intersected with lines modified by the fixing commit. However, this line-based approach misclassifies moved functions or those with cosmetic edits as modifications. To resolve this, we performed deduplication within single commits. We leveraged the fact that moved functions are inherently identical in content, while our normalization process ensures that functions with only cosmetic edits also become identical to their post-fix counterparts. By filtering based on content identity, we identified these non-logic changes; where a "modified" function was found to be identical to its fixed version, we re-labeled it as non-vulnerable (see Figure 2 for an example). 6. Labeling Refinement : After isolating semantically modified functions, we applied filtering heuris-tics proposed by previous research 24 :• onefunc: Retains commits where exactly one function is identified as vulnerable. • nvdcheck: Retains functions explicitly mentioned in the NVD entry, or cases where a file was mentioned and contained only one vulnerable function. Commits failing both checks were discarded. 7. Global Deduplication : Finally, functions were deduplicated across the entire dataset. If identical functions existed with the same label, the chronologically first entry based on publish_time was retained. If identical functions had conflicting labels, we prioritized the earliest instance labeled as "vulnerable". 4@@ -41,7 +42,10 @@ function readFile(path) { async function restore(file, refLog) { refLog.logData.push({ color: "lawngreen", Message: "Starting Restore" }); - refLog.logData.push({ color: "yellow", Message: "Restoring from Backup: " + file }); + refLog.logData.push({ + color: "yellow", + Message: "Restoring from Backup: " + file, + }); const pool = new Pool({ user: postgresUser, password: postgresPassword, 
+
+Figure 2: An example of a cosmetic edit filtered by Intra-Commit Deduplication. Both formats are valid under Prettier, but our pipeline’s intra-commit deduplication step with the underlying function extractor correctly filters this change to avoid a false positive. 
+
+Dataset Consolidation ( Unify )
+
+In the final stage, data were structured into JSON Lines (JSONL) format. Each entry contains a unique ID, the function body , a binary label , and metadata as described in the Data Records section. As noted by Pendlebury et al. 9 and Arp et al. 10 , random splitting strategies (e.g., k-fold cross-validation) introduce temporal bias in security datasets. To mitigate this, we strictly order the dataset by publish_time and employ a chronological split, dividing the data into training (80%), validation (10%), and test (10%) sets. 
+
+# Data Records 
+
+The data generated in this study are available on Zenodo 25 . The repository contains three compressed archives. 
+
+Archives js_vul and js_vul_pairs_only 
+
+These archives contain the final JsVul dataset in JSONL format. The js_vul archive contains the complete dataset, while js_vul_pairs_only contains only paired examples where both the vulnerable (pre-fix) and fixed (post-fix) versions exist. Each JSON object adheres to the following schema: 1. id (string): Unique identifier formatted as: 
+
+"[github_repo]::[commit_hash]::[file_path]::[start_line]::[start_column]" .2. paired_id (string, optional): The unique identifier of the corresponding vulnerable or fixed coun-terpart, if applicable. 3. project , sha , file (string): Repository name, commit hash, and relative file path. 4. loc (json object): Function location coordinates in the formatted files: start_line , start_column ,
+
+end_line , and end_column .5. body (string): The source code of the function. 6. label (int): The vulnerability label of the function (1 for vulnerable, 0 for non-vulnerable). 7. name (string, optional): The function name. 8. cwe (string array, optional): Common Weakness Enumeration (CWE) identifiers. 59. cve , ghsa , snyk , other (string array, optional): Vulnerability identifiers from NVD, GitHub Se-curity Advisories (GHSA), Snyk, or other sources. 10. publish_time (json object, optional): Publication date ( year , month , day ). 
+
+Archive merged_data 
+
+This archive contains the unified, pre-processed dataset resulting from the Merge phase, structured in two subdirectories: • files : Contains source code files (pre- and post-commit) organized by repository and commit SHA. • metadata : Contains JSON files for each project, where keys are fixing commit hashes. Metadata fields include: cwe , cve , github , snyk , commit_msg , additions , deletions , changes , files ,
+
+vuln_sha , and sources .
+
+# Technical Validation 
+
+To ensure the fidelity of the JsVul dataset, we performed validation focusing on data purity, redundancy removal, and semantic relevance. Table 1 summarizes the impact of each pipeline stage. 
+
+Noise Reduction via Syntax Normalization 
+
+We compared diff sizes and the number of affected functions before and after applying ESLint and Prettier. The normalization process resulted in a net reduction in the average number of lines modified per commit, confirming that a portion of the original commit data consisted of non-semantic formatting noise. To ensure integrity, we verified that the number of affected functions after formatting was less than or equal to the count before formatting. We manually inspected 25% of randomly selected changes to ensure the code was not modified semantically. 
+
+Deduplication and Integrity Checks 
+
+• Dataset-wise Commit Deduplication: We manually verified all 97 commit pairs flagged as duplicates. We resolved 87 cases by merging metadata into a single entry, unifying instances where different sources referenced the same issue with different hashes, while the rest were kept as is. • Commit-wise Function Deduplication: We identified duplicate functions with different labels within commits. Those with no semantic changes were relabeled as non-vulnerable. Filtering non-semantic changes not only improved quality by eliminating false positives but also slightly increased the dataset size, as it allowed more commits to meet the single-function requirement of onefunc 
+
+and nvdcheck . Manual comparison revealed that among vulnerable functions, 12 instances were removed (false positives) and 17 new instances were recovered. • Dataset-wise Function Deduplication: Conflicts where the same function appeared as both "vulnerable" and "fixed" across different commits were resolved by retaining the "vulnerable" label to minimize false negatives. 
+
+Semantic Signal Verification 
+
+To verify that the dataset contains distinct semantic signals distinguishable by modern architectures (and is not merely noise), we conducted a technical validation using three distinct architectures on the 6Table 1: Technical validation of the curation pipeline. Metrics demonstrating the reduction of noise and preservation of relevant code units through each processing stage. 
+
+Stage Commits Files Changed lines Affected functions Vulnerable / Non-vulnerable 
+
+merged 3,523 22,359 1,521,272 - -filtered 3,310 7,557 192,947 - -dedup_c 3,223 7,380 187,943 22,053 10,440 / 157,111 normal 3,218 7,314 162,276 20,437 9,632 / 157,051 dedup_f 1,967 2,001 48,302 4,607 2,079 / 26,190 final 1,960 1,994 48,018 4,391 2,039 / 19,862 
+
+final_po - - - - 1,342 / 1,342         
+
+> Row Definitions: merged : combined raw data; filtered : exclusion of test/config/minified files; dedup_c : dataset-wise commit deduplication; normal : syntax normalization; dedup_f : commit-wise function deduplication; final : dataset-wise function deduplication; final_po : subset containing only matched vulnerable/fixed pairs.
+
+js_vul_pairs_only subset: CodeBERT 26 (encoder-only), Qwen2.5-Coder-7B-Instruct 27 (open-weight coding LLM), and Gemini 3 Pro (closed-source LLM, zero-shot). As shown in Table 2, the progression in scores confirms that the dataset presents a consistent, learnable signal. Table 2: Baseline verification on the JsVul test set (pairs subset). These metrics serve as a technical validation of the dataset’s learnability and utility across different model architectures. The 
+
+F0.5-score is reported to emphasize precision. 
+
+Model Name Method Accuracy Precision Recall F0.5-Score 
+
+CodeBERT Fine-tuned 0.5587 0.5032 1.0000 0.5063 Qwen2.5-Coder-7B-Instruct Fine-tuned 0.6030 0.6138 0.5633 0.6044 
+
+Gemini 3 Pro Zero-shot 0.5696 0.5444 0.8544 0.5870 
+
+> Experimental parameters are listed in Supplementary Table S1.
+
+# Usage Notes 
+
+The JsVul dataset is distributed in JSONL format to allow for efficient line-by-line processing. 
+
+Data Structure 
+
+Each record contains the extracted body of the function and a binary label (1 for vulnerable, 0 for non-vulnerable); for an illustrative example, see Supplementary Figure S3. 
+
+Temporal Splitting 
+
+To prevent temporal bias 9, the dataset is ordered chronologically by publish_time . We recommend adhering to the provided temporal splits (80% training, 10% validation, 10% testing) to accurately simulate vulnerability forecasting. 
+
+# Funding 
+
+This work was supported by the Ministry of Culture and Innovation of Hungary from the National Research, Development and Innovation Fund, through the K_23, OTKA Funding Scheme, under Project K 147225. The publication charge was covered by the University of Szeged Open Access Fund (Grant Nr. 8358). 7Author Contributions 
+
+T.V. designed the study, implemented the pipeline, and drafted the manuscript. P.H. supervised the project and reviewed the manuscript. 
+
+# Competing Interests 
+
+The authors declare no competing interests. 
+
+# Data Availability 
+
+The data generated and analyzed during this study are available in the Zenodo repository 25 .This record contains the three compressed archives described in the Data Records section: • js_vul : The complete curated dataset in JSONL format. • js_vul_pairs_only : A subset containing only matched pairs of vulnerable and fixed functions. • merged_data : The unified pre-processed source data and metadata, including the files directory (source code pre- and post-commit) and metadata directory (JSON metadata for each project). 
+
+# Code Availability 
+
+The code used to process the data, including the pipeline for filtering, normalization, and deduplication, is available at https://github.com/jsvul/jsvul . The repository includes instructions for reproducing the dataset or generating custom variants. 
+
+# References 
+
+[1] Zimmermann, M. et al. Small World with High Risks: A Study of Security Threats in the npm Ecosystem. 28th USENIX Security Symposium (USENIX Security 19) , 995–1010 https://www. usenix.org/conference/usenixsecurity19/presentation/zimmerman (2019). [2] Pearce, H. et al. Asleep at the Keyboard? Assessing the Security of GitHub Copilot’s Code Con-tributions. 2022 IEEE Symposium on Security and Privacy (SP) , 754–768 https://doi.org/10. 1109/SP46214.2022.9833571 (2022). [3] Guo, Y. & Bettaieb, S. An Investigation of Quality Issues in Vulnerability Detection Datasets. 
+
+2023 IEEE European Symposium on Security and Privacy Workshops (EuroS&PW) , 29–33 https: //doi.org/10.1109/EuroSPW59978.2023.00008 (2023). [4] Croft, R., Babar, M. A. & Kholoosi, M. M. Data Quality for Software Vulnerability Datasets. 
+
+2023 IEEE/ACM 45th International Conference on Software Engineering (ICSE) , 121–133 https: //doi.org/10.1109/ICSE48619.2023.00022 (2023). [5] Pradel, M. & Sen, K. DeepBugs: a learning approach to name-based bug detection. Proceedings of the ACM on Programming Languages , 2, 1–25 https://doi.org/10.1145/3276517 (2018). [6] Li, Z. et al. VulDeePecker: A Deep Learning-Based System for Vulnerability Detection. 25th Annual Network and Distributed System Security Symposium (NDSS) https://doi.org/10.14722/ndss. 2018.23165 (2018). 8[7] Allamanis, M. The adverse effects of code duplication in machine learning models of code. Pro-ceedings of the 2019 ACM SIGPLAN International Symposium on New Ideas, New Paradigms, and Reflections on Programming and Software , 143–153 https://doi.org/10.1145/3359591.3359735 
+
+(2019). [8] Chakraborty, S. et al. Deep Learning Based Vulnerability Detection: Are We There Yet?. 
+
+IEEE Transactions on Software Engineering , 48, 3280–3296 https://doi.org/10.1109/TSE.2021. 3087402 (2021). [9] Pendlebury, F. et al. TESSERACT: Eliminating Experimental Bias in Malware Classification across Space and Time. 28th USENIX Security Symposium (USENIX Security 19) , 729–746 https://www. usenix.org/conference/usenixsecurity19/presentation/pendlebury (2019). [10] Arp, D. et al. Dos and Don’ts of Machine Learning in Computer Security. 31st USENIX Se-curity Symposium (USENIX Security 22) , 3971–3988 https://www.usenix.org/conference/ usenixsecurity22/presentation/arp (2022). [11] Fan, J. et al. A C/C++ Code Vulnerability Dataset with Code Changes and CWE Summaries. 
+
+Proceedings of the 17th International Conference on Mining Software Repositories , 508–512 https: //doi.org/10.1145/3379597.3387501 (2020). [12] Nikitopoulos, G. et al. Cross-Language Vulnerability Dataset with File Changes and Commit Mes-sages. Zenodo https://doi.org/10.5281/zenodo.4734049 (2021). [13] Moonen, L. & Vidziunas, L. CVEfixes Dataset: Automatically Collected Vulnerabilities and Their Fixes from Open-Source Software. Zenodo https://doi.org/10.5281/zenodo.13118970 (2024). [14] Ferenc, R. et al. JavaScript Vulnerability DataSet. https://www.inf.u-szeged.hu/~ferenc/ papers/JSVulnerabilityDataSet/ (2019). [15] OpenSSF’s Security Tooling working group. OpenSSF CVE Benchmark. GitHub https://github. com/ossf-cve-benchmark/ossf-cve-benchmark (2021). [16] Bhuiyan, M. H. M. et al. SECBENCH.JS: An Executable Security Benchmark Suite for Server-Side JavaScript. GitHub https://github.com/cristianstaicu/SecBench.js (2023). [17] Google. OSV: A distributed vulnerability database for Open Source. https://osv.dev 
+
+[18] National Institute of Standards and Technology (NIST). National Vulnerability Database (NVD). 
+
+https://nvd.nist.gov 
+
+[19] JsVul https://github.com/jsvul/jsvul 
+
+[20] ESLint https://github.com/eslint/eslint 
+
+[21] Prettier https://github.com/prettier/prettier 
+
+[22] Babel https://github.com/babel/babel 
+
+[23] recast https://github.com/benjamn/recast 
+
+[24] Ding, Y. et al. Vulnerability Detection with Code Language Models: How Far are We?. 2025 IEEE/ACM 47th International Conference on Software Engineering (ICSE) , 1729–1741 https: //doi.org/10.1109/ICSE55347.2025.00038 . (2025). [25] Viszkok, T. JsVul: A function-level dataset of vulnerable and fixed source code in JavaScript and TypeScript. Zenodo https://doi.org/10.5281/zenodo.18195839 (2026). 9[26] Feng, Z. et al. CodeBERT: A Pre-Trained Model for Programming and Natural Languages. Findings of the Association for Computational Linguistics: EMNLP 2020 , 1536–1547 https://doi.org/10. 18653/v1/2020.findings-emnlp.139 . (2020). [27] Hui, B. et al. Qwen2.5-Coder Technical Report. Preprint at https://doi.org/10.48550/arXiv. 2409.12186 . (2024). 10 Supplementary Information for: 
+
+A Function-level Dataset of Vulnerable and Fixed Source Code in JavaScript and TypeScript 
+
+# Contents 
+
+S1 Supplementary Material 12 
+
+Table S1: Model configurations and hyperparameters . . . . . . . . . . . . . . . . . . . . . . . . . . 12 Listing S1: System Prompt used for inference . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13 Listing S2: User Message Construction Template . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13 Figure S1: Effects of formatting both pre- and post-fix versions with ESLint & Prettier . . . . . . 14 Figure S2: Prettier formatting effects . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15 Figure S3: Dataset JSON format examples . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16 11 S1 Supplementary Material 
+
+Model Configurations 
+
+Table S1: Model configurations and hyperparameters. See Supplementary Listings S1 and S2 
+
+below for the exact prompt templates used for both Qwen and Gemini. 
+
+Parameter Value / Configuration Panel A: CodeBERT 
+
+Learning Rate 4.64 × 10 −5
+
+Weight Decay 0.206 
+
+Batch Size Train: 16, Eval: 32 Optimization F-measure ( β = 0 .5)Checkpointing Best model loaded at end of training 
+
+Panel B: Qwen2.5-Coder-7B-Instruct Prompts See Supplementary Listings S1 & S2 Quantization (BnB) 
+
+Config 4-bit (nf4), Double Quant, bfloat16 
+
+LoRA Config 
+
+Rank / Alpha r = 16 , α = 32 
+
+Dropout 0.05 Target Modules q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj 
+
+Panel C: Gemini 3 Pro Prompts Text content is identical to Qwen (Listings S1 & S2), but 
+
+concatenated into a single string and passed as the prompt. Inference Settings None set manually (Default API configuration) 
+
+12 LLM Prompts 
+
+Listing S1: System Prompt used for inference. This static instruction was provided to the model context before the user message. 
+
+You are a senior cybersecurity expert specializing in JavaScript and TypeScript. Analyze the following code snippet for security vulnerabilities (e.g., XSS, Injection, RCE, Prototype Pollution). Your task: 1. Determine if the code contains a security vulnerability. 2. Output ONLY ONE WORD: "VULNERABLE" if it is vulnerable, or "SAFE" if it is not. Do not output any markdown, code blocks, or extra text. Just that one word. 
+
+Listing S2: User Message Construction Template. Variable code represents the truncated source code snippet inserted dynamically. 
+
+Here is the source code to analyze: ‘‘‘javascript {code} ‘‘‘ INSTRUCTIONS: 1. Analyze the code above for security vulnerabilities. 2. Respond with ONLY ONE WORD: "VULNERABLE" or "SAFE". 3. Do NOT provide explanations or any extra text. 
+
+13 Code Examples 
+
+A. Raw Diff (Before Normalization) 
+
+@@ -23,45 +23,37 @@ const NOT_FOUNT_INDEX = -1; const INDEX_PAGE = ’index.html’; module.exports = function* (next) { -const directory = config.get(configKey.DIRECTORY); // decode for chinese character - let requestPath = decodeURIComponent(this.request.path); - let fullRequestPath = path.join(directory, requestPath); - let stat = yield getFileStat(fullRequestPath); + const requestPath = decodeURIComponent(this.request.path); + const fullRequestPath = path.join(directory, requestPath); + // fix security issue + if (!fullRequestPath.startsWith(directory)) { + return yield next; + }+ const stat = yield getFileStat(fullRequestPath); if (stat.isDirectory()) { -- let files = yield readFolder(fullRequestPath); + const files = yield readFolder(fullRequestPath); if (files.indexOf(INDEX_PAGE) !== NOT_FOUNT_INDEX) { -this.redirect(path.join(requestPath, INDEX_PAGE), ’/’); -} else { -this.body = buildFileBrowser(files, requestPath, directory); this.type = mime.lookup(INDEX_PAGE); -}-} else if (stat.isFile()) { -this.body = yield readFile(fullRequestPath); let type = mime.lookup(fullRequestPath); if (path.extname(fullRequestPath) === ’’) { -type = FALLBACK_CONTENT_TYPE; -}this.type = type; log.verbose(logPrefix.RESPONSE, this.request.method, requestPath, ’as’, type); -}yield next; -}; 
+
+B. Normalized Diff (After Formatting) 
+
+@@ -28,6 +28,10 @@ module.exports = function* (next) { // decode for chinese character const requestPath = decodeURIComponent(this.request.path); const fullRequestPath = path.join(directory, requestPath); + // fix security issue + if (!fullRequestPath.startsWith(directory)) { + return yield next; + }const stat = yield getFileStat(fullRequestPath); if (stat.isDirectory()) { 
+
+Figure S1: ESLint & Prettier formatting effects. 
+
+In (A), non-functional changes like whitespace formatting and keyword updates ( let to const ) obscure the actual fix. In (B), after normalization, the cosmetic edits are absent, leaving the actual security fix clearly identifiable. File: middleware/file-explorer.js in repo vivaxy/here at commit 298dbab .14 Raw Diff (Before Normalization) 
+
+@@ -76,13 +76,20 @@ function parsePath(path) { var str = path.replace(/([^\\])\[/g, ’$1.[’); var parts = str.match(/(\\\.|[^.]+?)+/g); return parts.map(function mapMatches(value) { + if ( + value === ’constructor’ || + value === ’__proto__’ || + value === ’prototype’ + ) { + return {}; + }var regexp = /^\[(\d+)\]$/; var mArr = regexp.exec(value); var parsed = null; if (mArr) { parsed = { i: parseFloat(mArr[1]) }; } else { - parsed = { p: value.replace(/\\([.\[\]])/g, ’$1’) }; + parsed = { p: value.replace(/\\([.[\]])/g, ’$1’) }; }return parsed; @@ -107,7 +114,7 @@ function parsePath(path) { function internalGetPathValue(obj, parsed, pathDepth) { var temporaryValue = obj; var res = null; - pathDepth = (typeof pathDepth === ’undefined’ ? parsed.length : pathDepth); + pathDepth = typeof pathDepth === ’undefined’ ? parsed.length : pathDepth; for (var i = 0; i < pathDepth; i++) { var part = parsed[i]; @@ -118,7 +125,7 @@ function internalGetPathValue(obj, parsed, pathDepth) { temporaryValue = temporaryValue[part.p]; }- if (i === (pathDepth - 1)) { + if (i === pathDepth - 1) { res = temporaryValue; }}@@ -152,7 +159,7 @@ function internalSetPathValue(obj, val, parsed) { part = parsed[i]; // If it’s the last part of the path, we set the ’propName’ value with the property name - if (i === (pathDepth - 1)) { + if (i === pathDepth - 1) { propName = typeof part.p === ’undefined’ ? part.i : part.p; // Now we set the property with the name held by ’propName’ on object with the desired val tempObj[propName] = val; @@ -199,7 +206,10 @@ function getPathInfo(obj, path) { var parsed = parsePath(path); var last = parsed[parsed.length - 1]; var info = { - parent: parsed.length > 1 ? internalGetPathValue(obj, parsed, parsed.length - 1) : obj, + parent: + parsed.length > 1 ? + internalGetPathValue(obj, parsed, parsed.length - 1) : + obj, name: last.p || last.i, value: internalGetPathValue(obj, parsed), }; 
+
+Normalized Diff (After Formatting) 
+
+@@ -76,13 +76,16 @@ function parsePath(path) { const str = path.replace(/([^\\])\[/g, "$1.["); const parts = str.match(/(\\\.|[^.]+?)+/g); return parts.map(function mapMatches(value) { + if (value === "constructor" || value === "__proto__" || value === "prototype") { + return {}; + }const regexp = /^\[(\d+)\]$/; const mArr = regexp.exec(value); let parsed = null; if (mArr) { parsed = { i: parseFloat(mArr[1]) }; } else { - parsed = { p: value.replace(/\\([.\[\]])/g, "$1") }; + parsed = { p: value.replace(/\\([.[\]])/g, "$1") }; }return parsed; 
+
+Figure S2: Prettier formatting effects. File: index.js in repo chaijs/pathval at commit 7859e0e. 15 Example Dataset Entries 
+
+Data Entry: Positive Sample (Vulnerable) 
+
+{"id": "leeoniya/uplot::b0fd072ea34b845be434841e42bf795ab840e210::src/utils.js::416::7", "body": "function assign(targ) {\r\n const args = arguments;\r\n\r\n for (let i = 1; i < args.length; i++) {\r\n const src = args[i];\r\n\r\n for (const key in src) {\r\n if (isObj(targ[key]))\r\n assign(targ[key], copy(src[key]));\r\n else\r\n targ[key] = copy(src[key]);\r\n }\r\n }\r\n\r\n return targ;\r\n}", "label": 1, "paired_id": "leeoniya/uplot::5756e3e9b91270b303157e14bd0174311047d983::src/utils.js::420::7", "project": "leeoniya/uplot", "sha": "b0fd072ea34b845be434841e42bf795ab840e210", "file": "src/utils.js", "name": "assign", "loc": { "start_line": 416, "start_column": 7, "end_line": 429, "end_column": 1 }, "cwe": ["CWE-1321"], "cve": ["CVE-2024-21489"], "ghsa": ["GHSA-34q8-jcq6-mc37"], "snyk": ["SNYK-JS-UPLOT-6209224"], "other": ["RHSA-2024:8083"], "publish_time": { "day": 28, "month": 1, "year": 2024 }}
+
+Data Entry: Negative Sample (Fixed) 
+
+{"id": "leeoniya/uplot::5756e3e9b91270b303157e14bd0174311047d983::src/utils.js::420::7", "body": "function assign(targ) {\r\n const args = arguments;\r\n\r\n for (let i = 1; i < args.length; i++) {\r\n const src = args[i];\r\n\r\n for (const key in src) {\r\n if (key != __proto__) {\r\n if (isObj(targ[key]))\r\n assign(targ[key], copy(src[key]));\r\n else\r\n targ[key] = copy(src[key]);\r\n }\r\n }\r\n }\r\n\r\n return targ;\r\n}", "label": 0, "paired_id": "leeoniya/uplot::b0fd072ea34b845be434841e42bf795ab840e210::src/utils.js::416::7", "project": "leeoniya/uplot", "sha": "5756e3e9b91270b303157e14bd0174311047d983", "file": "src/utils.js", "name": "assign", "loc": { "start_line": 420, "start_column": 7, "end_line": 435, "end_column": 1 }, "cwe": ["CWE-1321"], "cve": ["CVE-2024-21489"], "ghsa": ["GHSA-34q8-jcq6-mc37"], "snyk": ["SNYK-JS-UPLOT-6209224"], "other": ["RHSA-2024:8083"], "publish_time": { "day": 28, "month": 1, "year": 2024 }}
+
+Figure S3: Dataset JSON format examples. This figure illustrates a paired entry representing a Prototype Pollution vulnerability (CVE-2024-21489) and its corresponding patch. Each record contains an id, the function source code ( body ), vulnerability label, and metadata. 16

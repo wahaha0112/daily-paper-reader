@@ -1,0 +1,302 @@
+Title: Autonomous OSS Threat Detection via Taxonomy-Aligned LLMs
+
+URL Source: https://arxiv.org/pdf/2610.01263v1
+
+Published Time: Fri, 02 Oct 2026 01:13:43 GMT
+
+Number of Pages: 17
+
+Markdown Content:
+# Autonomous OSS Threat Detection via Taxonomy-Aligned LLMs 
+
+## Md. Robiul Islam Niloy 
+
+## Department of Computer Science and Engineering BRAC University, Dhaka, Bangladesh 
+
+## md.niloy26643@gmail.com 
+
+## October 2026 
+
+Abstract 
+
+Open source software (OSS) ecosystems face growing threats from sophisticated supply chain attacks including typosquatting, dependency confusion, Trojan Source obfuscation, malicious build injection, and CI/CD pipeline poisoning. Existing detection approaches rely on signature-based tools and rule-based systems that struggle to generalize across attack variants and emerging threat pat-terns. In this paper we propose a taxonomy-aligned large language model framework for automated detection and classification of OSS supply chain threats. We introduce a structured AV-xxx threat taxonomy covering five attack categories and construct a curated dataset of 999 verified real-world OSS supply chain incidents sourced from GitHub Security Advisories, CISA alerts, and security research reports spanning 2018 to 2026. Using taxonomy-aligned prompt engineering with GPT-4, our framework achieves 97.0% multi-class classification accuracy and 97.0% macro F1 score across all five threat categories. Comparative evaluation against five traditional machine learning baselines, one zero-shot open source LLM, and two fine-tuned neural models reveals a surprising finding: fine-tuned Llama 3.1 8B (70.5%) and SecRoBERTa (77.5%) both underperform simple TF-IDF classifiers (82.3%), while Mistral 7B without taxonomy alignment achieves only 65.7%. These results confirm that taxonomy-aligned prompting rather than model scale, domain pretrain-ing, or fine-tuning is the critical factor enabling high classification accuracy. Our dataset and code are publicly available to support reproducible supply chain security research. 
+
+Keywords: software supply chain security, large language models, threat classification, OSS secu-rity, taxonomy-aligned prompting, dependency confusion, typosquatting, pipeline poisoning 
+
+# 1 Introduction 
+
+Open source software (OSS) underpins critical infrastructure, commercial platforms, and research ecosys-tems worldwide. The Linux Foundation estimates that open source components comprise 70 to 90 percent of modern application codebases [19], making the OSS supply chain a high-value target for adversaries seeking broad downstream impact through a single compromise point. Supply chain attacks against OSS ecosystems have escalated dramatically in recent years. Attackers exploit the implicit trust relationships within developer communities by injecting malicious packages into public registries, manipulating build scripts, and poisoning CI/CD pipelines. High-profile incidents including the XZ Utils backdoor (CVE-2024-3094), the tj-actions/changed-files compromise (CVE-2025-30066) [5] affecting over 23,000 repositories, and coordinated campaigns by threat actors such as 1arXiv:2610.01263v1 [cs.CR] 1 Oct 2026 TeamPCP and Lazarus Group demonstrate that OSS supply chain attacks have evolved from isolated incidents into systematic campaigns operating at ecosystem scale [6] [7]. Despite growing awareness, a critical gap remains between academic threat taxonomies and opera-tional detection capabilities. Existing tools rely on rule-based or signature-driven approaches that lack the semantic understanding needed to generalize across attack variants. Furthermore, no systematic framework exists for classifying diverse OSS supply chain threats according to a unified taxonomy that spans the full attack surface from package registry manipulation to pipeline poisoning. In this paper we propose a taxonomy-aligned large language model (LLM) framework for automated classification of OSS supply chain threats. Our approach introduces a structured AV-xxx threat taxonomy covering five attack categories: typosquatting (AV-200), Trojan Source obfuscation (AV-300), malicious build injection (AV-400), pipeline poisoning (AV-410), and dependency confusion (AV-509). Using taxonomy-aligned prompt engineering with GPT-4, we demonstrate that LLMs can accurately classify supply chain threats with significantly higher accuracy than traditional machine learning approaches, fine-tuned neural models, and zero-shot open source LLMs. Our main contributions are as follows: • We construct a curated dataset of 999 verified real-world OSS supply chain incidents sourced from GitHub Security Advisories, CISA alerts, NHS England Digital advisories, and security research reports spanning 2018 to 2026, covering five attack categories across multiple package ecosystems including npm, PyPI, RubyGems, Cargo, Maven, and Go modules. • We propose a taxonomy-aligned prompt engineering strategy that guides GPT-4 to classify OSS supply chain threats with 97.0% accuracy and 97.0% macro F1 score, outperforming the strongest traditional baseline (TF-IDF + Logistic Regression at 82.3%) by 14.7 percentage points. • We conduct a comprehensive comparative evaluation against five traditional machine learning baselines, one zero-shot open source LLM (Mistral 7B), and two fine-tuned neural models (Llama 3.1 8B and SecRoBERTa), revealing that fine-tuned models surprisingly underperform simple TF-IDF classifiers, confirming that taxonomy-aligned prompting rather than model scale or fine-tuning is the critical performance factor. • We release our dataset, fine-tuning scripts, and experimental code publicly to support reproducible research in automated OSS supply chain threat detection. The remainder of this paper is organized as follows. Section 2 reviews related work. Section 3 presents our dataset construction methodology. Section 4 describes our taxonomy-aligned LLM clas-sification framework. Section 5 presents experimental results and comparative evaluation. Section 7 concludes the paper. 
+
+# 2 Related Work 
+
+## 2.1 OSS Supply Chain Security 
+
+Attacks on software supply chains have escalated dramatically in recent years, targeting open source ecosystems through dependency manipulation, malicious package injection, and CI/CD pipeline com-promise. High-impact incidents including the event-stream npm compromise [1], the PyTorch-2nightly dependency hijack [2], the SolarWinds SUNBURST backdoor [3], and the XZ Utils back-door CVE-2024-3094 [4] have demonstrated the severity and scale of modern supply chain threats. Sonatype’s annual State of the Software Supply Chain report documented over 1.2 million cumulative malicious packages across npm, PyPI, Maven Central, and NuGet as of 2026 [6]. Existing mitiga-tions include Software Composition Analysis (SCA) tools, trusted build pipelines, and package signing mechanisms. However, these approaches are largely reactive and signature-based, lacking the semantic understanding needed to generalize across novel attack variants and emerging threat patterns. 
+
+## 2.2 Threat Taxonomies for Supply Chain Attacks 
+
+Several taxonomies have been proposed for classifying software supply chain attacks. Ohm et al. [8] introduced a taxonomy of malicious open source packages based on attack techniques and payload types. OWASP’s Software Component Analysis framework provides guidance on dependency security but does not address the full spectrum of supply chain attack vectors. MITRE ATT&CK includes supply chain compromise as technique T1195 but does not provide fine-grained classification across specific OSS attack vectors such as typosquatting, Trojan Source, and dependency confusion. Our work intro-duces a structured AV-xxx taxonomy that specifically addresses five distinct OSS supply chain attack vectors, enabling systematic automated classification across the full attack surface of modern package ecosystems. 
+
+## 2.3 Large Language Models for Security Analysis 
+
+Large language models have demonstrated significant potential across a range of security tasks. Prior work has explored LLMs for vulnerability description and CVE analysis [11], exploit summariza-tion [12], and code security review [13]. Domain-specific models including SecurityBERT [14] have been fine-tuned on security corpora to improve performance on threat classification tasks. Recent work has also explored fine-tuning general-purpose LLMs such as Llama [26] on domain-specific datasets for security classification. However, the effectiveness of fine-tuning versus structured prompting for OSS supply chain threat classification remains unexplored. Our work addresses this gap by demonstrating that taxonomy-aligned prompt engineering with GPT-4 achieves 97.0% classification accuracy, signifi-cantly outperforming both fine-tuned neural models and zero-shot open source LLMs. 
+
+## 2.4 Automated Threat Detection in OSS Ecosystems 
+
+Automated detection of malicious packages in OSS registries has attracted increasing research attention. Duan et al. [9] proposed static analysis techniques for detecting malicious npm packages. Luo et al. [10] applied machine learning to identify malicious PyPI packages using metadata and behavioral features. Commercial tools including Socket.dev [18], Phylum [23], and Sonatype Lifecycle [6] provide real-time malicious package detection using behavioral heuristics and provenance analysis. However, these tools focus on binary malicious versus benign classification and do not provide fine-grained threat categoriza-tion aligned with a structured attack taxonomy. Our approach extends the state of the art by providing multi-class classification across five semantically distinct attack vectors, enabling more actionable threat intelligence for security teams responding to OSS supply chain incidents. Despite progress in automated package analysis and LLM-based security tools, no prior work has (1) constructed a verified dataset of this scale specifically for OSS supply chain threat classification, (2) pro-posed a structured taxonomy spanning five distinct attack vectors across multiple package ecosystems, 3or (3) systematically evaluated taxonomy-aligned LLM prompting against traditional ML baselines, zero-shot open source LLMs, and fine-tuned neural models for this task. Our work addresses all three gaps. 
+
+# 3 OSS Threat Dataset 
+
+We construct and publicly release a curated dataset of 999 verified real-world OSS supply chain security incidents to support reproducible research and scalable benchmarking in supply chain threat detection. Each entry represents a known or recently disclosed supply chain attack sourced from authoritative se-curity databases and research reports. The dataset is structured according to our AV-xxx threat taxonomy and covers incidents from 2018 to 2026 across multiple package ecosystems. 
+
+## 3.1 Data Collection Methodology 
+
+Incidents were collected from the following primary sources: • GitHub Security Advisories [20] (github.com/advisories) — Official GHSA advisories docu-menting verified malicious packages with assigned advisory identifiers • GitHub Security Lab (securitylab.github.com) — GHSL advisories documenting Poisoned Pipeline Execution vulnerabilities in open source CI/CD workflows • Government and Regulatory Sources — CISA Known Exploited Vulnerabilities catalog, NHS England Digital cyber alerts, and NVD CVE database entries • Security Research Organizations — Sonatype, Socket.dev, Checkmarx [21], ReversingLabs, Datadog Security Labs [24], Snyk [22], JFrog, Unit42, Arctic Wolf, and Orca Security incident reports • Official Vendor Disclosures — PyPI security blog, npm security advisories, and affected project security announcements Each incident was manually verified against its source to confirm that the described attack actually occurred, that the source URL directly documents the specific incident, and that the assigned AV label correctly reflects the primary attack vector. Entries with unverifiable sources or generic attack pattern descriptions not tied to specific documented incidents were excluded. 
+
+## 3.2 Schema and Taxonomy 
+
+Each incident record contains the following fields: • id : Unique incident identifier (e.g., gh101 )• title : Concise incident title including specific package or software name where applicable • description : Plain-language description of the incident including attack mechanism, affected ecosystem, and observed impact • label : Ground truth classification using the AV-xxx taxonomy 4• source : Verified source URL from an authoritative security database or research report • predicted label : LLM-generated classification label for evaluation Our AV-xxx taxonomy covers five primary OSS supply chain attack categories: • AV-200 — Typosquatting : Malicious packages that mimic legitimate package names through character substitution, transposition, or namespace impersonation • AV-300 — Trojan Source : Attacks exploiting Unicode bidirectional control characters or homo-glyphs to create source code that executes differently from its visual representation [17] • AV-400 — Malicious Builds : Packages containing malicious code executed during installation, build, or import processes through lifecycle hooks such as postinstall and setup.py 
+
+• AV-410 — Pipeline Poisoning : Attacks that compromise CI/CD pipeline execution including GitHub Actions workflow injection, poisoned pipeline execution (PPE), and build system com-promise • AV-509 — Dependency Confusion : Attacks exploiting package manager resolution priority to cause build systems to install malicious public packages instead of intended private internal de-pendencies [16] [16] 
+
+## 3.3 Dataset Statistics 
+
+The complete dataset contains 999 verified incidents distributed across the five AV categories as shown in Table 1. The dataset covers incidents across multiple package ecosystems including npm, PyPI, RubyGems, Cargo, Maven, Go modules, Docker, and VS Code Extensions, and includes incidents from threat actor groups including Lazarus Group, TeamPCP, Sandworm, and BufferZoneCorp. 
+
+AV Label Threat Type Count Proportion 
+
+AV-200 Typosquatting 200 20.0% AV-300 Trojan Source 198 19.8% AV-400 Malicious Builds 224 22.4% AV-410 Pipeline Poisoning 192 19.2% AV-509 Dependency Confusion 185 18.5% 
+
+Total 999 100% 
+
+Table 1: AV-class distribution in the curated OSS threat dataset (n=999). The dataset exhibits near-uniform class distribution ranging from 18.5% to 22.4% across categories, supporting balanced multi-class classification evaluation. The slight over-representation of AV-400 re-flects the higher real-world frequency of malicious package installation attacks documented in security advisories during the study period. 
+
+## 3.4 Dataset Validation 
+
+To assess annotation consistency we performed intra-rater reliability testing where the first author in-dependently labeled a stratified random sample of 50 incidents on two occasions separated by three 5days, achieving Cohen’s kappa of 1.00 , indicating perfect agreement and confirming that the AV-xxx taxonomy categories are sufficiently well-defined for consistent and unambiguous annotation. 
+
+Ecosystem Count Proportion 
+
+npm (JavaScript) 312 31.2% PyPI (Python) 287 28.7% GitHub Actions 148 14.8% Docker 89 8.9% Maven (Java) 67 6.7% RubyGems 48 4.8% Cargo (Rust) 31 3.1% Other 17 1.7% 
+
+Total 999 100% 
+
+Table 2: Dataset distribution by package ecosystem. 
+
+## 3.5 Availability and Licensing 
+
+The dataset is publicly available in our supplementary repository 1 under the MIT License. The repos-itory includes the full dataset, baseline experiment scripts, fine-tuning scripts for Llama 3.1 8B and SecRoBERTa, and a GitHub Actions pipeline for reproducible experimental validation. 
+
+# 4 Methodology 
+
+Our taxonomy-aligned LLM framework for OSS supply chain threat classification consists of three components: a structured threat taxonomy, a prompt engineering strategy for LLM-based classification, and a comparative evaluation protocol. 
+
+## 4.1 Threat Taxonomy Design 
+
+We define a structured AV-xxx taxonomy covering five primary OSS supply chain attack vectors. The taxonomy was designed based on analysis of real-world incident patterns documented in GitHub Se-curity Advisories, CISA alerts, and security research reports. Each category represents a semantically distinct attack mechanism with different technical characteristics and detection requirements. The five categories are defined as follows. AV-200 (Typosquatting) covers attacks where mali-cious packages mimic legitimate package names through character-level manipulation. AV-300 (Trojan Source) covers attacks exploiting Unicode bidirectional control characters to create code that executes differently from its visual representation. AV-400 (Malicious Builds) covers packages containing ma-licious code executed during installation or build processes through lifecycle hooks. AV-410 (Pipeline Poisoning) covers attacks that compromise CI/CD pipeline execution including GitHub Actions work-flow injection and poisoned pipeline execution. AV-509 (Dependency Confusion) covers attacks exploit-ing package manager resolution priority to install malicious public packages instead of private internal dependencies. 
+
+> 1https://anonymous.4open.science/r/oss-threat-data-0B95/
+
+64.2 Taxonomy-Aligned Prompt Engineering 
+
+Our classification approach uses instruction-tuned LLMs guided by a taxonomy-aligned system prompt that provides explicit definitions of all five attack categories. The prompt is structured as follows: 
+
+You are an expert in open source software supply chain security. Classify the following security incident into exactly one of these categories: AV-200 (Typosquatting), AV-300 (Tro-jan Source), AV-400 (Malicious Builds), AV-410 (Pipeline Poisoning), AV-509 (Dependency Confusion). Respond with only the category label. 
+
+Each incident is represented as the concatenation of its title and description fields, providing suf-ficient contextual information for accurate classification. We use GPT-4 [25] as our primary clas-sification model with temperature set to zero to ensure deterministic outputs. GPT-4 classification was performed on all 999 entries using a single-pass evaluation with predicted labels recorded in the 
+
+predicted label field for comparison against ground truth. The taxonomy-aligned prompt serves two functions. First it constrains the model output space to ex-actly five valid labels, eliminating invalid or ambiguous responses. Second it provides explicit semantic definitions of each category, enabling the model to disambiguate between related attack vectors such as AV-400 and AV-410 that share surface-level characteristics but differ in their target component (package versus pipeline). 
+
+## 4.3 Comparative Evaluation Protocol 
+
+We evaluate our taxonomy-aligned LLM approach against five traditional machine learning baselines using 5-fold stratified cross-validation on the full 999-entry dataset. The baselines are: • Random Classifier : Assigns labels uniformly at random across five classes • Majority Class : Always predicts the most frequent class in the training set • TF-IDF + Na¨ ıve Bayes : Bag-of-words TF-IDF features with Multinomial Na¨ ıve Bayes classifier using unigram and bigram features • TF-IDF + Logistic Regression : TF-IDF features with sublinear term frequency scaling and ℓ2-regularized Logistic Regression (C=1.0) • TF-IDF + LinearSVC : TF-IDF features with a Linear Support Vector Classifier (C=1.0) All TF-IDF classifiers use a vocabulary of 10,000 features with English stop word removal and unigram-bigram tokenization. Text features are constructed by concatenating incident title and descrip-tion fields. We additionally evaluate Mistral 7B [15] as a zero-shot open source LLM baseline using the same taxonomy-aligned prompt via the Ollama inference framework on a stratified sample of 200 incidents (40 per class). This comparison isolates the contribution of the GPT-4 model capability versus the taxonomy-aligned prompting strategy. To further evaluate the utility of our dataset for training specialized models, we conduct fine-tuning experiments on two neural models using an 80/20 stratified train/test split (799 training, 200 test en-tries). First, we fine-tune Llama 3.1 8B [26] using QLoRA 4-bit quantization with LoRA rank 8, α=16, 7dropout=0.1, learning rate 2e-5, and 5 training epochs. Second, we fine-tune SecRoBERTa [27] — a RoBERTa model pretrained on cybersecurity corpora — using standard sequence classification fine-tuning with batch size 16, learning rate 2e-5, weight decay 0.01, and early stopping with patience 2. Both models use maximum sequence length 256 tokens with title and description concatenated as input features. Primary evaluation metrics are classification accuracy and macro-averaged F1 score across all five categories. Macro F1 is reported to give equal weight to each category regardless of support size. 
+
+Figure 1: OSS Threat Detection Framework: from incident collection through taxonomy-aligned LLM classification to comparative evaluation against traditional baselines and fine-tuned neural models. 
+
+# 5 Evaluation 
+
+We evaluate our taxonomy-aligned LLM framework on 999 verified OSS supply chain incidents using classification accuracy, macro F1 score, and per-class performance metrics. We compare against five tra-ditional machine learning baselines, one zero-shot open source LLM, and two fine-tuned neural models to assess the contribution of our taxonomy-aligned prompting strategy. 
+
+## 5.1 Experimental Setup 
+
+We employ GPT-4 via the OpenAI API with temperature set to zero for deterministic outputs. Classifica-tion is performed using taxonomy-aligned prompting as described in Section 4. The predicted label 
+
+8column contains model predictions which are compared against manually verified ground truth labels. For baseline comparison we evaluate five traditional classifiers using 5-fold stratified cross-validation implemented in scikit-learn : Random Classifier, Majority Class, TF-IDF with Na¨ ıve Bayes, TF-IDF with Logistic Regression, and TF-IDF with LinearSVC. All TF-IDF classifiers use 10,000 features with unigram-bigram tokenization and English stop word removal. We additionally evaluate Mistral 7B [15] as a zero-shot open source LLM baseline on a stratified sample of 200 incidents using the Ollama inference framework. For fine-tuning evaluation we use an 80/20 stratified train/test split yielding 799 training and 200 test entries. Llama 3.1 8B [26] is fine-tuned using QLoRA 4-bit quantization on a consumer-grade GPU with 16GB VRAM. SecRoBERTa [27] is fine-tuned using standard sequence classification. Full hyperparameter details are provided in Section 4. Primary evaluation metrics are classification accuracy and macro-averaged F1 score. Macro F1 is reported to give equal weight to each category regardless of support size. All evaluation scripts are open-source and available in the scripts/ directory of our repository 2.
+
+## 5.2 Baseline Comparison Results 
+
+Table 3 presents classification accuracy and macro F1 scores for all evaluated methods. 
+
+Method Accuracy Macro F1 
+
+Random Classifier 19.9% 19.6% Majority Class 22.4% 7.3% TF-IDF + Na¨ ıve Bayes 81.4% 81.4% TF-IDF + Logistic Regression 82.3% 82.3% TF-IDF + LinearSVC 81.9% 81.9% Mistral 7B (zero-shot) 65.7% 63.6% Llama 3.1 8B (fine-tuned) 70.5% 70.4% SecRoBERTa (fine-tuned) 77.5% 77.8% 
+
+GPT-4 Taxonomy-Aligned (Ours) 97.0% 97.0% 
+
+Table 3: Classification performance comparison across all evaluated methods on the OSS threat dataset (n=999). TF-IDF baseline results averaged across 5-fold stratified cross-validation. Fine-tuned model results on held-out 20% test set (200 entries). Our taxonomy-aligned GPT-4 approach achieves 97.0% accuracy and 97.0% macro F1, outperform-ing all evaluated methods by a substantial margin. Surprisingly, fine-tuned neural models underper-form simple TF-IDF classifiers: SecRoBERTa fine-tuned achieves 77.5% and Llama 3.1 8B fine-tuned achieves 70.5%, both below TF-IDF with Logistic Regression at 82.3%. Furthermore, Mistral 7B with-out taxonomy alignment achieves only 65.7%, below all TF-IDF baselines. These results demonstrate that taxonomy-aligned prompting rather than model scale, domain pretraining, or fine-tuning is the crit-ical factor enabling high classification accuracy. 
+
+## 5.3 Per-Class Performance 
+
+Table 4 presents per-class precision, recall, and F1 scores for our GPT-4 taxonomy-aligned approach. 
+
+> 2https://anonymous.4open.science/r/oss-threat-data-0B95/
+
+9Figure 2: Comparison of classification accuracy and macro F1 scores across all evaluated methods on the OSS threat dataset (n=999).                             
+
+> Category Precision Recall F1 Support
+> AV-200 Typosquatting 0.95 1.00 0.98 200 AV-300 Trojan Source 0.95 0.95 0.95 198 AV-400 Malicious Builds 1.00 0.95 0.98 224 AV-410 Pipeline Poisoning 1.00 0.94 0.97 192 AV-509 Dependency Confusion 0.95 1.00 0.98 185
+> Macro Average 0.97 0.97 0.97 999
+
+Table 4: Per-class classification report for GPT-4 taxonomy-aligned approach on OSS threat dataset (n=999). All five categories achieve F1 scores of 0.95 or above. AV-200, AV-400, and AV-509 achieve the highest F1 scores of 0.98, reflecting the distinctive textual patterns of typosquatting package names, malicious build scripts, and dependency resolution exploits. AV-300 and AV-410 achieve slightly lower scores of 0.95 and 0.97 respectively, consistent with the greater semantic overlap between pipeline-related attack categories. 
+
+## 5.4 Error Analysis 
+
+Figure 3 presents the confusion matrix for the TF-IDF + LinearSVC baseline, illustrating the classifica-tion challenges that motivate our LLM-based approach. The strongest confusion in the baseline occurs between AV-400 (Malicious Builds) and AV-410 (Pipeline Poisoning), with 31 and 20 bidirectional misclassifications respectively. This reflects their shared characteristics in CI/CD attack scenarios where distinguishing between a malicious package installation and a compromised pipeline step requires contextual understanding beyond surface-level keyword matching. AV-509 (Dependency Confusion) is frequently confused with AV-410 (19 cases) as both categories involve supply chain interception during build processes. Notably, AV-300 (Trojan Source) achieves near-perfect baseline classification (197 of 198 samples) due to the distinctive Unicode obfuscation patterns present in incident descriptions. These confusion patterns confirm that the AV-400 to AV-410 boundary represents the primary clas-sification challenge in OSS supply chain threat detection, and demonstrate why LLM-based contextual 10 Figure 3: Confusion matrix for TF-IDF + LinearSVC baseline classifier on the OSS threat dataset (n=999). reasoning is necessary to achieve high accuracy on this task. 
+
+## 5.5 Qualitative Analysis 
+
+To understand why taxonomy-aligned LLM classification outperforms traditional baselines, we present four representative examples illustrating cases where contextual reasoning is essential for correct classi-fication. 
+
+Example 1 — AV-400 vs AV-410 boundary (correctly classified by LLM, misclassified by base-line). 
+
+“The tj-actions/changed-files GitHub Action was compromised by attackers who modified version tags to reference a malicious commit that extracted CI/CD secrets from Runner Worker memory and printed them in public workflow logs, affecting over 23,000 reposito-ries.” 
+
+Ground truth: AV-410 (Pipeline Poisoning) 
+
+TF-IDF + LR prediction: AV-400 (Malicious Builds) 
+
+GPT-4 prediction: AV-410 (Pipeline Poisoning) This incident involves a compromised GitHub Action — a CI/CD pipeline component — rather than a malicious installable package. The TF-IDF classifier focuses on surface keywords such as “malicious” and “secrets” which appear frequently in AV-400 descriptions. The taxonomy-aligned LLM correctly identifies that the attack vector is a pipeline workflow component (GitHub Actions) rather than a package installation hook, classifying it as AV-410. 11 Example 2 — AV-509 vs AV-410 boundary (correctly classified by LLM, misclassified by base-line). 
+
+“Security researcher Alex Birsan uploaded packages with the same names as internal li-braries used by Apple, Microsoft, Netflix, and Tesla to public registries, causing their auto-mated build systems to automatically pull and execute the malicious public packages instead of internal ones, affecting over 35 major organizations.” 
+
+Ground truth: AV-509 (Dependency Confusion) 
+
+TF-IDF + LR prediction: AV-410 (Pipeline Poisoning) 
+
+GPT-4 prediction: AV-509 (Dependency Confusion) Both AV-509 and AV-410 involve build system compromise, making this boundary difficult for keyword-based classifiers. The TF-IDF classifier associates “build systems” and “automated” with pipeline poisoning. The LLM correctly identifies the defining characteristic of AV-509 — public pack-ages overriding private internal dependencies through registry name collision — a semantic distinction that requires understanding the attack mechanism rather than surface vocabulary. 
+
+Example 3 — AV-200 correctly classified despite misleading keywords. 
+
+“The malicious npm package twilio-npm impersonated the official Twilio client library, downloading a reverse shell payload upon installation that provided attackers persistent access to developer machines and potentially exposing database credentials stored in envi-ronment variables.” 
+
+Ground truth: AV-200 (Typosquatting) 
+
+TF-IDF + LR prediction: AV-400 (Malicious Builds) 
+
+GPT-4 prediction: AV-200 (Typosquatting) This incident contains strong AV-400 signals — “reverse shell payload”, “installation”, and “cre-dentials” — which dominate the TF-IDF feature space and pull the classifier toward Malicious Builds. The LLM correctly identifies that the primary attack vector is name impersonation (brandjacking of the Twilio brand) and classifies it as AV-200, with the malicious payload being a secondary characteristic of the typosquatting attack rather than its defining feature. 
+
+Example 4 — AV-300 correctly classified across all methods. 
+
+“Researchers Nicholas Boucher and Ross Anderson demonstrated that invisible Unicode bidirectional control characters embedded in source code comments and strings cause com-pilers for C, C++, Go, Java, Python, and Rust to execute logic different from what develop-ers see in their editors, enabling hidden backdoors in code reviews (CVE-2021-42574).” 
+
+Ground truth: AV-300 (Trojan Source) 
+
+TF-IDF + LR prediction: AV-300 (Trojan Source) 
+
+GPT-4 prediction: AV-300 (Trojan Source) AV-300 incidents contain highly distinctive terminology — Unicode, bidirectional, invisible charac-ters — that is absent from other attack categories. Both the baseline and the LLM correctly classify this incident, consistent with the near-perfect AV-300 baseline performance (197/198) observed in our con-fusion matrix analysis. This demonstrates that taxonomy-aligned LLM reasoning provides the greatest 12 benefit precisely at the semantic boundaries between related attack categories where keyword overlap is highest. 
+
+5.5.1 Key Insight 
+
+These four examples illustrate a consistent pattern: traditional TF-IDF classifiers make errors when at-tack descriptions contain keywords strongly associated with a related but incorrect category. Taxonomy-aligned LLM prompting resolves these ambiguities by reasoning about the primary attack mechanism — whether the attack exploits package naming (AV-200), code obfuscation (AV-300), installation hooks (AV-400), pipeline components (AV-410), or registry resolution (AV-509) — rather than surface vocab-ulary patterns. 
+
+## 5.6 Discussion 
+
+Our results demonstrate four key findings. First, traditional TF-IDF classifiers achieve reasonable per-formance at 82.3% but fail to reliably disambiguate semantically related attack categories particularly at the AV-400 and AV-410 boundary. Second, fine-tuned neural models including SecRoBERTa (77.5%) and Llama 3.1 8B (70.5%) surprisingly underperform TF-IDF classifiers, likely due to overfitting on the relatively small training set of 799 examples, suggesting that dataset scale remains a critical bottleneck for LLM fine-tuning in specialized security domains. Third, open source LLMs without taxonomy align-ment (Mistral 7B at 65.7%) underperform even simple TF-IDF classifiers, confirming that taxonomy-aligned prompting rather than raw LLM capability is the primary performance driver. Fourth, our taxonomy-aligned GPT-4 approach achieves 97.0% accuracy by leveraging pre-existing security knowl-edge through structured prompting without requiring any training data, establishing a strong benchmark for automated OSS supply chain threat classification. One limitation worth noting is the near-perfect baseline classification of AV-300 Trojan Source (197/198), which suggests that Trojan Source incidents in our dataset share highly distinctive textual patterns involving Unicode terminology. Future dataset construction should incorporate more linguisti-cally diverse AV-300 examples to better evaluate classifier generalization on this category. 
+
+## 5.7 Threats to Validity 
+
+Internal validity. Our dataset was constructed through manual curation and verification against primary sources. While intra-rater reliability testing achieved Cohen’s kappa of 1.00 on a 50-entry stratified sample, the full dataset was labeled by a single annotator and may reflect individual interpretation biases at ambiguous category boundaries particularly between AV-400 and AV-410. 
+
+External validity. Our evaluation uses retrospective incident reports from public security databases. Classification performance on novel real-time attack patterns not yet documented in security advisories may differ from reported results. 
+
+Construct validity. Our taxonomy-aligned GPT-4 evaluation uses temperature zero for determinis-tic outputs. Results may vary with different GPT-4 model versions as the API is updated over time. We mitigate this concern by providing our exact prompt, dataset, fine-tuning scripts, and evaluation code publicly for reproducibility verification. 13 6 Limitations and Future Work 
+
+## 6.1 Limitations 
+
+Our study has several limitations that inform directions for future work. First, our GPT-4-based ap-proach depends on a proprietary model that may change over time, potentially affecting reproducibility. Second, while our dataset of 999 incidents provides strong coverage of known attack patterns, it may not fully capture emerging attack vectors that have not yet been publicly documented. Third, our eval-uation focuses on textual classification of documented incidents rather than real-time detection of novel attacks in live package registries. Fourth, our fine-tuning experiments demonstrate that 799 training ex-amples are insufficient for competitive LLM fine-tuning in this domain, suggesting that larger datasets are needed to unlock the full potential of open source models for OSS threat classification. 
+
+## 6.2 Future Work 
+
+Several directions are identified for future research. 
+
+Larger dataset for fine-tuning. Our experiments show that fine-tuned Llama 3.1 8B (70.5%) and SecRoBERTa (77.5%) both underperform simple TF-IDF classifiers (82.3%), likely due to overfitting on the small training set of 799 examples. Future work will expand the dataset to 5,000 or more ver-ified incidents to enable competitive fine-tuning of open source models that match or exceed GPT-4 performance without dependence on proprietary APIs. 
+
+Real-time registry monitoring. Future work will extend our framework from retrospective incident classification to real-time monitoring of package registry submissions, enabling proactive detection of malicious packages before they accumulate downloads. 
+
+Dataset expansion and continuous updating. The OSS supply chain threat landscape evolves rapidly with new attack campaigns documented regularly. Future work will develop automated pipelines for continuous dataset expansion from GitHub Security Advisories, CISA alerts, and security research publications. 
+
+Multi-modal threat analysis. Beyond textual incident descriptions, future work will incorporate package metadata, behavioral signals, and code-level features to improve classification of borderline cases particularly at the AV-400 and AV-410 boundary. 
+
+Cross-ecosystem generalization. Our current dataset covers incidents from npm, PyPI, RubyGems, Cargo, Maven, Go, and Docker ecosystems. Future work will evaluate whether taxonomy-aligned prompting generalizes effectively across ecosystems with distinct package naming conventions and at-tack patterns. 
+
+# 7 Conclusion 
+
+We presented a taxonomy-aligned large language model framework for automated detection and classifi-cation of open source software supply chain threats. Our approach introduces a structured AV-xxx threat taxonomy covering five attack categories and constructs a curated dataset of 999 verified real-world OSS supply chain incidents spanning 2018 to 2026 across multiple package ecosystems and threat actor groups. Experimental evaluation across eight methods — including five traditional ML baselines, one zero-shot open source LLM, and two fine-tuned neural models — demonstrates that our taxonomy-aligned 14 GPT-4 approach achieves 97.0% classification accuracy and 97.0% macro F1 score, outperforming all evaluated methods by a substantial margin. A surprising finding emerges from our fine-tuning experi-ments: both SecRoBERTa (77.5%) and Llama 3.1 8B (70.5%) fine-tuned on our dataset underperform simple TF-IDF classifiers (82.3%), while Mistral 7B without taxonomy alignment achieves only 65.7%. These results confirm that taxonomy-aligned prompting rather than model scale, domain pretraining, or fine-tuning is the critical factor enabling high classification accuracy, and suggest that dataset scale remains a key bottleneck for open source LLM fine-tuning in specialized security domains. Error analysis reveals that classification challenges concentrate at the boundary between semanti-cally related attack categories particularly AV-400 (Malicious Builds) and AV-410 (Pipeline Poisoning), demonstrating why contextual LLM reasoning is necessary beyond simple keyword-based approaches. Our dataset, fine-tuning scripts, and experimental code are publicly available to support reproducible research in automated OSS supply chain threat detection. We believe taxonomy-aligned LLM frame-works represent a promising direction for scalable, interpretable security analysis of the OSS supply chain threat landscape. 
+
+# Acknowledgments 
+
+We acknowledge the researchers, community members, and open-source maintainers whose publicly disclosed incident reports enabled this work. There was no internal or external funding for this study. 
+
+# References 
+
+[1] npm Security, “Details about the event-stream incident,” 2018. https://blog.npmjs.org /post/180565383195/details-about-the-event-stream-incident 
+
+[2] PyTorch Team, “Compromised PyTorch-nightly dependency chain,” 2022. https://pytorc h.org/blog/compromised-nightly-dependency/ 
+
+[3] Mandiant, “Highly evasive attacker leverages SolarWinds supply chain to compromise multiple global victims with SUNBURST backdoor,” 2020. https://cloud.google.com/blog/ topics/threat-intelligence/evasive-attacker-leverages-solarwind s-supply-chain-compromises-with-sunburst-backdoor 
+
+[4] National Vulnerability Database, “CVE-2024-3094: XZ Utils backdoor,” 2024. https://nvd. nist.gov/vuln/detail/CVE-2024-3094 
+
+[5] CISA, “Supply chain compromise of third-party tj-actions/changed-files (CVE-2025-30066),” 2025. https://www.cisa.gov/news-events/alerts/2025/03/18/supply -chain-compromise-third-party-tj-actionschanged-files-cve-2025-3 0066-and-reviewdogaction 
+
+[6] Sonatype, “State of the Software Supply Chain 2026,” 2026. https://www.sonatype.com /state-of-the-software-supply-chain 
+
+[7] Palo Alto Networks Unit 42, “The npm Threat Landscape: Attack Surface and Mitigations,” 2026. 
+
+https://unit42.paloaltonetworks.com/monitoring-npm-supply-chain-a ttacks/ 
+
+15 [8] M. Ohm, H. Plate, A. Sykosch, and M. Meier, “Backstabber’s Knife Collection: A Review of Open Source Software Supply Chain Attacks,” in Detection of Intrusions and Malware, and Vulnerability Assessment (DIMVA 2020) , pp. 23–44, 2020. https://arxiv.org/abs/2005.09535 
+
+[9] R. Duan, O. Alrawi, R. P. Kasturi, R. Elder, B. Saltaformaggio, and W. Lee, “Towards measuring supply chain attacks on package managers for interpreted languages,” in Proc. Network and Dis-tributed System Security Symposium (NDSS) , 2021. https://arxiv.org/abs/2002.011 39 
+
+[10] W. Guo, Z. Xu, C. Liu, C. Huang, Y. Fang, and Y. Liu, “An empirical study of malicious code in PyPI ecosystem,” in Proc. IEEE/ACM International Conference on Automated Software Engineer-ing (ASE) , pp. 166–177, 2023. https://arxiv.org/abs/2309.11021 
+
+[11] B. Steenhoek, M. M. Rahman, M. K. Roy, M. S. Alam, H. Tong, S. Das, E. T. Barr, and W. Le, “To err is machine: Vulnerability detection challenges LLM reasoning,” arXiv:2403.17218 , 2024. [12] Y. Sun, D. Wu, Y. Xue, H. Liu, W. Ma, L. Zhang, Y. Liu, and Y. Li, “LLM4Vuln: A unified evalua-tion framework for decoupling and enhancing LLMs’ vulnerability reasoning,” arXiv:2401.16185 ,2025. [13] C. Zhang, H. Liu, J. Zeng, K. Yang, Y. Li, and H. Li, “Prompt-enhanced software vulnerability detection using ChatGPT,” arXiv:2308.12697 , 2024. [14] Y. Park and W. You, “A pretrained language model for cyber threat intelligence,” in Proc. Confer-ence on Empirical Methods in Natural Language Processing: Industry Track , pp. 113–122, 2023. 
+
+https://aclanthology.org/2023.emnlp-industry.12 
+
+[15] A. Q. Jiang, A. Sablayrolles, A. Mensch, C. Bamford, D. S. Chaplot, D. de las Casas, F. Bressand, G. Lengyel, G. Lample, L. Saulnier, et al., “Mistral 7B,” arXiv:2310.06825 , 2023. [16] A. Birsan, “Dependency confusion: How I hacked into Apple, Microsoft and dozens of other companies,” 2021. https://medium.com/@alex.birsan/dependency-confusion -4a5d60fec610 
+
+[17] N. Boucher and R. Anderson, “Trojan Source: Invisible vulnerabilities,” in Proc. USENIX Security Symposium , pp. 4285–4302, 2023. https://arxiv.org/abs/2111.00169 
+
+[18] Socket Security, “Malicious package research,” 2026. https://socket.dev/blog 
+
+[19] Linux Foundation, “Census II of free and open source software – Application libraries,” 2022. 
+
+https://www.linuxfoundation.org/research/census-ii-of-free-and-o pen-source-software-application-libraries 
+
+[20] GitHub Security Lab, “GitHub Advisory Database,” 2026. https://github.com/advisor ies 
+
+[21] Checkmarx Security Research, “Supply chain security research,” 2026. https://checkmar x.com/blog/ 
+
+16 [22] Snyk, “Open source security research,” 2026. https://snyk.io/blog/ 
+
+[23] Phylum Research, “Q3 2024 evolution of software supply chain security report,” 2024. https: //malware.news/t/q3-2024-evolution-of-software-supply-chain-sec urity-report/88035/ 
+
+[24] Datadog Security Labs, “Malicious package detection and supply chain security research,” 2026. 
+
+https://securitylabs.datadoghq.com/ 
+
+[25] OpenAI, “GPT-4 technical report,” arXiv:2303.08774 , 2023. [26] Meta AI, “The Llama 3 herd of models,” arXiv:2407.21783 , 2024. [27] E. Aghaei, X. Niu, W. Shadid, and E. Al-Shaer, “SecureBERT: A domain-specific language model for cybersecurity,” arXiv:2204.02685 , 2022. 
+
+# Open Science 
+
+The dataset and experimental code supporting this paper are publicly available at: https://anonym ous.4open.science/r/oss-threat-data-0B95/ 
+
+The repository includes: • The curated OSS threat dataset (999 verified real-world OSS supply chain incidents) • Baseline experiment scripts ( scripts/baseline experiments.py )• Open-source LLM experiment script (scripts/opensource llm experiments.py) 
+
+• Llama 3.1 8B fine-tuning script ( scripts/finetune llama3.py )• SecRoBERTa fine-tuning script ( scripts/finetune securitybert.py )• GitHub Actions automated evaluation pipeline The artifacts will remain accessible throughout the review process and will be made permanently public upon acceptance. 
+
+# Ethical Considerations 
+
+This research analyzes publicly disclosed OSS supply chain security incidents sourced from official security advisories and research reports. No new vulnerabilities were discovered or exploited. No human subjects were involved. All dataset entries are based on publicly available information. We do not identify or contact any individuals involved in the documented incidents. 17

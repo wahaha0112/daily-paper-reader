@@ -1,0 +1,244 @@
+Title: Trajectory-Level Security Debt in LLM Coding Agents
+
+URL Source: https://arxiv.org/pdf/2609.35199v1
+
+Published Time: Tue, 29 Sep 2026 04:10:12 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# Trajectory-Level Security Debt in LLM Coding Agents 
+
+# Prateek Rajput 1, Abdoul Kader Kabore 1, Yewei Song 1, Mélissa Tessa 1,Tailia Malloy 1, Jacques Klein 1, Tegawendé F. Bissyandé 1
+
+> 1
+
+University of Luxembourg, Esch-sur-Alzette, Luxembourg {prateek.rajput, abdoulkader.kabore, yewei.song, melissa.tessa, tailia.malloy, jacques.klein, tegawende.bissyande}@uni.lu 
+
+Abstract 
+
+LLM coding agents can traverse hundreds of intermediate code states before submitting a solution. Evaluating only the final artifact leaves the evolution of security findings unmea-sured. We introduce the Security Debt Line Integral (SDLI), which accumulates static-analysis risk when an agent reaches a new best test pass ratio. We instantiate it with four static application security testing (SAST) tools and study artifacts from 830 passing SWE-bench runs, 712 ProgramBench final workspaces, and 13 public MirrorCode trajectories. The two large populations use the final-state special case of SDLI. Two-tool Common Weakness Enumeration (CWE) class agreement occurs in 3.9% of SWE-bench runs and 26.2% of the 80 Pro-gramBench runs passing at least 90% of official tests. These are scanner findings, not validated vulnerability rates. Ex-cluding three advisory-heavy classes reduces the latter rate to 6.2%. Same-task runs differ in their measured scores, while one reconstructed ProgramBench run exposes persistent find-ings from its first implementation write. A repair case study reduces the scanner signal while preserving tested behavior, but also reveals sensitivity to equivalent API rewrites. SDLI offers a way to study progress and security findings together. Its value for steering agents and confirming exploitable vul-nerabilities remains to be established. 
+
+# 1 Introduction 
+
+Code reuse can spread the consequences of an insecure de-sign choice across a repository (Lopes et al. 2017; Mojica et al. 2013; Prana et al. 2021) and through dependencies (Ze-rouali et al. 2022; Zimmermann et al. 2019). LLM-generated code is susceptible to such choices. Copilot suggestions were vulnerable in roughly 40% of the tested CWE sce-narios (Pearce et al. 2025), and subsequent work examines security in developer assistance and iterative generation (San-doval et al. 2023; Shukla, Joshi, and Syed 2025; Schreiber and Tippe 2025; Tihanyi et al. 2023; Wu, Liu, and Xiao 2023). As coding agents reuse their own earlier output, security-relevant decisions can persist through many later changes. LLM coding agents now write repositories over hundreds or thousands of turns. MirrorCode traces span roughly 12,000 messages (Adamczewski et al. 2026), SWE-EVO tasks touch 21 files on average (Le et al. 2025), and NL2Repo-Bench re-quires at least 181 interaction turns to produce an installable 
+
+Copyright © 2027, Association for the Advancement of Artificial Intelligence (www.aaai.org). All rights reserved. 
+
+library (Ding et al. 2025). Recorded actions offer check-points that can be scanned before submission. Scanning only the submitted artifact leaves these intermediate states unob-served. Our focus is the coupling of checkpoint findings with measured functional progress. This paper takes a first step toward closing that gap. We for-malize trajectory-level security measurement as the Security Debt Line Integral (SDLI), which charges a per-checkpoint risk reading against the functional progress banked at that checkpoint. A risky checkpoint incurs no charge if it does not improve historical-best progress. Charges already accumu-lated remain even if the code is later removed. We instantiate the risk reading via BBCS, a four-tool SAST oracle named after its constituent tools Bandit, Bearer, CodeQL, and Sem-grep, identified as Pareto-optimal for Python by Liu et al. (2026). Figure 1 shows the pipeline. We evaluate SDLI on three populations and, throughout the paper, restrict headline analysis to runs whose code ac-tually works. This filter asks whether useful solutions also carry security findings. Findings in unsuccessful runs remain relevant, but answer a different question. The two large pop-ulations are 830 passing short-horizon SWE-bench trajecto-ries and, from 712 scanned Python ProgramBench solutions produced by six frontier model configurations, the 80 mostly working ones that pass at least 90% of the official test suite. The 13 public MirrorCode runs, of which 3 reach a recorded pass ratio of 1.0, expose up to 146 scannable checkpoints per run and serve as a focused case study of how debt enters and persists over weeks-scale trajectories. Our goal is to quantify how much security debt agent trajectories accumulate, to un-derstand when and how it enters, and to test whether it can be repaired once a scanner points at it. For the last question we replay a real debt-carrying trajectory at the step where the scanner findings first appeared and hand the scanner’s findings back to a model. 
+
+# 2 Background and Research Questions 
+
+## 2.1 Long-Horizon Agent Tasks 
+
+Benchmarks have expanded from isolated functions in Hu-manEval (Chen et al. 2021) to repository-level issue reso-lution (Jimenez et al. 2023; Yang et al. 2024) and longer tasks in SWE-EVO, NL2Repo-Bench, MirrorCode, and Pro-gramBench (Le et al. 2025; Ding et al. 2025; Adamczewski arXiv:2609.35199v1 [cs.CR] 28 Sep 2026 Figure 1: The SDLI pipeline and potential uses. At available checkpoints, SAST readings are paired with increases in historical-best progress. The endpoint special case uses one final scan. The applications shown are proposals, not evaluated deployments. et al. 2026; Yang et al. 2026). Similar workflows are entering mainstream development (Ray 2025; Lipsanen et al. 2026). Maintaining human oversight across long runs remains dif-ficult (Takerngsaksiri et al. 2025), and multi-agent pipelines introduce further failure modes (Cemri et al. 2025). Check-point monitoring offers a way to inspect security findings while the implementation is still evolving. 
+
+## 2.2 Why Python and Why BBCS 
+
+We focus on Python because it has established SAST tools and public agent artifacts. Tool choice determines which weakness classes are visible. We adopt Bandit (PyCQA 2024), Bearer (Bearer, Inc. 2024), CodeQL (GitHub 2024), and Semgrep (Semgrep, Inc. 2024), the BBCS combination studied by Liu et al. (2026). Their empirical evaluation mo-tivates combining tools, but does not validate precision on our agent-generated artifacts. 
+
+## 2.3 Related Work 
+
+Shukla, Joshi, and Syed (2025) study security degradation during iterative LLM code refinement. SDLI adds an explicit coupling between scanner readings and functional progress across recorded agent states. The broader study of when defects enter a history predates coding agents. SZZ links fixes to earlier changes (Śliwerski, Zimmermann, and Zeller 2005), and vulnerability-contributing-commit studies exam-ine security-relevant changes and prioritize audits (Meneely et al. 2013; Perl et al. 2015). Our class-level measurement does not provide that commit-level attribution. SecurityEval (Siddiq and Santos 2022) and CyberSecE-val (Bhatt et al. 2023) evaluate insecure code generation. BaxBench evaluates both backend functionality and secu-rity with executable exploits (Vero et al. 2025). SDLI instead summarizes the timing of SAST findings relative to progress. These approaches are complementary, and exploit-based val-idation would strengthen the interpretation of our scores. 
+
+## 2.4 Research Questions 
+
+SDLI combines scanner readings with progress, with trajec-tory detail limited by the available checkpoints. We use it to ask four questions. 
+
+RQ1 To what extent do functionally correct agent trajectories accumulate security debt across short- and long-horizon tasks? 
+
+RQ2 Do different runs solving the same task produce mean-ingfully different SDLI? 
+
+RQ3 How does security debt enter a trajectory? Does it build up slowly or arrive suddenly at a single step, and do agents ever remove it on their own? 
+
+RQ4 Once the debt is pointed out, can it be repaired without losing the functional progress the agent has already made? 3 The SDLI Metric 
+
+Let gt ∈ [0 , 1] be the observed test pass ratio at checkpoint t,and let Rt ≥ 0 be its BBCS risk reading. We define banked progress as the historical maximum, Gt = max 1≤s≤t gs for 
+
+t ≥ 1, with G0 = 0 as an accounting baseline. The Security Debt Line Integral is 
+
+SDLI = 
+
+> n
+
+X
+
+> t=1
+
+Rt (Gt − Gt−1). (1) This definition makes the progress envelope used by our im-plementation explicit. For observed progress 0, 0.8, 0.4, 0.8
+
+at constant risk 1, SDLI is 0.8. Recovering previously achieved progress adds no charge. SDLI measures cumulative progress-weighted scanner ex-posure. It is not the outstanding risk in the current state, which is Rt, or a time-weighted exposure measure. Risk introduced after progress stops increasing contributes zero. Removing a finding lowers the current reading but does not refund prior charges. A lower-risk path has lower SDLI only if the re-duction occurs at checkpoints that add progress. Monitoring should therefore retain the Rt trace and final reading along-side SDLI. The risk reading itself aggregates the raw scanner output at checkpoint t. Let Ct be the set of CWE classes that at least one BBCS tool reports at that checkpoint, and for a class c ∈ C t let Tt(c) be the set of tools that flagged it. Each tool k ∈ T t(c) rates the class with a severity level 
+
+sev k(c) ∈ { LOW , MEDIUM , HIGH , CRITICAL }, and the weighting function sev _w turns the level into a number, 3.0
+
+for HIGH or CRITICAL, 1.0 for MEDIUM, and 0.25 for LOW. At agreement threshold a ∈ { 1, 2} the reading counts every class flagged by at least a tools exactly once, at the weight of the most severe rating any tool gave it, 
+
+R(a) 
+
+> t
+
+= X
+
+> c∈C t
+> |T t(c)|≥ a
+
+sev _w  max  
+
+> k∈T t(c)
+
+sev k(c). (2) Threshold a=1 gives BBCS-union, where one tool is enough, and a=2 gives BBCS-agree2, where at least two tools report the same normalized class. We use agree2 as a stricter re-porting threshold, without assuming independent errors or validated precision. Agreement can involve different loca-tions or data flows. Counting each class once also discards the number of affected sites. Throughout the paper, security debt refers to this scanner-based construct, not a count of confirmed vulnerabilities. 
+
+# 4 Benchmarks and Measurement Setup 
+
+We evaluate SDLI on three benchmarks spanning short- and long-horizon agent tasks. Table 1 summarizes the three pop-ulations. 
+
+SWE-bench (Jimenez et al. 2023) trajectories are drawn from the publicly released SWE-Agent runs 1 across three LLaMA models (8B, 70B, 405B), covering 830 functionally correct runs on 206 unique instances. 
+
+> 1https://huggingface.co/datasets/nebius/SWE-agent-trajectories
+
+ProgramBench (Yang et al. 2026) asks agents to reimple-ment whole CLI programs from binaries and documentation, and publishes frontier-model submissions at scale. We scan 712 Python final workspaces from six public submissions 2
+
+(Claude Opus 4.7, Claude Sonnet 4.6, Gemini 3.1 Pro, and GPT-5.5 at three reasoning-effort settings), each paired with a full agent trajectory and an official evaluation pass rate. Unlike SWE-bench issue fixes, no scanned ProgramBench run passes 100% of the official hidden tests (the best reaches 99.7%). We therefore take the 80 mostly working runs with 
+
+GT ≥ 0.90 as the primary population and use the 24 near-solved runs with GT ≥ 0.95 as a stricter subset. 
+
+MirrorCode (Adamczewski et al. 2026) provides all 13 public Python trajectories 3 generated by Claude Opus (4.6 for the gotree run reaching recorded progress 1.0, an earlier Opus version for the remaining 12), spanning CLI reimple-mentation tasks up to roughly 604M tokens and 146 check-points per run. Three runs reach a recorded pass ratio of 1.0 (cal, choose, and the gotree run by Opus 4.6). We use this recorded-progress criterion for the working subset, rather than claim independently verified full-suite success. 
+
+Scan scope and progress. We scan the available code snapshot, not just changed lines. ProgramBench uses final workspaces. SWE-bench uses final code states extracted from file content visible in the agent transcript, so these are not guaranteed to be complete repositories. Although its parser records two to five checkpoints per run, the four-tool results reported here scan only the final extracted state. Both large populations therefore use the endpoint special case RT GT
+
+with a zero accounting baseline. ProgramBench progress comes from the official hidden-test evaluation. SWE-bench uses the parser’s final progress envelope, which can include agent-run test subsets. The solved-run selection is separate from that progress proxy. MirrorCode progress comes from test results recorded in its public transcripts, carried into a historical-best envelope. The 463 available code snapshots provide trajectory mea-surements, but changing test coverage limits comparability with an independently run fixed suite. Bandit, Bearer, and Semgrep scan each snapshot. CodeQL scans selected check-points, with interpolation between them. It reports zero risk throughout the available MirrorCode scans, so interpolation contributes no signal here. The gowsdl replay below recon-structs per-action risk, not an official per-action progress curve. 
+
+Endpoint interpretation. The endpoint score is not a lower bound on full SDLI. If all progress is achieved at risk 0 and risk appears only afterward, full SDLI is 0 while 
+
+RT GT > 0. Conversely, risk charged during progress may later disappear, giving RT GT = 0 with positive SDLI. Only the set of findings observed across checkpoints necessarily contains the final set, under the same scan configuration. 
+
+Scanner configuration. Bandit skips B101, B110, B112, and B401 through B413. Bearer uses its SAST scan-ner with all severity levels. Semgrep uses p/python ,                          
+
+> 2https://github.com/ProgramBench/submissions, with heavy ar-tifacts hosted on Hugging Face.
+> 3https://epoch.ai/blog/mirrorcode-preliminary-results SWE-bench ProgramBench MirrorCode
+> Runs scanned 830 712 13 Working subset 830 (passing) 80 ( GT≥0.90 )3 (recorded GT=1 )Unique tasks 206 187 5Models LLaMA 8B/70B/405B 6 frontier configs Claude Opus (2) Agent scaffold SWE-Agent mini-SWE-agent Epoch AI harness Agent turns 3 to 15 11 to 986 6 to 6,084 BBCS checkpoints 1 (final extract) 1 (final tree) up to 146 Horizon Short Long Long
+
+Table 1: Benchmark and model summary. 
+
+p/security-audit , and p/owasp-top-ten . Cod-eQL uses the Python security-extended suite, with a con-figured fallback to query pack 1.3.0. The artifact records the remaining query filters. CWE identifiers are normalized from tool metadata, with an additional Bandit rule mapping. The mapping groups related identifiers, including CWE-78 and CWE-88 into CWE-77, and CWE-23 through CWE-41 into CWE-22. These are analysis groupings, not evidence that two findings describe the same defect. The full mapping and scan commands are in the artifact. Bandit, Bearer, and Semgrep typically take under 10 sec-onds each per snapshot in our runs. CodeQL takes roughly two to five minutes. These are observed scan times, not an end-to-end overhead study. We have not measured sensitiv-ity to checkpoint frequency, weights, or ruleset revisions. Remote registry configurations were not all pinned to im-mutable revisions, which limits exact rescanning. 
+
+# 5 Results at Scale 
+
+Our two large populations answer RQ1 and RQ2. Table 2 ag-gregates both working populations, and Figure 2 summarizes the distinct populations and shows how ProgramBench debt behaves as functional completeness rises. We report nomi-nal 95% Wilson intervals to show count uncertainty. They assume independent runs and are descriptive only, since runs share tasks and models. For MirrorCode, 1/3 gives an interval from 6.1% to 79.2%, which emphasizes the limited sample. 
+
+## 5.1 Short-Horizon Patches on SWE-bench 
+
+On SWE-bench, 3.9% of the selected test-passing runs con-tain findings with two-tool class agreement, and the recall-favoring union reading raises the rate to 14.9%. These are issue-fixing tasks in existing projects. We do not establish whether the flagged code was introduced by the agent. The dominant two-tool-reported classes are CWE-502 (insecure deserialization, 18 runs) and CWE-327 (weak crypto, 10 runs). The union adds a single-tool tail led by CWE-22 path handling (46 runs) and CWE-94 code injection (23 runs). The observed findings show that test success can coexist with a non-zero scanner reading. Table 3 shows how much runs on the same task vary. On pypa/hatch-422 , eight of nine runs bank an agree2 SDLI of 3.0 through the same pickle deserialization pat-tern (CWE-502) while one sibling has a zero score. All nine runs on Azure/msrest-for-python-208 incur a two-tool-reported SDLI of 3.0, which is also consistent with a shared pre-existing finding or similar extracted code. On peopledoc/vault-cli-111 the variation lives en-tirely in the union channel, where one run stays at zero while another accumulates 3.25. 
+
+## 5.2 Whole-Program Synthesis on ProgramBench 
+
+Among the 80 mostly working ProgramBench runs, 21 (26.2%) have non-zero endpoint SDLI under agree2 and 66 (82.5%) under union. The dominant agree2 class is CWE-77, reported by two tools in 18 of 80 runs. Bearer’s path-handling rules contribute to the union signal on 45 runs. These classes include capability advisories that require contextual review, and they affect both channels. To make this dependence explicit, we summarize the exist-ing scans after excluding CWE-22, CWE-77, and CWE-939, the three advisory-heavy classes discussed in the case study. Agree2 remains positive in 5 of 80 runs (6.2%), and union in 32 of 80 (40.0%). This is a sensitivity summary, not a validated vulnerability estimate. Excluding an entire class can discard genuine defects as well as advisories. The 26.2% rate should therefore not be read as confirmed insecurity or evidence of a horizon effect. The corpora also differ in task type, extraction coverage, models, and passing criterion. 
+
+Debt versus functional completeness. Figure 2 (right) tracks what happens as the functional bar rises, and the re-sult complicates a simple “long horizon means more debt” story. Under the headline agree2 oracle, prevalence falls from 34.6% across all 712 scanned finals to 26.2% in the 80 runs above 90% pass rate and to 4.2% (a single run) among the 24 near-solved runs above 95%, with mean agree2 SDLI falling to 0.12. The agree2 prevalence declines across these nested subsets. Their changing task and model composition prevents a causal interpretation. The union reading shows no such gradient (81.0%, 82.5%, 83.3%), which is consistent with broad capability advisories remaining active across the subsets. The working tier’s mean is pulled above the pop-ulation’s by the gowsdl case study below. Two readings are consistent with the agree2 gradient and our data cannot sep-arate them. Lower scanner readings may accompany higher test performance, or the tier may reflect its composition, since 17 of its 24 runs come from one configuration (GPT-5.5 xhigh). What the gradient does not do is reach zero. One near-solved run still carries two-tool class agreement, and the MirrorCode gotree run reaching recorded progress 1.0 below carries the largest per-run score in its benchmark, so SWE-bench ProgramBench Metric agree2 union agree2 union                     
+
+> Runs analyzed 830 830 80 80 Non-zero SDLI 32 (3.9%) 124 (14.9%) 21 (26.2%) 66 (82.5%) 95% interval (%) 2.7 to 5.4 12.7 to 17.5 17.9 to 36.8 72.7 to 89.3 Mean SDLI (non-zero) 2.82 2.88 3.28 4.12 Max SDLI 3.00 6.21 10.85 12.66
+
+Table 2: Endpoint SDLI for passing SWE-bench runs and ProgramBench runs passing at least 90% of official tests. Both use final-state BBCS scans. 
+
+Figure 2: Scanner-positive proportions in distinct benchmark subsets (left), and nested ProgramBench completion tiers (right). Counts are shown for agree2. SWE-bench and ProgramBench use endpoint scores, while MirrorCode uses recorded checkpoints. The groups differ in tasks, progress measures, and sample sizes.                           
+
+> agree2 union Instance Runs Min Max Min Max hatch-422 9 0.00 3.00 0.00 3.00 sphinx-gallery-625 2 0.00 3.00 0.00 3.00 msrest-for-python-208 9 3.00 3.00 3.00 6.00 datalab-pandas-29 10 2.40 2.57 5.80 6.21 vault-cli-111 9 0.00 0.00 0.00 3.25
+
+Table 3: SWE-bench instances with the largest same-task SDLI variation across runs, under both channels. high recorded progress does not imply a zero scanner score. On channel composition, Bandit and Bearer carry most of the union signal, Semgrep overlaps with some of these class-level findings, and CodeQL contributes findings on only 66 of the 712 finals and 6 of the 80 working runs. One prac-tical note for anyone replaying this pipeline. Three of the four channels can silently report zero findings for purely en-vironmental reasons. Semgrep and CodeQL skip symlinked directories, and Bearer skips any file that is gitignored in an enclosing repository, which includes scan workspaces stored under a repo’s ignored output directory. Earlier passes of this corpus lost the Semgrep and CodeQL channels to the symlinks and the Bearer channel to the gitignore rule before per-file spot checks caught both, so we recommend plant-ing a known-vulnerable canary file and verifying that every channel reports it before trusting any zero. 
+
+## 5.3 Long-Horizon Traces on MirrorCode 
+
+MirrorCode (Adamczewski et al. 2026) anchors the weeks-scale end. Of its 13 public Python trajectories, 3 reach a recorded pass ratio of 1.0, the cal and choose runs and the gotree run by Claude Opus 4.6. Two of the three have zero scores under both channels. The third, by far the largest of the three reimplementations at 7,810 lines, banks an agree2 SDLI of 3.000 and a union SDLI of 7.014, the highest per-run debt in its benchmark. This run combines high recorded progress with persistent scanner findings. Across the wider context population of all 13 runs, seven carry two-tool class agreement and ten accumulate non-zero BBCS-union SDLI, and six of ten gotree attempts across two Opus versions contain the same flagged XML pars-ing pattern, using xml.etree.ElementTree instead of 
+
+defusedxml (CWE-611). Sibling trajectories on the same task have lower readings, although their functional outcomes differ. Four of the ten gotree attempts hold zero agree2 risk across every checkpoint, one of them through all 24 check-points of a half-successful attempt, while sibling runs have non-zero readings. 
+
+RQ1. Scanner findings coexist with functional success. Agree2 is positive in 32/830 SWE-bench runs and 21/80 mostly working ProgramBench runs. Both are endpoint mea-surements. The latter count falls to 5/80 when three advisory-heavy classes are excluded. The benchmarks do not support a controlled comparison of task horizons. 
+
+RQ2. Same-task SWE-bench runs differ in endpoint scores, including eight non-zero runs and one zero run on hatch-422. This motivates investigating lower-scoring alternatives. It does not show that agents can reliably be steered toward them, that findings are agent-introduced, or that different ProgramBench runs have identical functionality. 
+
+# 6 A Long-Horizon Case Study 
+
+The scale results describe endpoint scanner prevalence. Recorded intermediate states reveal when findings appear and whether they persist. ProgramBench does not publish in-termediate code checkpoints, but its public trajectories record every shell command the agent ran, and that turns out to be enough. In the run we study here the agent creates its im-plementation file with a single heredoc write and afterwards modifies it only through small self-contained text edits and 
+
+sed one-liners. Replaying those write and edit operations in a sandbox reconstructs the exact state of the file after ev-ery agent action, indexed in execution order, and we validate the reconstruction by checking that the replayed final file is byte for byte identical to the published final workspace. For this run, reconstruction adds a per-action risk curve to the endpoint score. Following the original analysis, we carry the last valid reading through temporary syntax errors, so those states are not independent measurements. The official pass ratio is still available only at the end. 
+
+The run. We picked the highest-debt run in the working tier, the GPT-5.5 xhigh reimplementation of gowsdl , a tool that fetches a WSDL service description, possibly over the network, and generates Go client code from it. The run passes 90.5% of the official hidden tests and banks an agree2 SDLI of 10.85 and a union SDLI of 12.66, the maximum in Ta-ble 2 under both channels. The task is security-relevant by nature. The program downloads remote XML and parses it, so transport security and XML handling merit review. 
+
+Sixty-three actions of caution, one action of debt. Fig-ure 3 shows the anatomy. For its first 62 actions the agent writes no implementation code at all. It probes the reference executable, catalogs flags, renders sample services, and diffs outputs. At action 63 it writes the entire 1,296-line imple-mentation in one shot, and that single write already carries every CWE class any scanner ever reports on this run. The re-ports concern a TLS verification bypass behind the tool’s -i 
+
+flag (CWE-295), xml.etree parsing (CWE-611, CWE-20), URL and file-path handling (CWE-22), and a gofmt 
+
+subprocess call (CWE-77). These rule labels do not establish exploitability. The remaining 53 actions are pure functional refinement. The agent nudges type naming, documentation placement, and edge cases in small verified steps until its own comparison harness passes all 11 bundled services, and the official evaluation lands at 90.5%. Three of the four scan-ners report overlapping CWE classes. Bandit reports all five classes at medium severity and below, Bearer also flags the TLS bypass and rates the path handling and the subprocess call high, Semgrep independently flags the TLS bypass and the XML parsing at high severity and adds a dynamic-URL audit signal (CWE-939), while CodeQL reports nothing on this file. Across all of those actions the risk reading never moves. The union Rt steps from 0 to 14.0 at action 63, the agree2 reading to 12.0, and both stay there to the end of the run. 
+
+Fidelity pressure and the scanner signal. The most telling finding is the TLS bypass. The origi-nal gowsdl exposes a -i flag that skips certificate verification, so the agent faithfully recreates it using 
+
+ssl._create_unverified_context , and three in-dependent scanners flag exactly that idiom. The XML pars-ing debt has the same character, since the reference tool’s behavior is easiest to clone with the permissive standard li-brary parser. Preserving the reference interface can therefore conflict with removing a scanner finding. Whether the op-tional bypass is a vulnerability depends on the intended trust boundary and deployment. 
+
+Persistence in the available MirrorCode traces. The available MirrorCode checkpoints also show persistent read-ings. Across all 463 scanned checkpoints in its 13 public runs, the agree2 risk reading never decreases even once, six of the seven agree2-debt-carrying runs already show the agree2 pattern at the first scanned checkpoint, and the latest entry we observe anywhere is checkpoint 23 of 80. The union reading decreases exactly once in 463 checkpoints, when a pkl refactor deleted flagged path-handling code along with its advisories. None of the 35 recorded context compaction events coincided with a decrease in agree2, and one tracked HIGH-severity weak-crypto pattern grew from 2 to 6 call sites by run end. These traces show persistent class-level readings. They do not establish that all findings persist at the same sites or that sudden entry is universal. 
+
+RQ3. In the gowsdl case, all observed classes first appear with one implementation write and persist to the final state. The agree2 reading never decreases across the available Mir-rorCode checkpoints. This supports inspecting early imple-mentation states, while sparse sampling and class-level ag-gregation limit conclusions about individual findings. 
+
+# 7 Is the Debt Repairable Once Pointed Out? 
+
+RQ3 says the entry step is observable. RQ4 asks what hap-pens if we act on it. We rewind the gowsdl trajectory to action 63, the first action with scanner findings, and hand the freshly written file to a repair model together with security feedback. The original agent is not available to us, so Gemini 3.1 Pro plays the repairer, and the repair is delivered as exact search and replace edit blocks, the way coding agents actually edit files. Suppressing the scanner is forbidden and does not help, since we strip nosec comments before re-scanning. We compare four feedback arms. The exact findings with rule, CWE, line, and message, or only the sentence that a scanner flagged the file, each as a single attempt and as a retry loop of up to five rounds. Every candidate is verified four ways, Figure 3: Reconstructed gowsdl run. Action 63 writes the implementation, and the recorded readings then remain constant, with the last valid reading carried through syntax errors. Self-check pass ratios are separate from the official final evaluation. The edited branch shows both the measured union score (3.25) and the adjusted score (7.0) retaining three advisory classes. Neither score establishes exploitability.   
+
+> Feedback and budget Observed outcome Precise, one attempt Parser and URL changes, with a rewritten TLS context. Local output preserved. Precise, up to five Same checks passed in one round with an independently generated candidate. Vague, one attempt Parser change only. TLS bypass remained flagged. Vague, up to five Additional TLS changes by round two. Advisory classes remained.
+
+Table 4: Repair arms on one gowsdl state using Gemini 3.1 Pro. The prompt required preserving the -i option and byte-identical local WSDL output, and forbade scanner suppres-sion. a fresh scan, a compile check, byte-level comparison of the generated Go output on all 11 bundled services, and a replay of the agent’s 18 later edits on top of the fix. Table 4 sum-marizes the arms. Full prompts and candidate files are in the artifact. 
+
+Precise feedback reduces the scanner signal. With ex-act findings, the single-attempt arm changed the parser to 
+
+defusedxml , added an http/https URL-scheme allowlist, and replaced the TLS context construction. It retained certificate-verification bypass under -i , as the prompt re-quired. Thus the changed TLS idiom should not be described as removing that capability. The generated Go output re-mained byte-identical on 11 local services, and all 18 later edits replayed successfully. These checks establish local be-havioral compatibility, not security against adversarial inputs or equivalent hidden-test performance. The vague single-attempt arm changed only the XML parser. The vague retry arm made additional TLS changes on its second round. This case suggests that feedback detail can affect a repair attempt, but one run and one repair model cannot establish general success rates or the advantage of intervening early. 
+
+The scanner can be satisfied without being right. In this case, 16 of the 21 initial findings belong to the advisory-heavy classes CWE-22, CWE-77, and CWE-939. These reports flag operations that may be legitimate for a CLI tool and need contextual review. We do not treat every finding in these classes as harmless, or assume behavior-preserving repair is impossible. The precise-feedback candidate routed fetching through 
+
+build_opener().open() , after which some Bandit and Semgrep matches disappeared. The measured union reading fell to 3.25 even though the relevant fetching ca-pability remained. Bearer still flagged path handling. For the illustrative repaired branch in Figure 3, we retain the three advisory classes at their original weights, yielding 7.0. This adjusted reading is an explicit accounting choice, not a mea-sured post-repair scanner score or a lower bound on true risk. Multiple tools exposed this mismatch, but tool agree-ment alone cannot validate a repair. 
+
+RQ4. This single case demonstrates edits that reduce scanner findings while preserving tested local behavior. It also shows that an equivalent API rewrite can lower a score without removing a security-relevant capability. Exploit validation and broader repair trials are needed before claiming reliable vulnerability repair. 8 Implications for Trustworthy Agentic Systems 
+
+## 8.1 What Checkpoint Monitoring Adds 
+
+The gowsdl replay locates persistent findings at action 63, before the remaining 53 actions of functional refinement. A final-state scan would detect these same classes. The demon-strated benefit is earlier visibility and localization to an im-plementation action, not additional detection coverage. Our large-population scores are themselves endpoint readings and cannot establish an advantage over final-only scanning. We have not quantified transient findings missed at the endpoint, compared early and late repair cost, or tested whether earlier feedback improves repair success. 
+
+## 8.2 Adoption Paths for SDLI 
+
+We see three possible uses for SDLI, each requiring further evaluation. 
+
+In-line risk gauge in agentic IDEs. SDLI can be surfaced alongside the existing test-pass gauge in tools like Cursor, Windsurf, and Copilot Workspace. The lightweight Bandit, Bearer, and Semgrep scans at each checkpoint complete in seconds, fast enough for real-time feedback, and agree2 ex-cludes classes reported by only one tool. When Rt rises, the IDE can warn the developer before the agent commits further to a risky architectural path. 
+
+Stop-condition for autonomous agent loops. A moni-toring policy could pause an agent when current risk rises or cumulative SDLI exceeds a budget. Current risk must be checked separately because SDLI ignores increases after progress plateaus. Our case study identifies a possible inter-vention point, without establishing optimal timing. This is es-pecially relevant for long-running autonomous agents where human oversight is deferred (Takerngsaksiri et al. 2025). 
+
+Reward-shaping signal for agent post-training. The same-task variation in Table 3 motivates testing whether val-idated lower-risk alternatives can inform preference-based training. SDLI as a per-step penalty ( Rt · ∆Gt) can shape agent policy through reinforcement or preference-based learning (Schulman et al. 2017; Rafailov et al. 2023; Hong, Lee, and Thorne 2024), but we have not tested such training. Rewards based only on scanner readings may favor detector evasion. 
+
+## 8.3 Future Work 
+
+Broader intervention studies should cover multiple tasks and repair models, building on self-refinement work (Shinn et al. 2023; Madaan et al. 2023; Chen et al. 2023; He and Vechev 2023). Replaying additional ProgramBench runs would pro-vide risk traces, but full SDLI also requires reliable inter-mediate progress. Other priorities are extending language coverage and evaluating human review of advisory findings at their point of entry. 
+
+## 8.4 Limitations 
+
+Validity and attribution. We have not performed a stratified manual validation or exploit-based assessment of the popu-lation findings. Two tools may report different sites within one class, and our grouping ignores multiplicity. The reported rates therefore concern SAST findings. We did not fingerprint findings against initial repositories or classify them as pre-existing, introduced, resolved, or reintroduced. SWE-bench findings may predate the agent, and transcript extraction can omit code needed to assess a flow. These limitations prevent attributing the measured risk to agent changes. 
+
+Coverage and comparability. The oracle covers Python, and its output depends on rules, weights, and scan scope. Advisory-heavy classes affect both union and agree2. The large populations use endpoint scores, while MirrorCode has heterogeneous checkpoints and recorded progress proxies. Missing intermediate states can hide both entry and removal. We have not evaluated checkpoint-frequency sensitivity or total monitoring overhead. Repeated runs share tasks and models, so the rates describe these selected artifacts rather than independent samples of deployments. The three-run MirrorCode working subset is too small for a stable pop-ulation estimate. 
+
+Intervention evidence. The gowsdl run was selected for its high score. Its repair uses one model, with compatibility checked on 11 bundled services rather than the official hid-den tests. Retaining -i preserves a TLS bypass, and fewer scanner matches do not prove fewer exploitable defects. The experiment demonstrates feasibility of localized feedback and edits, without establishing reliable steering, general re-pair success, or a cost advantage over endpoint repair. 
+
+# 9 Conclusion 
+
+We introduced SDLI to couple scanner readings with in-creases in historical-best functional progress. Endpoint mea-surements show that working solutions can carry SAST find-ings, while MirrorCode and a reconstructed ProgramBench case expose their persistence over recorded states. Same-task variation motivates studying lower-risk alternatives, but does not establish steerability. The repair case preserves tested local behavior while reducing scanner readings, and also exposes how equivalent code can evade pattern matching. Validating findings, attributing them to changes, and com-paring checkpoint intervention with final-state scanning re-main necessary steps toward a security metric with stronger operational meaning. 
+
+# Reproducibility 
+
+SWE-Agent trajectories, 4 MirrorCode, 5 and ProgramBench submissions 6 are public. Our SDLI scripts, per-trajectory BBCS scans, the case study replay, the repair experiment with full prompts and every candidate file, and all intermediate ar-tifacts are archived on Zenodo. 7 The configurations specify Bandit 1.8.0, Bearer 1.49.0, and CodeQL 2.20.0. Semgrep is recorded as 1.101.0 in the SWE-bench/MirrorCode configu-ration and 1.170.0 in the ProgramBench configuration. 
+
+> 4https://huggingface.co/datasets/nebius/SWE-agent-trajectories
+> 5https://epoch.ai/blog/mirrorcode-preliminary-results
+> 6https://github.com/ProgramBench/submissions
+> 7https://doi.org/10.5281/zenodo.19886200
+
+# References 
+
+Adamczewski, T.; Rein, D.; Owen, D.; and Brand, F. 2026. MirrorCode: Evidence that AI Can Already Do Some Weeks-Long Coding Tasks. https://epoch.ai/blog/ mirrorcode-preliminary-results. Epoch AI, co-developed with METR. Accessed: April 2026. Bearer, Inc. 2024. Bearer: Code Security Scanning Tool (SAST). https://github.com/Bearer/bearer. Version 1.49.0. Accessed: April 2026. Bhatt, M.; Chennabasappa, S.; Nikolaidis, C.; Wan, S.; Ev-timov, I.; Gabi, D.; Song, D.; Ahmad, F.; Aschermann, C.; Fontana, L.; Frolov, S.; Giri, R. P.; Kapil, D.; Kozyrakis, Y.; LeBlanc, D.; Milazzo, J.; Straumann, A.; Synnaeve, G.; Von-timitta, V.; Whitman, S.; and Saxe, J. 2023. Purple Llama CyberSecEval: A Secure Coding Benchmark for Language Models. arXiv preprint arXiv:2312.04724 .Cemri, M.; Pan, M. Z.; Yang, S.; Agrawal, L. A.; Chopra, B.; Tiwari, R.; Keutzer, K.; Parameswaran, A.; Klein, D.; Ram-chandran, K.; et al. 2025. Why do multi-agent llm systems fail? arXiv preprint arXiv:2503.13657 .Chen, M.; Tworek, J.; Jun, H.; Yuan, Q.; Pinto, H. P. D. O.; Kaplan, J.; Edwards, H.; Burda, Y.; Joseph, N.; Brockman, G.; et al. 2021. Evaluating large language models trained on code. arXiv preprint arXiv:2107.03374 .Chen, X.; Lin, M.; Schärli, N.; and Zhou, D. 2023. Teach-ing large language models to self-debug. arXiv preprint arXiv:2304.05128 .Ding, J.; Long, S.; Pu, C.; Zhou, H.; Gao, H.; Gao, X.; He, C.; Hou, Y.; Hu, F.; Li, Z.; et al. 2025. NL2Repo-Bench: Towards Long-Horizon Repository Generation Evaluation of Coding Agents. arXiv preprint arXiv:2512.12730 .GitHub. 2024. CodeQL: Semantic Code Analysis Engine. https://codeql.github.com/. Version 2.20.0. Accessed: April 2026. He, J.; and Vechev, M. 2023. Large language models for code: Security hardening and adversarial testing. In Proceedings of the 2023 ACM SIGSAC Conference on Computer and Communications Security , 1865–1879. Hong, J.; Lee, N.; and Thorne, J. 2024. Orpo: Monolithic preference optimization without reference model. In Pro-ceedings of the 2024 Conference on Empirical Methods in Natural Language Processing , 11170–11189. Jimenez, C. E.; Yang, J.; Wettig, A.; Yao, S.; Pei, K.; Press, O.; and Narasimhan, K. 2023. Swe-bench: Can language models resolve real-world github issues? arXiv preprint arXiv:2310.06770 .Le, T.; Thai, M. V.; Manh, D. N.; Nhat, H. P.; and Bui, N. D. 2025. SWE-EVO: Benchmarking coding agents in long-horizon software evolution scenarios. arXiv preprint arXiv:2512.18470 .Lipsanen, P.; Rannikko, L.; Christophe, F.; Kalliokoski, K.; Stirbu, V.; and Mikkonen, T. 2026. Shift-Up: A Frame-work for Software Engineering Guardrails in AI-native Software Development–Initial Findings. arXiv preprint arXiv:2604.20436 .Liu, Z.; Wang, Z.; Liu, H.; and Li, W. 2026. An Empirical Study on Static Application Security Testing (SAST) Tools for Python. In Proceedings of the 48th IEEE/ACM Interna-tional Conference on Software Engineering (ICSE) . Rio de Janeiro, Brazil: IEEE/ACM. Lopes, C. V.; Maj, P.; Martins, P.; Saini, V.; Yang, D.; Zitny, J.; Sajnani, H.; and Vitek, J. 2017. DéjàVu: a map of code duplicates on GitHub. Proceedings of the ACM on Program-ming Languages , 1(OOPSLA): 1–28. Madaan, A.; Tandon, N.; Gupta, P.; Hallinan, S.; Gao, L.; Wiegreffe, S.; Alon, U.; Dziri, N.; Prabhumoye, S.; Yang, Y.; et al. 2023. Self-refine: Iterative refinement with self-feedback. Advances in neural information processing sys-tems , 36: 46534–46594. Meneely, A.; Srinivasan, H.; Musa, A.; Tejeda, A. R.; Mokary, M.; and Spates, B. 2013. When a Patch Goes Bad: Exploring the Properties of Vulnerability-Contributing Commits. In 2013 ACM/IEEE International Symposium on Empirical Software Engineering and Measurement , 65–74. Mojica, I. J.; Adams, B.; Nagappan, M.; Dienst, S.; Berger, T.; and Hassan, A. E. 2013. A large-scale empirical study on software reuse in mobile apps. IEEE software , 31(2): 78–86. Pearce, H.; Ahmad, B.; Tan, B.; Dolan-Gavitt, B.; and Karri, R. 2025. Asleep at the keyboard? assessing the security of github copilot’s code contributions. Communications of the ACM , 68(2): 96–105. Perl, H.; Dechand, S.; Smith, M.; Arp, D.; Yamaguchi, F.; Rieck, K.; Fahl, S.; and Acar, Y. 2015. VCCFinder: Finding Potential Vulnerabilities in Open-Source Projects to Assist Code Audits. In Proceedings of the 22nd ACM SIGSAC Conference on Computer and Communications Security .Prana, G. A. A.; Sharma, A.; Shar, L. K.; Foo, D.; Santosa, A. E.; Sharma, A.; and Lo, D. 2021. Out of sight, out of mind? How vulnerable dependencies affect open-source projects. 
+
+Empirical Software Engineering , 26(4): 59. PyCQA. 2024. Bandit: A Security Linter for Python. https: //bandit.readthedocs.io/en/latest/. Version 1.8.0. Accessed: April 2026. Rafailov, R.; Sharma, A.; Mitchell, E.; Manning, C. D.; Er-mon, S.; and Finn, C. 2023. Direct preference optimization: Your language model is secretly a reward model. Advances in neural information processing systems , 36: 53728–53741. Ray, P. P. 2025. A review on vibe coding: Fundamentals, state-of-the-art, challenges and future directions. Authorea Preprints .Sandoval, G.; Pearce, H.; Nys, T.; Karri, R.; Garg, S.; and Dolan-Gavitt, B. 2023. Lost at c: A user study on the security implications of large language model code assistants. In 32nd USENIX Security Symposium (USENIX Security 23) , 2205– 2222. Schreiber, M.; and Tippe, P. 2025. Security Vulnerabilities in AI-Generated Code: A Large-Scale Analysis of Public GitHub Repositories. In International Conference on Infor-mation and Communications Security , 153–172. Springer. Schulman, J.; Wolski, F.; Dhariwal, P.; Radford, A.; and Klimov, O. 2017. Proximal policy optimization algorithms. 
+
+arXiv preprint arXiv:1707.06347 .Semgrep, Inc. 2024. Semgrep: Lightweight Static Analysis for Many Languages. https://github.com/semgrep/semgrep. Versions 1.101.0 and 1.170.0. Shinn, N.; Cassano, F.; Gopinath, A.; Narasimhan, K.; and Yao, S. 2023. Reflexion: Language agents with verbal re-inforcement learning. Advances in neural information pro-cessing systems , 36: 8634–8652. Shukla, S.; Joshi, H.; and Syed, R. 2025. Security degra-dation in iterative AI code generation: A systematic analysis of the paradox. In 2025 IEEE International Symposium on Technology and Society (ISTAS) , 1–8. IEEE. Siddiq, M. L.; and Santos, J. C. S. 2022. SecurityEval Dataset: Mining Vulnerability Examples to Evaluate Ma-chine Learning-Based Code Generation Techniques. In Pro-ceedings of the 1st International Workshop on Mining Soft-ware Repositories Applications for Privacy and Security .Śliwerski, J.; Zimmermann, T.; and Zeller, A. 2005. When Do Changes Induce Fixes? In Proceedings of the Second International Workshop on Mining Software Repositories ,24–28. Takerngsaksiri, W.; Pasuksmit, J.; Thongtanunam, P.; Tan-tithamthavorn, C.; Zhang, R.; Jiang, F.; Li, J.; Cook, E.; Chen, K.; and Wu, M. 2025. Human-in-the-loop software development agents. In 2025 IEEE/ACM 47th International Conference on Software Engineering: Software Engineering in Practice (ICSE-SEIP) , 342–352. IEEE. Tihanyi, N.; Bisztray, T.; Jain, R.; Ferrag, M. A.; Cordeiro, L. C.; and Mavroeidis, V. 2023. The formai dataset: Gen-erative ai in software security through the lens of formal verification. In Proceedings of the 19th international con-ference on predictive models and data analytics in software engineering , 33–43. Vero, M.; Mündler, N.; Chibotaru, V.; Raychev, V.; Baader, M.; Jovanović, N.; He, J.; and Vechev, M. 2025. BaxBench: Can LLMs Generate Correct and Secure Backends? arXiv preprint arXiv:2502.11844 .Wu, F.; Liu, X.; and Xiao, C. 2023. Deceptprompt: Ex-ploiting llm-driven code generation via adversarial natural language instructions. arXiv preprint arXiv:2312.04730 .Yang, J.; Jimenez, C. E.; Wettig, A.; Lieret, K.; Yao, S.; Narasimhan, K.; and Press, O. 2024. Swe-agent: Agent-computer interfaces enable automated software engineer-ing. Advances in Neural Information Processing Systems ,37: 50528–50652. Yang, J.; Lieret, K.; Ma, J.; Thakkar, P.; Pedchenko, D.; Sootla, S.; McMilin, E.; Yin, P.; Hou, R.; Synnaeve, G.; et al. 2026. ProgramBench: Can Language Models Rebuild Programs From Scratch? arXiv preprint arXiv:2605.03546 .Zerouali, A.; Mens, T.; Decan, A.; and De Roover, C. 2022. On the impact of security vulnerabilities in the npm and rubygems dependency networks. Empirical Software Engi-neering , 27(5): 107. Zimmermann, M.; Staicu, C.-A.; Tenny, C.; and Pradel, M. 2019. Small world with high risks: A study of security threats in the npm ecosystem. In 28th USENIX Security symposium (USENIX security 19) , 995–1010.

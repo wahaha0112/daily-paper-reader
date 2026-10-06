@@ -1,0 +1,365 @@
+Title: Continuous Assurance of Agentic Security Auditors for Software Delivery Decision Gates
+
+URL Source: https://arxiv.org/pdf/2609.35266v1
+
+Published Time: Tue, 29 Sep 2026 04:24:56 GMT
+
+Number of Pages: 20
+
+Markdown Content:
+# Continuous Assurance of Agentic Security Auditors for Software Delivery Decision Gates 
+
+Guy Lupo 1⋆, Nguyen Hung Nguyen 1, Viet Vo 1, M.A.P. Chamikara 3, Guangdong Bai 2, Nazatul Haque Sultan 3, and Alsharif Abuadbba 3 
+
+> 1
+
+Swinburne University of Technology, Melbourne, Australia 
+
+{glupo,nguyenhungnguyen,vvo}@swin.edu.au  
+
+> 2
+
+City University of Hong Kong, Kowloon Tong, Hong Kong 
+
+g.bai@cityu.edu.hk  
+
+> 3
+
+CSIRO, Australia 
+
+{chamikara.arachchige,nazatul.sultan,sharif.abuadbba}@csiro.au 
+
+Abstract. Large language model (LLM)-based repository auditors are increasingly deployed as security controls within continuous integration (CI) pipelines, where their findings admit, block, or delay software changes. As Agentic Software Development Life Cycle (SDLC) Security Controls, their non-deterministic behaviour changes the evidence, while organisa-tional risk appetite and jurisdictional or data-sovereignty policy change its interpretation. Point-in-time audits therefore cannot maintain current assurance for merge decisions. Existing approaches do not fully address this complexity: life cycle audits are episodic, runtime operations focus on individual operations, and provenance systems record evidence without determining whether it remains admissible under the active configuration and policy. Consequently, existing approaches cannot provide a context-bound, continuously recomputed assurance verdict within the time budget of a software-delivery gate. We propose the Policy–Evidence–Execution Separation Pattern, imple-mented by the executable Trustworthy AI Posture (TAIP) Assurance Engine and operated as Continuous Control Posture Assurance (CCPA). By separating policy from stable execution and binding admitted evidence to a versioned Posture Tree, the same assurance logic operates unchanged across models, environments and policy profiles, allowing assurance to remain current as AI-enabled security controls evolve. The approach is evaluated using the unmodified RepoAudit repository auditor on a fixed Python Null Pointer Dereference benchmark. A re-tained evidence repository comprising 80 RepoAudit executions across two OpenAI model configurations ( gpt-4o-mini and gpt-4.1 ) is first established. TAIP then measures the time required to recompute and publish an updated assurance posture following policy, evidence and model-context changes before evaluating the same assurance computation across increasing numbers of independent Decision Gateway contexts. The maximum observed policy-to-posture latency was 1.1 ms (rounded) across three policy-class cycles in one execution. At 1,000 independent assurance contexts, full policy-triggered recomputation with one worker  
+
+> ⋆
+
+Corresponding author: glupo@swin.edu.au arXiv:2609.35266v1 [cs.CR] 28 Sep 2026 2 G. Lupo et al. recorded a maximum aggregate refresh of 1.62 s , below the predeclared   
+
+> 5 s Decision Gateway budget. These single-host measurements concern assurance over retained evidence and exclude RepoAudit execution and provider inference.
+> Keywords: Agentic SDLC Security Controls · Software Assurance · Continuous Control Posture Assurance · Policy–Evidence–Execution Sep-aration · Test–Evaluate–Verify–Validate · RepoAudit
+
+## 1 Introduction 
+
+LLM-based repository auditors are moving into continuous integration and release workflows. They inspect repositories, choose code paths, invoke analysis tools, validate candidate defects, and emit findings that may influence merge decisions. When such findings can admit or block code, the auditor is no longer merely an audit tool; it functions as an Agentic Software Development Life Cycle Security Control. RepoAudit [8] is a concrete example: it performs repository-level bug discovery via model-guided exploration, memory, data-flow reasoning, and path validation. Although its assigned function is detective, its behaviour is model-dependent and partially non-deterministic [18]. Traditional security assurance assumes that a control’s behaviour remains sufficiently stable for an earlier assessment to remain valid. This assumption generally holds for deterministic static analysers, whose implementation defines a predictable relationship between inputs and outputs. Their assurance status can therefore be retained until the binary, ruleset, scope, or operating environment changes. It does not hold as reliably for LLM-backed controls: a provider can swap the underlying model behind an unchanged name, alter routing, impose rate limits, or suffer transient degradation while the control continues to return findings. The delivery pipeline may therefore observe an apparently successful run even when the configuration that justified adoption is not the configuration that executed. These conditions create two independent paths of change. Technical events can alter the evidence produced (e.g., via the requested model, provider routing, repository state, prompt, validator, runtime conditions, or evidence window). Policy events can change the interpretation of unchanged evidence (e.g., via risk appetite, advisory versus blocking use, provider restrictions, retention duties, or jurisdictional and data-sovereignty requirements). Findings, logs, token records, timing, and integrity manifests make the control observable, but observability alone does not establish that it remains adequate, effective, and sustainable for the active gate. Evaluation becomes assurance evidence only when it is bound to a scoped claim, configuration, evidence window, and intended decision [9, 10, 25]. Existing work addresses individual parts of the assurance chain, but no single approach provides continuous, context-bound assurance for SDLC decision gates. Frameworks such as SMACTR, Ethics-Based Auditing, capAI, GAFAI, and Z-Inspection organise the assessment of AI systems around defined scope, roles, artefacts, tests, and reporting procedures [6, 14, 16, 21, 29]. Their operative unit is an audit engagement or lifecycle review whose interpretation remains dependent Continuous Assurance for Agentic Security Auditors 3
+
+on human judgement. AgentSentinel and SmartAuditFlow can intercept an opera-tion and apply a configured security audit before enforcement [11], functioning as an automated detective assurance with a feedback loop. RepoAudit, RFCAudit, and SpecAuditor automate target-specific audit work and produce findings or validation evidence focused on operational controls [8, 12, 27, 28]. These systems materially improve testing and local control action, but their published designs do not bind longitudinal evidence about the auditor’s (i) adequacy (is it the right tool for the job), (ii) detection efficacy (is it working, available, and maintaining integrity), and (iii) cost (is it affordable over time) to a current organisational claim in a way that supports a decision gate consequence. Provenance and bill-of-materials mechanisms preserve evidence for replay and investigation, but they do not select the active claim, policy, or decision budget [17, 20, 24]. This gap becomes a scaling constraint in agentic SDLCs: manual review is limited by reviewer capacity, while decision contexts increase with repositories, pipelines, and autonomous coding workstreams. Each gate still requires a current verdict, the governing policy version, admissible evidence for the active configuration, and publication within its decision budget. Without these properties, it either reuses stale assurance or applies an unexamined default. Existing continuous auditing and posture-management approaches provide temporal monitoring, but not the context-bound integration needed to support changing agentic controls at soft-ware delivery gates [2, 4, 15]. Continuous assurance instead allows a gate to wait for a current posture. If the wait budget expires, the result is Inconclusive , and policy determines whether to block the change or permit it through a recorded exception. Timely posture computation is therefore essential for machine-speed SDLC decisions [4, 15, 23]. We address this gap with the Policy–Evidence–Execution Separation Pattern ,which separates three concerns that evolve independently. Policy defines the conditions under which a control may be relied upon and the consequence of each posture state; evidence records observations, provenance, and configuration; and execution applies stable assurance semantics. The pattern represents an assurance claim as a versioned Posture Tree whose leaves bind admissible evidence and whose internal nodes aggregate results through a uniform Composite interface. Consequently, models, operating contexts, and policy profiles can change without requiring corresponding changes to the assurance engine. We realise the pat-tern in the Trustworthy AI Posture (TAIP) Assurance Engine and operate it through Continuous Control Posture Assurance (CCPA). TAIP is placed around unmodified RepoAudit, which serves as a representative agentic SDLC security control. The assurance harness responds to changes in admitted evidence, model context, and policy profile by recomputing the resulting control posture. We use 
+
+time-to-posture to denote the elapsed time from event admission to publication of the corresponding Posture Card at the local gate interface. This study addresses the following research questions: 
+
+RQ1. What software architecture enables current and scalable assurance of agentic SDLC security controls at software delivery decision gates? 4 G. Lupo et al.  
+
+> Fig. 1. Assurance context used throughout the paper. Manual lifecycle audit and auto-mated checking produce point-in-time or local evidence. TAIP occupies the assurance layer, binding the versioned claim and policy profile to control-test evidence before publishing a current posture for the SDLC decision gate.
+
+RQ2. Can CCPA recompute policy-bound control posture within the decision budget of a software delivery gate, and how does its performance scale with evidence depth and the number of independent gate contexts? RQ2 evaluates one property that is necessary for continuous assurance at an SDLC Decision Gateway: the time required to replace an inherited assurance decision with a current posture after a relevant change. The policy-change experiment provides the primary measurement because it isolates the TAIP assurance computation from RepoAudit execution, model inference and evidence collection. Additional experiments demonstrate that the same computation admits newly collected evidence, invalidates evidence generated under gpt-4o-mini when the operating context changes to gpt-4.1 , and republishes a current posture without re-executing the underlying security control. 
+
+Answer to RQ2. Within the tested single-host environment, the maximum ob-served policy-to-posture latency was 1.1 ms (rounded) for one Context. At 1,000 
+
+independent assurance contexts, full policy-triggered recomputation with one worker recorded a maximum aggregate refresh of 1.62 s . Both values were below the predeclared 5 s Decision Gateway budget, supporting temporal adequacy within the tested evidence and execution conditions. The experiment is intentionally bounded. It evaluates the responsiveness of the assurance mechanism rather than RepoAudit detection accuracy, distributed execution, comparative performance against alternative assurance approaches, or production-scale deployment. Those questions remain the subject of future work. Continuous Assurance for Agentic Security Auditors 5
+
+1.1 Contributions 
+
+The paper makes three primary contributions. 1. A separation pattern for assuring agentic SDLC security controls. 
+
+We introduce the Policy–Evidence–Execution Separation Pattern , which sep-arates organisational policy, control evidence, and assurance execution. The pattern uses versioned Posture Trees, context-bound evidence admission, mandatory assurance branches, and exception-preserving aggregation. 2. An executable implementation. We implement the pattern in the TAIP Assurance Engine and integrate it with unmodified RepoAudit through a 
+
+Continuous Control Posture Assurance (CCPA) event loop. The implementa-tion supports evidence admission, policy re-evaluation, context invalidation, posture publication, and replay. 3. A reproducible decision-gate evaluation. We evaluate assurance over retained evidence, reporting maximum observed latency of 1.1 ms (rounded) for one Context and 1.62 s for aggregate refresh across 1,000 contexts with one worker. These measurements isolate assurance computation from live RepoAudit execution. 
+
+## 2 Related Work and Assurance-Layer Gap 
+
+Figure 1 separates the operational SDLC, the detective control, control testing and evidence production, and the assurance decision. The comparison below focuses on the final layer: whether prior work (i) binds evidence to the active context and policy, (ii) aggregates that evidence into a single current claim decision, (iii) represents absence of a defensible decision, and (iv) returns a result within an SDLC gate budget. 
+
+2.1 Lifecycle audit and assurance processes 
+
+SMACTR and related internal-audit frameworks structure scoping, artefact col-lection, testing, reflection, and reporting; Ethics-Based Auditing, capAI, GAFAI, and Z-Inspection translate principles or regulatory expectations into review pro-cedures [6, 14, 16, 21, 29]. They remain well suited to adoption review, periodic reassessment, accountability, and sign-off. Their primary outputs are engagement reports, checklists, scorecards, or assurance arguments produced through expert judgement. However, rerunning an engagement after each model, evidence, or policy event does not yield a bounded event-to-verdict path for every affected merge gate. Requirements-engineering work similarly cautions that checklist completion can obscure context-dependent and evolving trustworthiness [5]. Evidence-based and dynamic assurance-case research strengthens the link between claims, arguments, and evidence [9, 22]. It emphasises that evidence is meaningful only relative to the claim it supports and that assurance must evolve with the system. The remaining software-engineering question is how to instantiate such arguments for a population of SDLC gates, recompute them 6 G. Lupo et al. 
+
+after discrete events, and publish a verdict with measured event-to-publication latency. 
+
+2.2 Agentic audit tools and runtime controls 
+
+RepoAudit, RFCAudit, SmartAuditFlow, and SpecAuditor automate different audit targets and reasoning strategies [8, 12, 27, 28]. RepoAudit explores reposi-tory paths and validates candidate defects; RFCAudit checks implementations against normative RFC requirements; SmartAuditFlow adapts plan-and-execute reasoning for smart-contract auditing; and SpecAuditor derives and applies au-dit specifications. These systems produce findings and target-specific validation evidence. From the assurance-layer perspective, however, they typically stop before evaluating a versioned organisational claim over multiple evidence families under the currently active policy. They function as active testers, whose outputs must still be interpreted by a mechanism that decides whether the auditor itself remains fit to influence a merge gate. AgentSentinel operates at a different layer. It traces computer-use agent operations, suspends a sensitive operation, and runs a context-aware security audit before enforcement [11]. This demonstrates low-latency interception and local blocking based on whether an operation violates configured security conditions. It does not, however, aggregate longitudinal evidence to determine whether the monitor or auditor remains adequate, effective, and sustainable under the active model, evidence window, and policy profile. Its local allow or block is therefore a control action rather than a posture decision over the control. 
+
+2.3 Evidence infrastructure and continuous posture precedents 
+
+Provenance graphs, semantic accountability models, and AI bill-of-materials proposals improve traceability across prompts, actions, actors, components, and evidence [17,20,24]. These records support forensics, replay, and auditability. They remain policy-neutral until another mechanism selects the claim, checks scope and freshness, applies thresholds and mandatory rules, preserves exceptions, and publishes a gate consequence. Agentic auditability proposals reinforce integrity, coverage, temporal coherence, verifiability, and governance alignment at this evidence boundary [19]. NIST AI RMF supplies the Test–Evaluate–Verify–Validate vocabulary used in TAIP, while control frameworks supply the continuing adequacy, operating effectiveness, and viability criteria [3, 26]. Information-security continuous moni-toring and posture management demonstrate the value of recomputing control status as infrastructure changes [2, 4, 15]. They provide the temporal precedent, but they do not define a context-bound assurance object for a non-deterministic SDLC auditor, a first-class Inconclusive state, or a policy-specific gate action evaluated against a declared waiting budget. Continuous Assurance for Agentic Security Auditors 7
+
+Table 1. Related work positioned by the artefact delivered to the assurance layer. Work class, examples, and primary output Missing assurance-layer function at an SDLC gate Lifecycle audit: SMACTR, capAI, GAFAI, Z-Inspection. Report, checklist, scorecard, or sign-off. No bounded recomputation after each policy, model, evidence, or expiry event. Dynamic assurance cases. Versioned claim, argument, and supporting evidence. No measured event loop that publishes one current result across a population of merge gates. Agentic audit: RepoAudit, RFCAudit, SmartAuditFlow, SpecAuditor. Findings and target-specific validation evidence. No claim-level aggregation about the audit control’s own continuing fitness. Runtime control: AgentSentinel. Local allow, suspend, or block for an intercepted operation. No longitudinal multi-objective posture over the control under a versioned policy. Provenance and AIBOM infrastructure. Traces, manifests, component and actor records. No active context admission, root state, gate consequence, or decision budget. Continuous monitoring and posture management. Recurring indicators and control status. No context-bound assurance object and explicit uncertainty consequence for an agentic SDLC control. 
+
+2.4 Assurance-layer integration gap 
+
+The gap is not another defect detector. It is a software layer that turns hetero-geneous control-test evidence into one accountable and current decision. That layer must separate fact from judgement, bind each observation to the scope and configuration that produced it, reject incompatible or stale evidence before aggregation, retain failed and inconclusive branches, and externalise the conse-quence of uncertainty in policy. It must also publish inside the gate’s decision budget. TAIP does not replace the work in Table 1; it converts its evidence into a forward-looking control posture that can govern an SDLC decision. 
+
+## 3 RQ1: The Policy–Evidence–Execution Separation Pattern 
+
+3.1 Pattern Structure: Composite Posture and Recursive TEVV 
+
+RQ1 asks how assurance can remain current while an agentic control, its evidence, and its policy change independently. The Policy–Evidence–Execution Separation Pattern assigns each concern a boundary: policy defines what must hold , evidence records what occurred , and execution defines how a claim decision is computed 
+
+[1, 13]. 8 G. Lupo et al. 
+
+Posture Tree and Composite objects. A posture instance is P = ( T, π, κ ), where 
+
+T = ( V, A, r ) is a versioned rooted Posture Tree, π is a policy profile, and κ
+
+is the active control-context fingerprint. The root r is the accountable claim; internal nodes represent objectives and risks; leaves represent control tests and terminate at evidence interfaces. Following the Composite design pattern, every node implements the same request [7]: 
+
+assure (n, P, E ) → Rn.
+
+A leaf binds and verifies evidence; a Composite evaluates its children first. 
+
+Rn carries state, score, child results, evidence references, and exceptions. Tree shape and bindings are configuration; π supplies thresholds, weights, mandatory branches, evidence windows, and gate consequences. At evaluation time, B(E, ℓ, κ ) admits only observations whose scope, configu-ration, provenance, freshness, and integrity match leaf ℓ and context κ; B(E, κ )
+
+denotes these bindings over all leaves. Thus 
+
+Rr = ASSURE (T, π, B (E, κ )) . (1) Changing a model or evidence source changes E or κ; changing risk appetite or sovereignty rules changes T or π; neither changes ASSURE .
+
+Recursive TEVV. Assurance Objects execute Test–Evaluate–Verify–Validate (TEVV) by post-order traversal [26]. Test invokes or replays the scoped control; 
+
+Evaluate translates and admits observations; Verify applies the policy rule at a leaf or branch; and Validate , at the root, determines whether the claim supports the intended SDLC decision. For mℓ admitted observations xℓ,j ∈ [0 , 1] , and for the admitted child set Cn with policy-normalised weights ¯wn,c ,
+
+s(n) = 
+
+
+
+1
+
+mℓmℓX
+
+> j=1
+
+xℓ,j , n = ℓ is a leaf ,
+
+X
+
+> c∈Cn
+
+¯wn,c s(c), n is a Composite ,
+
+X
+
+> c∈Cn
+
+¯wn,c = 1 . (2) Score and state are separate: required missing or inadmissible evidence yields 
+
+Inconclusive ; a mandatory failure or missed threshold yields Fail ; an aggregate pass with a non-mandatory exception yields Pass with Exceptions ; otherwise it yields Pass . Exceptions remain attached to the root. 
+
+> ASSURE(n,P,E): if leaf(n): return VERIFY(n, B(E,n,P.context), P.policy) C = [ASSURE(c,P,E) for c in children(n)] q = VERIFY(n, AGGREGATE(C,P.policy), C, P.policy) if root(n): q = VALIDATE(q,C,P.policy) return Result(q,C,evidence_refs,exceptions)
+
+This gives assurance from instantiation : a control receives T , π, and κ before governing a gate and remains Inconclusive until evidence binds. Context change Continuous Assurance for Agentic Security Auditors 9
+
+Table 2. Per-context complexity of maintaining current assurance over RepoAudit. SMACTR denotes operational audit effort rather than CPU time. 
+
+Approach Dominant recurring work Complexity 
+
+SMACTR [21] Repeat artefact review, testing, and expert assessment. 
+
+O(A)
+
+AgentSentinel [11] Monitor runtime operations and escalate selected events. 
+
+O(R + Qλ )
+
+TAIP Bind evidence and evaluate the Posture Tree in full; selective path updates are theoretical. Full (evaluated): O(M + N )
+
+Incremental (bound): 
+
+O ∆M + [
+
+> ℓ∈∆L
+
+A(ℓ)
+
+!
+
+≤ O(∆M + kD )                
+
+> Notation. Ais the effort of one audit engagement; Ris the number of monitored operations; Qis the number of escalations; λis the cost of one LLM audit; Mis the number of observations; Nis the number of Posture Tree nodes; kis the number of affected leaves; and Dis the tree depth.
+
+invalidates incompatible bindings; policy change re-evaluates compatible evidence. Full evaluation over M observations and N nodes is O(M + N ); for changed leaves ∆L ,
+
+Tinc = O ∆M + [
+
+> ℓ∈∆L
+
+A(ℓ)
+
+!
+
+≤ O(∆M + kD ), (3) where A(ℓ) is the ancestor set, k = |∆L |, and D is tree depth. Equation 3 gives a theoretical incremental bound. The reported RQ2 scale conditions instead force full recomputation, O(M + N ) per Context, with all Contexts affected. 
+
+Scalability comparison. In Table 2 SMACTR incurs O(A) operational effort per reassessment due to repeated artefact review, testing, and expert judgement, while AgentSentinel requires O(R + Qλ ) to monitor runtime operations and escalate selected events to an LLM auditor. In contrast, TAIP costs O(M + N )
+
+for full evaluation and O(∆M + kD ) for incremental updates, as bounded in Eq. 3. These expressions characterise different workloads; they do not establish a measured speedup. RQ2 evaluates TAIP’s full-recomputation path against a gate budget, leaving incremental performance and comparative speedup unmeasured. 
+
+3.2 TAIP Assurance Engine Implementation over RepoAudit 
+
+RepoAudit is the unmodified operational control; the Trustworthy AI Posture (TAIP) Assurance Engine is the assurance harness around it. TAIP invokes pinned RepoAudit through its command-line interface but neither parses the target repository nor selects defects [8]. An experiment-owned runner invokes RepoAudit in a unique directory and retains detect_info.json , dfbscan.log , provider-call records, status, timing, and hashes. Its manifest records repository, commit, bug class, model identities, provider route, prompt, validator, and evidence window. 10 G. Lupo et al. Code realisation of Policy–Evidence–Execution separation 
+
+> Technical change: model, route, repository, prompt, validator, evidence window Policy change: thresholds, weights, mandatory rules, wait budget, consequence RepoAudit + capture
+> pinned commit model flag raw outputs run ID, hashes timing
+> Evidence adapter
+> E1 findings E2 operations E3 egress E4 stability E5 integrity
+> Context admission
+> scope match configuration match freshness schema and integrity
+> Posture Tree + policy
+> stable Composite TEVV recursion mandatory branches wait consequence
+> Posture Card + gate
+> branch states exceptions score or no score proceed or hold
+> Evidence facts + provenance Execution stable TEVV semantics Policy acceptability + consequence
+> No provider call is required for policy fan-out, invalidation, or replay.
+
+Fig. 2. Policy–Evidence–Execution Separation realised by TAIP over RepoAudit. Evi-dence owns facts and provenance, execution owns stable TEVV semantics, and policy owns acceptability and consequence. Policy fan-out, invalidation, and replay require no provider call. 
+
+The Control–Test Translation and Evidence Binding Layer is the only compo-nent that understands RepoAudit formats. repoaudit_adapter.build_bundle 
+
+maps raw outputs into five policy-neutral evidence families: findings, opera-tions, egress, stability, and integrity. leaf_evidence.build creates technical observations without encoding risk appetite. gate.Context checks each observa-tion against κ; stale, incomplete, integrity-failed, or mismatched records remain retained but are not admitted, producing Inconclusive .The engine loads T from objectives.yaml and π from PolicyProfile . Node ,
+
+ASSURE , and Result realise the Composite participants, traversal, and exception-preserving reply. ccpa.Controller triggers evaluation after evidence, execution, context, policy, or replay events and publishes the posture card, exception path, timing, and CI result. Dependencies are one-way: RepoAudit knows nothing about TAIP; the adapter knows formats but no policy; the technical oracle establishes facts but no risk appetite; and the engine knows only the Assurance Object contract. Format change is isolated to the adapter, policy change to the profile, and context change to admission. On liveness timeout TAIP publishes Inconclusive ; π, rather than the engine, selects a fail-open exception or fail-closed hold. 
+
+Answer to RQ1. The pattern combines a context-bound Posture Tree, runtime evidence binding, and Composite Assurance Objects executing recursive TEVV. TAIP realises it around unmodified RepoAudit through a process boundary, adapter, context gate, and stable engine. Controls can therefore be instantiated with assurance semantics and recomputed after evidence or policy change without inheriting stale posture. Continuous Assurance for Agentic Security Auditors 11 
+
+## 4 RQ2: Can TAIP Recompute Current Posture Fast Enough for an SDLC Decision Gate? 
+
+4.1 Decision-gate use case 
+
+This experiment considers a software development pipeline in which human developers and AI coding agents continuously submit source code to an SDLC Decision Gateway. Before each merge decision, RepoAudit operates as an AI-enabled detective security control that analyses the repository and produces security evidence. The Decision Gateway must determine whether the control can still be trusted to support the release decision under the current policy and operating context. RepoAudit is used as the representative agentic SDLC security control, while the proposed Policy–Evidence–Execution Separation (PEES) pattern is imple-mented as the Trustworthy AI Posture (TAIP) assurance engine. TAIP continu-ously observes the evidence produced by RepoAudit, maintains the corresponding posture, and publishes a Posture Card representing the current assurance state presented to the Decision Gateway. The operational requirement is straightforward. Whenever new evidence is produced, the governing policy changes, or the control context changes, the Decision Gateway requires an updated posture before the pipeline reaches its declared waiting limit. The experiment therefore measures a single property of the proposed assurance mechanism: the time required to recompute and publish the updated posture after a relevant change has been observed. 
+
+RQ2. Can TAIP recompute and publish the current posture of an AI-enabled SDLC security control within the declared waiting budget of an SDLC Decision Gateway following a policy, evidence, or observable control-context change? The evaluation is intentionally restricted to temporal adequacy. TAIP is considered adequate when it produces a current Posture Card within the de-clared gate budget. RepoAudit detection accuracy, distributed deployment, and production operating cost are outside the scope of this experiment. 
+
+4.2 Experiment setup 
+
+The experiment was executed as a single-host Python workload in an isolated sandbox 4. Live provider calls were used only to acquire RepoAudit evidence; evidence translation, Context Admission, posture computation, replay, and scale measurement ran locally within the same environment. Table 3 records the exe-cution boundary, evidence volume, and controls used to support reproducibility. RepoAudit is the experimental control subject, rather than the contribution being benchmarked [8]. The Python null-pointer-dereference benchmark provides one fixed audit condition. Repeated runs create a real Evidence Window whose findings and operational records can be admitted by TAIP. RQ2 starts after that evidence exists. RepoAudit execution time and provider latency are therefore separated from the time required to recompute posture.  
+
+> 4https://github.com/guylupo-stormtree/taip-repoaudit-posture
+
+12 G. Lupo et al. RepoAudit controls   
+
+> many repositories and agent workstreams RepoAudit A RepoAudit B RepoAudit ...
+
+TAIP Assurance Rig 
+
+> admit current evidence apply current policy recompute posture publish Posture Card
+
+SDLC Decision Gateway PROCEED or HOLD  
+
+> new evidence or context change Posture Card policy change
+> MEASURED: POSTURE REFRESH TIME
+> accepted change to current gate answer One performance measure is used throughout RQ2:
+> elapsed time to publish current posture.
+
+Fig. 3. RQ2 experimental boundary. RepoAudit controls provide new evidence or an observable control-context change. A policy change may also originate from the Decision Gateway. TAIP recomputes posture and publishes the resulting Posture Card. The measured quantity is the elapsed time from the accepted change to the current gate answer. 
+
+Table 3. Experimental execution environment and evidence volume. 
+
+Setup item Experimental configuration Execution environment Isolated, single-host Python sandbox. The experiment did not use a distributed assurance service, external database, or separate computation cluster. Runtime Python 3.13.5 . RepoAudit, the evidence collector, the TAIP Assurance Engine, the invariant checks, the scale harness, and the report generator were executed as Python processes. Control subject and benchmark RepoAudit was pinned and executed without modification at commit 
+
+160f5bc . The audit condition was the Python null-pointer-dereference toy benchmark. Model coverage 2 model configurations were exercised: gpt-4o-mini and gpt-4.1 . Each model was executed 40 times. Evidence volume The retained evidence repository contained 80 live RepoAudit executions and 80 run-level Evidence Bundles. Each bundle preserved findings, validator output, process telemetry, routed-model identity, timing, provider cost, manifests, checksums, and execution logs. Evidence acquisition and local computation Model-provider calls were required for live RepoAudit evidence acquisition. Context Admission, Posture Tree evaluation, policy recomputation, model-context invalidation, replay, and Posture Card publication were performed locally. Policy-only recomputation, invalidation, and replay required no additional provider call. Scale configuration The breadth sweep evaluated up to 1,000 independent Contexts using one-worker and eight-worker configurations. The gate decision budget was declared as 5 s before measurement. Reproducibility controls The control revision, model identity, repository scope, Policy Profile, Evidence Window, run identifier, timestamps, manifests, and hashes were retained. Each run used a separate output directory, and previous evidence was not overwritten. Result provenance Reported timings are reconciled against sequence-summary.json and 
+
+scale-summary.json . Maximum-based macros separate corrected reporting from legacy generator labels. 
+
+4.3 Posture-recomputation test 
+
+The test follows one repeated sequence. RepoAudit is first executed against the NPD benchmark and its outputs are retained as Evidence Bundles. The Evidence Adapter translates those bundles into policy-neutral observations. TAIP admits observations whose scope and configuration match the active Context and computes an initial Posture Card. The harness then introduces a policy, evidence, Continuous Assurance for Agentic Security Auditors 13        
+
+> Table 4. Events that trigger posture recomputation. Trigger Change introduced Required TAIP response Policy change The risk appetite or gate rule changes while the Evidence Window remains fixed. Recompute the same evidence under the new Policy Profile and publish the revised Posture Card without another RepoAudit or provider call. New evidence A completed RepoAudit run adds compatible evidence to the active Evidence Window. Admit the new evidence, recompute the Posture Tree, and publish posture based on the enlarged window. Control-context change The active model, route, repository, prompt, validator, or another fingerprinted property changes before compatible evidence is available. Reject the inherited evidence and publish Inconclusive ; the earlier Posture Card must not be reused. Broadcast change One policy or observable control event affects several Contexts. Recompute each affected Posture Tree independently and publish one current Posture Card per Context.
+
+or observable control-context change, starts the timer when TAIP accepts the event, and stops it when the replacement Posture Card is published at the local gate interface. The same operation is repeated with a full Evidence Window and with increasing numbers of independent Posture Tree instances. Table 4 lists the tested events. Every row exercises the same assurance operation and the same performance measure. The expected output is checked before the elapsed time is accepted. A fast result that inherits stale evidence does not pass the test. Two workload dimensions are used. Evidence volume is increased from an initial run to the full Evidence Window of 40 runs for each model. The number of Posture Tree instances is then increased to 1,000. The scale sweep uses one frozen, schema-valid evidence bundle with a distinct fingerprint for each replicated Context. This tests the cost of assurance computation. It does not represent 1,000 simultaneous live RepoAudit executions or 1,000 different detector workloads. Each scale condition was repeated 30 times. The policy sequence contains three policy-class cycles (E2, E5 and E5b) in one execution. We report sample maxima and, for the eight-worker series, lower medians: the 15th ordered duration out of 30. These descriptive statistics do not establish population percentiles or a worst-case execution-time bound. 14 G. Lupo et al.         
+
+> Table 5. RQ2 experimental progression and maximum observed refresh times. Test Evidence base Assurance scale Result Policy sequence Retained compatible evidence; E2, E5, E5b 1 Context 1.1 ms (rounded); 3 cycles in one execution Evidence base 80 executions across 2 models Context-bound admission Source evidence, not timing repetitions Scale policy Frozen evidence per Context 1,000 Contexts; 1 worker 1.62 s; 30 repetitions
+
+4.4 Results 
+
+RQ2 evaluates whether TAIP can publish current posture within the gate budget. Retained RepoAudit evidence supported a single-context policy sequence and a repeated scale sweep. The former measures event-to-publication latency; the latter measures aggregate refresh over affected Contexts. Evidence volume and timing sample sizes are reported separately. 
+
+Establishing the assurance unit. Retained RepoAudit evidence supported the single-context policy sequence. Across its three policy-class cycles (E2, E5 and E5b), the maximum event-admission-to-publication time was 1.1309 ms, reported as 1.1 ms after rounding. These cycles belong to one sequence execution. The timed path excludes repository scanning, model invocation and evidence collection, isolating the cost of recomputing and publishing a current Posture Card. 
+
+Expanding the evidence repository. A further 40 RepoAudit executions were produced using gpt-4.1 , increasing the retained repository to 80 executions across 2 model configurations. The expanded repository provides alternative evidence records and model-bound contexts for policy, evidence-admission, and context-invalidation tests. Evidence acquisition is outside the timed assurance path; TAIP recomputes posture over existing, context-compatible records. 
+
+Aggregate scale result. At 1,000 independent Contexts, the one-worker policy-change condition used full recomputation with all Contexts affected. Its maximum full-fleet refresh time across 30 repetitions was 1616.3 ms, reported as 1.62 s, below the 5 s budget. This is the headline scale result; it measures completion of the affected workload, not an average per-Context latency. 
+
+Isolated scaling behaviour. Table 6 and Figure 4 report the eight-worker series. Lower median refresh time increased from 1.3 ms at one Context to 288.9 ms at 1,000 Contexts. The corresponding maxima were 4.1, 180.0, 35.3 and 317.0 ms, all below the 5 s budget. The elevated ten-Context maximum is retained as observed; these timings alone do not identify its cause. Continuous Assurance for Agentic Security Auditors 15              
+
+> Table 6. Isolated policy-change scaling: eight workers, full recomputation, all Contexts affected; 30 repetitions per condition. Contexts Lower median Maximum observed 11.3 ms 4.1 ms 10 3.9 ms 180.0 ms 100 30.0 ms 35.3 ms 1,000 288.9 ms 317.0 ms Continuous Assurance for Agentic Security Auditors 15
+> Fig. 4. Eight-worker policy-change scaling with full recomputation and all Contexts a!ected. Lower medians and observed maxima correspond to Table 6; the one-worker headline is reported in Table 5.
+
+1,000 Contexts. The corresponding maxima were 4.1, 180.0, 35.3 and 317.0 ms, all below the 5 s budget. The elevated ten-Context maximum is retained as observed; these timings alone do not identify its cause. The 317.0 ms maximum concerns eight workers, whereas the 1.62 s headline concerns one worker. The one-Context scale cell also di!ers from the three-cycle policy sequence underlying 1.1 ms. Each value remains tied to its own workload and timing sample. 
+
+Current posture rather than a fast stale answer. Timing trials were accepted only when TAIP published the state required by the triggering change. Applying the strict Policy Profile to unchanged evidence moved the root posture from Pass with Exceptions to Fail . A model-context change withdrew the previously applicable evidence and published Inconclusive , while replay was reproduced. These checks bind the reported latency to a current assurance decision. 
+
+Answer to RQ2. Within the tested single-host environment, the maximum observed single-context policy-to-posture latency was 1.1 ms (rounded). Full policy-triggered recomputation across 1,000 Contexts with one worker recorded a maximum aggregate refresh of 1.62 s. Both were below the 5 s budget, supporting temporal adequacy for the stated samples and execution conditions. 
+
+Industry implication. AI-enabled security controls can produce findings, reports, and alerts, but their output does not independently establish whether the evidence remains applicable to the current model context or governing policy. TAIP performs that missing assurance step before the Decision Gateway consumes the result. The measured assurance unit and aggregate scale result indicate  
+
+> Fig. 4. Eight-worker policy-change scaling with full recomputation and all Contexts affected. Lower medians and observed maxima correspond to Table 6; the one-worker headline is reported in Table 5.
+
+The 317.0 ms maximum concerns eight workers, whereas the 1.62 s headline concerns one worker. The one-Context scale cell also differs from the three-cycle policy sequence underlying 1.1 ms. Each value remains tied to its own workload and timing sample. 
+
+Current posture rather than a fast stale answer. Timing trials were accepted only when TAIP published the state required by the triggering change. Applying the strict Policy Profile to unchanged evidence moved the root posture from Pass with Exceptions to Fail. A model-context change withdrew the previously applicable evidence and published Inconclusive, while replay was reproduced. These checks bind the reported latency to a current assurance decision. 
+
+Answer to RQ2. Within the tested single-host environment, the maximum observed single-context policy-to-posture latency was 1.1 ms (rounded). Full policy-triggered recomputation across 1,000 Contexts with one worker recorded a 16 G. Lupo et al. 
+
+maximum aggregate refresh of 1.62 s. Both were below the 5 s budget, supporting temporal adequacy for the stated samples and execution conditions. 
+
+Industry implication. AI-enabled security controls can produce findings, reports, and alerts, but their output does not independently establish whether the evidence remains applicable to the current model context or governing policy. TAIP performs that missing assurance step before the Decision Gateway consumes the result. The measured assurance unit and aggregate scale result indicate that current, context-bound posture can be published inside the tested pipeline waiting budget, allowing assurance to participate in automated merge decisions rather than remain a retrospective audit activity. The experiment does not establish RepoAudit detection accuracy, distributed performance, comparative speedup, or production-wide suitability. It establishes the temporal adequacy of the assurance mechanism under the reported single-host configuration. 
+
+4.5 Limitations and claim boundary 
+
+Sample size and interpretation. Three policy-class cycles in one execution and 30 repetitions per scale condition provide descriptive observations only. The reported maxima are sample extremes, not worst-case execution-time bounds or future deadline guarantees. The predeclared 5 s budget is unchanged; the original protocol’s population-tail target is not established. 
+
+Deployment boundary. The experiment ran on one isolated Python host; no distributed-performance claim is made. Distributed scheduling, network delay, high availability, multi-host coordination, and production orchestration remain future work. 
+
+Replicated Contexts. They are replicated from one frozen, schema-valid Evidence Bundle and assigned distinct fingerprints. The claim concerns TAIP assurance computation over independent Posture Tree instances. It does not concern detector diversity or 1,000 concurrent live RepoAudit runs. 
+
+Comparison boundary. There is no manual, passive-monitoring, or competing-posture-engine baseline. This is deliberate. The experiment reports the absolute time required by the proposed mechanism against a gate budget, rather than a speedup over an alternative. The result is also bounded to one Python NPD condition, one pinned Re-poAudit revision, two model configurations, one Evidence Window design, and one local execution environment. It evaluates posture recomputation, not univer-sal RepoAudit accuracy, complete defect detection, production CI availability, developer waiting experience, or the organisational effect of repeated holds. TAIP can reject evidence that is stale, incomplete, or bound to another Context, but it cannot correct an erroneous benchmark label, an incorrect adapter, or an unsupported source finding. Continuous Assurance for Agentic Security Auditors 17 
+
+## 5 Conclusion 
+
+This paper introduced the Policy–Evidence–Execution Separation pattern and its TAIP Assurance Engine implementation for continuous, context-bound assurance of agentic security controls at software-delivery gates. Separating stable assurance execution from versioned policy and admissible evidence allows posture to be recomputed without re-running the underlying auditor. Using retained RepoAudit evidence, the maximum observed single-context policy-to-posture latency was 1.1 ms (rounded). Full policy-triggered recomputation across 1,000 independent assurance Contexts with one worker recorded a maximum aggregate refresh of 1.62 s, below the predeclared 5 s Decision Gateway budget. These observations support inline assurance within the evaluated single-host conditions. The contri-bution is an assurance architecture that checks whether evidence remains current and context-compatible before a software-delivery decision. 
+
+5.1 Future directions 
+
+A potential future direction is to evaluate our approach across different agentic security controls, repository types, model providers, and security tasks. Such studies should assess not only recomputation latency, but also the correctness of evidence admission, resistance to malformed or adversarial evidence, and the operational effects of false holds, exceptions, and inconclusive decisions on development workflows. Future work includes incremental, dependency-aware recomputation. Imple-mentations could identify shared evidence and policy dependencies, update only affected Posture Tree paths, and measure whether this reduces latency and memory use at enterprise scale.   
+
+> Generative AI Use Disclosure. Generative AI tools assisted language revision, architectural reorganisation, and code-planning review. The authors remain responsible for the research design, code, source verification, experimental execution, retained data, statistical analysis, and all claims in the manuscript.
+> Disclosure of Interests. The authors have no competing interests to declare that are relevant to the content of this article.
+
+## References                                         
+
+> 1. Agarwal, V., Butler, C., Degenaro, L., Kumar, A., Sailer, A., Steinder, G.: Compliance-as-Code for Cybersecurity Automation in Hybrid Cloud. IEEE In-ternational Conference on Cloud Computing, CLOUD 2022-July , 427–437 (2022). https://doi.org/10.1109/CLOUD55607.2022.00066, iSBN: 9781665481373 2. Al-Karaki, J.N., Gawanmeh, A., El-Yassami, S.: GoSafe: On the practical characterization of the overall security posture of an organization informa-tion system using smart auditing and ranking. Journal of King Saud Uni-versity -Computer and Information Sciences 34 (6), 3079–3095 (Jun 2022). https://doi.org/10.1016/j.jksuci.2020.09.011, https://linkinghub.elsevier.com/ retrieve/pii/S1319157820304742
+
+18 G. Lupo et al. 3. Calagna, K., Cassidy, B., Park, A.: Applying the COSO Framework and Principles to Help Implement and Scale Artificial Intelligence (2021), https://www.coso.org/ _files/ugd/3059fc_e17fdcd298924d4ca4df1a4b453b4135.pdf 
+
+4. Dempsey, K.L., Chawla, N.S., Johnson, L.A., Johnston, R., Jones, A.C., Orebaugh, A.D., Scholl, M.A., Stine, K.M.: Information Security Continuous Monitoring (ISCM) for federal information systems and organizations. Tech. Rep. NIST SP 800-137, National Institute of Standards and Technology, Gaithersburg, MD (2011). https://doi.org/10.6028/NIST.SP.800-137, https://nvlpubs.nist.gov/nistpubs/ Legacy/SP/nistspecialpublication800-137.pdf , edition: 0 5. Donati, D., Inverardi, P., Melis, B., Pelliccione, P.: Beyond the Checklist: Re-thinking Trustworthiness in AI System. In: 2025 IEEE 33rd International Re-quirements Engineering Conference Workshops (REW). pp. 468–474 (Sep 2025). https://doi.org/10.1109/REW66121.2025.00071, https://ieeexplore.ieee.org/ abstract/document/11190292 , iSSN: 2770-6834 6. Floridi, L., Holweg, M., Taddeo, M., Silva, J.A., Mökander, J., Wen, Y.: ca-pAI - A Procedure for Conducting Conformity Assessment of AI Systems in Line with the EU Artificial Intelligence Act. SSRN Electronic Journal (2022). https://doi.org/10.2139/ssrn.4064091 7. Gamma, E., Helm, R., Johnson, R., Vlissides, J.: Design Patterns: Elements of Reusable Object-Oriented Software. Addison-Wesley (1994) 8. Guo, J., Wang, C., Xu, X., Su, Z., Zhang, X.: RepoAudit: An Autonomous LLM-Agent for Repository-Level Code Auditing. In: Proceedings of the 42nd International Conference on Machine Learning. Proceedings of Machine Learning Research, vol. 267, pp. 21083–21100. PMLR (2025), https://proceedings.mlr.press/v267/ guo25n.html 
+
+9. Haugen, O.I., McGeorge, D., Myhrvold, T., Agrell, C., Hafver, A.: As-surance of AI-enabled systems. In: Proceedings of the 2024 8th Interna-tional Conference on Advances in Artificial Intelligence. pp. 100–106. ICAAI ’24, Association for Computing Machinery, New York, NY, USA (Mar 2025). https://doi.org/10.1145/3704137.3704153, https://dl.acm.org/doi/10. 1145/3704137.3704153 
+
+10. Herrera-Poyatos, A., Del Ser, J., López de Prado, M., Wang, F.Y., Herrera-Viedma, E., Herrera, F.: Responsible Artificial Intelligence Systems: A Roadmap to Society’s Trust through Trustworthy AI, Auditability, Accountability, and Governance. arXiv preprint arXiv:2503.04739 (2025), https://arxiv.org/abs/2503.04739 
+
+11. Hu, H., Chen, P., Zhao, Y., Chen, Y.: AgentSentinel: An End-to-End and Real-Time Security Defense Framework for Computer-Use Agents. In: Proceedings of the 2025 ACM SIGSAC Conference on Computer and Communications Security. pp. 3535–3549. CCS ’25, Association for Computing Machinery, New York, NY, USA (Nov 2025). https://doi.org/10.1145/3719027.3765064, https://dl.acm.org/ doi/10.1145/3719027.3765064 
+
+12. Lin, M., Chen, H.: SpecAuditor: Generating Audit Specifications for LLM-Driven Bug Detection. In: 2026 IEEE Symposium on Security and Privacy (SP). pp. 3396–3413 (May 2026). https://doi.org/10.1109/SP63933.2026.00206, https:// ieeexplore.ieee.org/document/11573444 , iSSN: 2375-1207 13. Lupo, G., Vo, B.Q., Locke, N.: Trustworthy AI Posture (TAIP): A Framework for Continuous AI Assurance of Agentic Systems at Horizontal and Vertical scale (2026). https://doi.org/10.48550/ARXIV.2603.03340, https://arxiv.org/ abs/2603.03340 , version Number: 1 Continuous Assurance for Agentic Security Auditors 19 14. Markert, T., Langer, F., Danos, V.: GAFAI: Proposal of a Generalized Audit Framework for AI (2022). https://doi.org/10.18420/INF2022_107, http://dl.gi. de/handle/20.500.12116/39480 , iSBN: 9783885797203 15. Minkkinen, M., Laine, J., Mäntymäki, M.: Continuous Auditing of Artificial In-telligence: a Conceptualization and Assessment of Tools and Frameworks. Dig-ital Society 1(3), 21 (Dec 2022). https://doi.org/10.1007/s44206-022-00022-2, 
+
+https://link.springer.com/10.1007/s44206-022-00022-2 
+
+16. Mökander, J., Morley, J., Taddeo, M., Floridi, L.: Ethics-Based Auditing of Au-tomated Decision-Making Systems: Nature, Scope, and Limitations. Science and Engineering Ethics 27 (4), 44 (Aug 2021). https://doi.org/10.1007/s11948-021-00319-4, https://link.springer.com/10.1007/s11948-021-00319-4 
+
+17. Naja, I., Markovic, M., Edwards, P., Pang, W., Cottrill, C., Williams, R.: Us-ing Knowledge Graphs to Unlock Practical Collection, Integration, and Au-dit of AI Accountability Information. IEEE Access 10 , 74383–74411 (2022). https://doi.org/10.1109/ACCESS.2022.3188967, https://ieeexplore.ieee.org/ document/9815594/ 
+
+18. National Institute of Standards and Technology: The NIST Cybersecurity Frame-work (CSF) 2.0. NIST Cybersecurity White Paper NIST CSWP 29, U.S. Department of Commerce (Feb 2024). https://doi.org/10.6028/NIST.CSWP.29 19. Phiri, C.C.: Creating Characteristically Auditable Agentic AI Systems. In: Proceedings of the Intelligent Robotics FAIR 2025. pp. 1–14. IntRob ’25, Association for Computing Machinery, New York, NY, USA (Sep 2025). https://doi.org/10.1145/3759355.3759356, https://dl.acm.org/doi/10. 1145/3759355.3759356 
+
+20. Radanliev, P., Santos, O., Maple, C., Atefi, K.: Operationalising artificial intelligence bills of materials for verifiable AI provenance and lifecycle assurance. Frontiers in Computer Science 8 (Jan 2026). https://doi.org/10.3389/fcomp.2026.1735919, 
+
+https://www.frontiersin.org/journals/computer-science/articles/10. 3389/fcomp.2026.1735919/full 
+
+21. Raji, I.D., Smart, A., White, R.N., Mitchell, M., Gebru, T., Hutchinson, B., Smith-Loud, J., Theron, D., Barnes, P.: Closing the AI Accountability Gap: Defining an End-to-End Framework for Internal Algorithmic Auditing. In: Proceedings of the 2020 Conference on Fairness, Accountability, and Transparency. pp. 33–44. FAT* 2020 (2020). https://doi.org/10.1145/3351095.3372873, https://doi.org/ 10.1145/3351095.3372873 
+
+22. Sabuncuoglu, A., Burr, C., Maple, C.: Justified Evidence Collection for Argument-based AI Fairness Assurance. In: Proceedings of the 2025 ACM Conference on Fairness, Accountability, and Transparency. pp. 18–28. FAccT ’25, Association for Computing Machinery, New York, NY, USA (Jun 2025). https://doi.org/10.1145/3715275.3732003, https://dl.acm.org/doi/10. 1145/3715275.3732003 
+
+23. Sinan, M., Shahin, M., Gondal, I.: Integrating Security Controls in DevSec-Ops: Challenges, Solutions, and Future Research Directions. Journal of Software Evolution and Process 37 (6), e70029 (2025). https://doi.org/10.1002/smr.70029, 
+
+https://onlinelibrary.wiley.com/doi/10.1002/smr.70029 
+
+24. Souza, R., Gueroudji, A., DeWitt, S., Rosendo, D., Ghosal, T., Ross, R., Balaprakash, P., Da Silva, R.F.: PROV-AGENT: Unified Provenance for Tracking AI Agent Interactions in Agentic Workflows. In: 2025 IEEE International Conference on eScience (eScience). pp. 467–473 (Sep 20 G. Lupo et al. 2025). https://doi.org/10.1109/eScience65000.2025.00093, https://ieeexplore. ieee.org/document/11181558 , iSSN: 2325-3703 25. Staufer, L., Yang, M., Reuel, A., Casper, S.: Audit Cards: Contextualizing AI Evaluations (Apr 2025). https://doi.org/10.48550/arXiv.2504.13839, http://arxiv. org/abs/2504.13839 , arXiv:2504.13839 [cs] 26. Tabassi, E.: AI Risk Management Framework (2023). https://doi.org/10.6028/NIST.AI.100-1, https://nvlpubs.nist.gov/nistpubs/ ai/NIST.AI.100-1.pdf 
+
+27. Wei, Z., Sun, J., Hou, Z., Zhang, Z., Zhao, Z., Li, C., Wan, M., Dong, J.: SmartAu-ditFlow: A dynamic plan-execute framework for advanced smart contract security analysis. ACM Transactions on Software Engineering and Methodology 35 (8), 233 (2026). https://doi.org/10.1145/3785364 28. Zheng, M., Wang, C., Liu, X., Guo, J., Feng, S., Zhang, X.: RFCAu-dit: An LLM Agent for Functional Bug Detection in Network Protocols (2025). https://doi.org/10.48550/ARXIV.2506.00714, https://arxiv.org/abs/ 2506.00714 , version Number: 2 29. Zicari, R.V., Brodersen, J., Brusseau, J., Dudder, B., Eichhorn, T., Ivanov, T., Kararigas, G., Kringen, P., McCullough, M., Möslein, F., Mushtaq, N., Roig, G., Stürtz, N., Tolle, K., Tithi, J.J., Van Halem, I., Westerlund, M.: Z-Inspection: A Process to Assess Trustworthy AI. IEEE Transactions on Technology and Society 
+
+2(2), 83–97 (2021). https://doi.org/10.1109/TTS.2021.3066209

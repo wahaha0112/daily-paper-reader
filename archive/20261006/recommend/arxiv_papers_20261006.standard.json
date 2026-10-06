@@ -1,16 +1,694 @@
 {
   "mode": "standard",
-  "generated_at": "2026-10-06T00:21:00.718239+00:00",
+  "generated_at": "2026-10-06T02:09:57.934062+00:00",
   "stats": {
     "mode": "standard",
-    "tag_count": 2,
-    "deep_divecandidates": 0,
-    "deep_cap": null,
-    "deep_selected": 0,
-    "quick_candidates": 0,
-    "quick_skim_target": 12,
-    "quick_selected": 0
+    "tag_count": 1,
+    "deep_divecandidates": 10,
+    "deep_cap": 6,
+    "deep_selected": 6,
+    "quick_candidates": 21,
+    "quick_skim_target": 11,
+    "quick_selected": 11
   },
-  "deep_dive": [],
-  "quick_skim": []
+  "deep_dive": [
+    {
+      "id": "2609.34456v1",
+      "source": "arxiv",
+      "title": "Breaking Windows Malware Detection: A Comprehensive Evaluation of Problem-Space Adversarial Robustness",
+      "abstract": "Problem-space evasion attacks have exposed critical weaknesses in machine learning-based malware detectors; yet, their evaluation remains fragmented across models, datasets, and attack methodologies, often neglecting domain-specific requirements such as executability and functionality preservation. We address this gap with a unified, large-scale evaluation of nine state-of-the-art evasion attacks against eight Windows malware detectors, including seven open-source models and one commercial detector, under executability-preserving conditions. Our study analyzes attack effectiveness, complementarity, transferability, and adversarial hardening to evaluate robustness along complementary dimensions. We show that detector vulnerability depends strongly on both model representation and attack type: raw-byte detectors are particularly susceptible to several classes of problem-space manipulation, but no detector family is uniformly robust across all attacks. Importantly, effectiveness is not explained by transformation-space size alone: the strongest attacks can achieve substantially higher success while using fewer distinct transformations and concentrating on a small set of high-impact manipulations. We further show that two complementary attacks are sufficient to cover approximately 99% of the adversarial examples produced by the remaining evaluated attacks. Transferability exhibits a different pattern from direct attack success: attacks with low direct success can produce highly transferable evasions. Finally, adversarial hardening is highly attack- and model-dependent: robustness gains often fail to transfer across attacks and can even increase susceptibility to unseen attacks. These findings highlight limitations in current malware robustness evaluations, establish a comprehensive empirical baseline, and clarify relationships between effectiveness, transferability, and defense robustness.",
+      "authors": [
+        "Mashal Zainab",
+        "Salijona Dyrmishi",
+        "Hamid Bostani",
+        "Lorenzo Cavallaro",
+        "Maxime Cordy"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR"
+      ],
+      "published": "2026-09-28T07:13:05+00:00",
+      "link": "https://arxiv.org/pdf/2609.34456v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Windows malware detection under problem-space adversarial attacks",
+      "llm_evidence_cn": "问题空间对抗攻击下的Windows恶意软件检测",
+      "llm_evidence": "问题空间对抗攻击下的Windows恶意软件检测",
+      "canonical_evidence": "问题空间对抗攻击下的Windows恶意软件检测",
+      "llm_tldr_en": "This paper unifies evaluation of nine evasion attacks against eight Windows malware detectors under executability-preserving conditions, analyzing effectiveness, transferability and adversarial hardening.",
+      "llm_tldr_cn": "问题空间逃逸攻击已暴露机器学习恶意软件检测器的严重弱点，但已有评估分散在模型、数据集和攻击方法上，常忽略可执行性与功能保持等域内要求。本文在保持可执行性的条件下，对九种先进逃逸攻击与八种Windows恶意软件检测器（含七个开源模型和一个商用检测器）开展统一的大规模评估，分析攻击有效性、互补性、迁移性与对抗加固等维度。结果揭示检测器在面对问题空间攻击时的脆弱性，为恶意软件检测的对抗鲁棒性研究提供统一、可复现的评估基准与加固启示。",
+      "llm_tldr": "问题空间逃逸攻击已暴露机器学习恶意软件检测器的严重弱点，但已有评估分散在模型、数据集和攻击方法上，常忽略可执行性与功能保持等域内要求。本文在保持可执行性的条件下，对九种先进逃逸攻击与八种Windows恶意软件检测器（含七个开源模型和一个商用检测器）开展统一的大规模评估，分析攻击有效性、互补性、迁移性与对抗加固等维度。结果揭示检测器在面对问题空间攻击时的脆弱性，为恶意软件检测的对抗鲁棒性研究提供统一、可复现的评估基准与加固启示。",
+      "llm_tags": [
+        "query:malware:composite"
+      ],
+      "matched_query_tag": "query:malware:composite",
+      "matched_query_text": "Papers central to 恶意软件与移动安全：研究 Android、Windows、恶意 JavaScript 检测分类与解释，关注混淆、对抗攻击、概念漂移、标签噪声和跨时间鲁棒性。, especially work that connects or combines: Android malware detection classification interpretation and obfuscation resilience; robust malware detection under adversarial attacks concept drift and noisy antivirus labels; malicious JavaScript and Windows malware detection using semantic and behavioral representations; Find malware detection and classification with realistic obfuscation, adversarial manipulation, temporal drift, label noise, and interpretable program behavior..",
+      "matched_requirement_id": "req-composite-malware",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.37669v1",
+      "source": "arxiv",
+      "title": "Retrieve, Reproduce, Reveal: Dissecting Retrieval-Augmented Software Vulnerability Detection",
+      "abstract": "Retrieval-Augmented Generation (RAG) is increasingly used to enhance Large Language Model (LLM)-based software vulnerability detection by grounding predictions in retrieved vulnerability knowledge, such as vulnerability reports. However, existing RAG-based software vulnerability detection (RAG4SVD) systems are often evaluated using proprietary models, which challenges open science and reproducibility. Further, studies use different datasets, custom knowledge bases, different backbone models, and diverse metrics, which hinders meaningful cross-system comparison. In this work, we study six open-source RAG4SVD systems and address these reproducibility and comparability challenges through (i) reproduction of their experimental settings under an open-weight setting, and (ii) a unified benchmark using a common dataset, metric suite, and pool of open-weight models. Further, RAG4SVD systems typically consist of multiple components, yet are often evaluated only as a whole system, i.e., end-to-end. Therefore, we perform (iii) a component-level analysis that decomposes representative RAG4SVD pipelines into input abstraction, knowledge retrieval, and detection. Our results demonstrate that reproducibility varies substantially across systems. Under the presented unified benchmark, published RAG4SVD performance does not transfer under a controlled open-weight evaluation and depends strongly on the used model. The component analysis shows that effective RAG4SVD depends on the alignment between pipeline stages. For example, oracle knowledge raises retrieval to near-optimal, yet performance remains low (0.51 pairwise accuracy), demonstrating that retrieval effectiveness alone is insufficient for reliable detection. These findings motivate evaluating RAG4SVD not only end-to-end, but at the level of pipeline components, and provide a basis for more standardized, RAG-aware evaluation practices.",
+      "authors": [
+        "Sabrina Kaniewski",
+        "Tim Krämer",
+        "Julius Bächle",
+        "Markus Enzweiler",
+        "Michael Menth",
+        "Tobias Heer"
+      ],
+      "primary_category": "cs.SE",
+      "categories": [
+        "cs.SE",
+        "cs.AI"
+      ],
+      "published": "2026-09-29T14:24:46+00:00",
+      "link": "https://arxiv.org/pdf/2609.37669v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "reproducible study of retrieval-augmented LLM software vulnerability detection",
+      "llm_evidence_cn": "检索增强LLM软件漏洞检测的可复现性研究",
+      "llm_evidence": "检索增强LLM软件漏洞检测的可复现性研究",
+      "canonical_evidence": "检索增强LLM软件漏洞检测的可复现性研究",
+      "llm_tldr_en": "RAG grounds LLM-based software vulnerability detection, but systems are evaluated with proprietary models and inconsistent datasets and metrics, hindering comparison. This work reproduces six open-source RAG4SVD systems, harmonizing settings, knowledge bases, backbones and metrics to expose reproducibility gaps.",
+      "llm_tldr_cn": "检索增强生成被广泛用于增强基于LLM的软件漏洞检测，但现有系统多用闭源模型评测，且数据集、知识库、骨干模型与指标各异，难以横向比较。本文复现六个开源RAG4SVD系统，统一实验设置、知识库、骨干与评价指标，系统剖析其可复现性与可比性问题。研究揭示当前检索增强漏洞检测评测的关键缺陷，为公平、可复现的比较奠定基础。",
+      "llm_tldr": "检索增强生成被广泛用于增强基于LLM的软件漏洞检测，但现有系统多用闭源模型评测，且数据集、知识库、骨干模型与指标各异，难以横向比较。本文复现六个开源RAG4SVD系统，统一实验设置、知识库、骨干与评价指标，系统剖析其可复现性与可比性问题。研究揭示当前检索增强漏洞检测评测的关键缺陷，为公平、可复现的比较奠定基础。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "software vulnerability detection localization and repair using static analysis dynamic analysis graph neural networks and large language models",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2610.01263v1",
+      "source": "arxiv",
+      "title": "Autonomous OSS Threat Detection via Taxonomy-Aligned LLMs",
+      "abstract": "Open source software (OSS) ecosystems face growing threats from sophisticated supply chain attacks including typosquatting, dependency confusion, Trojan Source obfuscation, malicious build injection, and CI/CD pipeline poisoning. Existing detection approaches rely on signature-based tools and rule-based systems that struggle to generalize across attack variants and emerging threat patterns. In this paper we propose a taxonomy-aligned large language model framework for automated detection and classification of OSS supply chain threats. We introduce a structured AV-xxx threat taxonomy covering five attack categories and construct a curated dataset of 999 verified real-world OSS supply chain incidents sourced from GitHub Security Advisories, CISA alerts, and security research reports spanning 2018 to 2026. Using taxonomy-aligned prompt engineering with GPT-4, our framework achieves 97.0\\% multi-class classification accuracy and 97.0\\% macro F1 score across all five threat categories. Comparative evaluation against five traditional machine learning baselines, one zero-shot open source LLM, and two fine-tuned neural models reveals a surprising finding: fine-tuned Llama 3.1 8B (70.5%) and SecRoBERTa (77.5%) both underperform simple TF-IDF classifiers (82.3%), while Mistral 7B without taxonomy alignment achieves only 65.7%. These results confirm that taxonomy-aligned prompting rather than model scale, domain pretraining, or fine-tuning is the critical factor enabling high classification accuracy. Our dataset and code are publicly available to support reproducible supply chain security research.",
+      "authors": [
+        "Md. Robiul Islam Niloy"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR"
+      ],
+      "published": "2026-10-01T07:54:44+00:00",
+      "link": "https://arxiv.org/pdf/2610.01263v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "detecting OSS supply chain threats such as typosquatting and dependency confusion",
+      "llm_evidence_cn": "检测开源供应链威胁如域名抢注与依赖混淆",
+      "llm_evidence": "检测开源供应链威胁如域名抢注与依赖混淆",
+      "canonical_evidence": "检测开源供应链威胁如域名抢注与依赖混淆",
+      "llm_tldr_en": "OSS ecosystems face supply chain attacks like typosquatting, dependency confusion and build injection that signature-based tools fail to generalize on. This paper proposes a taxonomy-aligned LLM framework and builds a curated dataset of 999 verified real-world incidents for automated detection and classification.",
+      "llm_tldr_cn": "针对签名和规则方法难以泛化到新型开源供应链攻击的问题，本文提出与威胁分类体系对齐的大语言模型框架，用于自动检测和分类开源软件供应链威胁。作者构建覆盖五类攻击的AV-xxx分类法，并从GitHub安全公告、CISA警报等来源整理999个经核实的真实事件数据集。该方法可提升对域名抢注、依赖混淆、构建注入等变体的检测泛化能力，为供应链安全监测提供支撑。",
+      "llm_tldr": "针对签名和规则方法难以泛化到新型开源供应链攻击的问题，本文提出与威胁分类体系对齐的大语言模型框架，用于自动检测和分类开源软件供应链威胁。作者构建覆盖五类攻击的AV-xxx分类法，并从GitHub安全公告、CISA警报等来源整理999个经核实的真实事件数据集。该方法可提升对域名抢注、依赖混淆、构建注入等变体的检测泛化能力，为供应链安全监测提供支撑。",
+      "llm_tags": [
+        "query:supply-chain:composite"
+      ],
+      "matched_query_tag": "query:supply-chain:composite",
+      "matched_query_text": "Papers central to 软件供应链安全：研究开源依赖和第三方库识别、软件成分分析、SBOM、恶意软件包及供应链漏洞传播；不关注物流供应链。, especially work that connects or combines: software supply chain security malicious dependencies package ecosystems and vulnerability propagation; software composition analysis third party library detection and dependency vulnerability identification; SBOM software and AI model bill of materials component provenance and security; Find security research on open-source software dependencies, third-party library identification, SBOM accuracy, malicious packages and transitive vulnerability propagation..",
+      "matched_requirement_id": "req-composite-supply-chain",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.35909v1",
+      "source": "arxiv",
+      "title": "Cheap to Hypothesize, Costly to Verify: The Defense Surface of Agentic Vulnerability Discovery",
+      "abstract": "Autonomous LLM agents turn vulnerability discovery into a repository-scale search: they generate many vulnerability hypotheses but can verify only a subset under a finite budget. We show that autonomous vulnerability discovery exhibits a hypothesis-verification asymmetry, where verifying a candidate hypothesis through reachability analysis, execution, and proof-of-concept construction is substantially more expensive than forming it. Under a finite resource budget, this makes autonomous discovery a resource-bounded selective-verification process, further exposing verification effort as a unique defense surface. We present RedHerring, which inserts certifiably safe decoys that divert verification effort from real vulnerabilities. Each decoy combines a CVE-derived vulnerability chain that attracts verification with a false bridge that keeps its dangerous sink unreachable. A private certificate lets the defender verify this property efficiently, while establishing the same fact from the released repository requires solving a computationally hard problem. RedHerring further adapts each decoy to the target repository so that it reads as ordinary program logic. Across 33 OSS-Fuzz projects, 70 evaluation instances, and five models under matched budgets, RedHerring reduces real vulnerabilities discovered by 38.7-60.4%. Trajectory analysis shows that agents spend 30.6-51.5% of completion tokens and an estimated 32.5-49.9% of runtime verifying decoys, showing that RedHerring redirects a substantial fraction of the fixed search budget toward decoys. When explicitly informed that decoys may be present, the agent adapts its search strategy, yet RedHerring still reduces vulnerabilities discovered by 37.2% relative to an informed Baseline, showing that its effectiveness does not depend on decoy secrecy.",
+      "authors": [
+        "Kaikai Zhang",
+        "Zihan Zhang",
+        "Yuchong Xie",
+        "Zesen Liu",
+        "Shuangjie Yao",
+        "Zhixiang Zhang",
+        "Dongdong She"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.AI"
+      ],
+      "published": "2026-09-28T07:14:39+00:00",
+      "link": "https://arxiv.org/pdf/2609.35909v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "LLM agent vulnerability discovery and verification budget",
+      "llm_evidence_cn": "LLM智能体漏洞发现与验证预算",
+      "llm_evidence": "LLM智能体漏洞发现与验证预算",
+      "canonical_evidence": "LLM智能体漏洞发现与验证预算",
+      "llm_tldr_en": "Autonomous LLM agents generate many vulnerability hypotheses but verify few under budget; the paper formalizes the hypothesis-verification asymmetry and proposes RedHerring decoys as a defense surface.",
+      "llm_tldr_cn": "自主LLM智能体把漏洞发现变成仓库级搜索，能生成大量漏洞假设却受限于预算只能验证其中一部分。本文指出该过程存在假设-验证不对称：用可达性分析、执行和PoC构造验证候选漏洞，远比提出假设昂贵，因此发现过程本质是资源受限的选择性验证。作者据此提出RedHerring，向代码中插入可证明安全的诱饵，把验证投入从真实漏洞上引开。该工作将验证投入识别为智能体漏洞发现的独特防御面，为防御研究提供新视角。",
+      "llm_tldr": "自主LLM智能体把漏洞发现变成仓库级搜索，能生成大量漏洞假设却受限于预算只能验证其中一部分。本文指出该过程存在假设-验证不对称：用可达性分析、执行和PoC构造验证候选漏洞，远比提出假设昂贵，因此发现过程本质是资源受限的选择性验证。作者据此提出RedHerring，向代码中插入可证明安全的诱饵，把验证投入从真实漏洞上引开。该工作将验证投入识别为智能体漏洞发现的独特防御面，为防御研究提供新视角。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "software vulnerability detection localization and repair using static analysis dynamic analysis graph neural networks and large language models",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.33763v1",
+      "source": "arxiv",
+      "title": "SecProbe: Adaptive Evaluation of Coding Agents on Cybersecurity Vulnerabilities",
+      "abstract": "Assessing cybersecurity vulnerability awareness in coding agents requires evaluations that reveal capability gaps and remain informative as models evolve. Static benchmarks offer fixed coverage and difficulty, while scarce vulnerable repositories and costly expert authoring limit their renewal at scale. We introduce SecProbe, a framework for adaptive evaluation that combines Item Response Theory (IRT) with on-demand synthesis of repository-scale vulnerability-repair tasks. From observed performance, \\textsc{SecProbe} estimates agent ability and identifies where additional evidence is most informative, selecting existing tasks or synthesizing new ones accordingly. As one use case, we construct 353 tasks spanning six programming languages and 151 CWE types and evaluate nine frontier models with two agent harnesses. Success rates peak at 28.33\\%, highlighting substantial gaps in vulnerability recognition and repair. Compared with random and one-shot baselines, \\textsc{SecProbe} achieves comparable agent ability estimates while requiring agents to solve up to 29.5\\% fewer tasks. These results support adaptive evaluation as an efficient and discriminative approach to assessing cybersecurity vulnerability awareness.",
+      "authors": [
+        "Xiaonan Luo",
+        "Yue Huang",
+        "Kehan Guo",
+        "Ping He",
+        "Chuan Zou",
+        "Chujie Gao",
+        "Lichi Li",
+        "Yuchen Ma",
+        "Zhangchen Xu",
+        "Zichen Chen",
+        "Yufei Han",
+        "Xiangliang Zhang"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.AI"
+      ],
+      "published": "2026-09-27T17:01:35+00:00",
+      "link": "https://arxiv.org/pdf/2609.33763v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "adaptive evaluation of coding agents on vulnerability-repair tasks",
+      "llm_evidence_cn": "面向漏洞修复任务的编码智能体自适应评测",
+      "llm_evidence": "面向漏洞修复任务的编码智能体自适应评测",
+      "canonical_evidence": "面向漏洞修复任务的编码智能体自适应评测",
+      "llm_tldr_en": "Evaluating cybersecurity vulnerability awareness in coding agents needs benchmarks that stay informative as models evolve, but static benchmarks have fixed coverage. SecProbe combines Item Response Theory with on-demand synthesis of repository-scale vulnerability-repair tasks, building 353 tasks across six languages.",
+      "llm_tldr_cn": "评估编码智能体的网络安全漏洞意识需要随模型演化仍具信息量的基准，但静态基准覆盖与难度固定，且漏洞仓库稀缺、专家标注成本高，难以大规模更新。本文提出SecProbe，将项目反应理论与按需合成的仓库级漏洞修复任务相结合，依据智能体表现估计能力并选择或生成最有信息量的任务。研究构建了跨六种语言、353个任务的评测集，实现自适应演化的安全评测。",
+      "llm_tldr": "评估编码智能体的网络安全漏洞意识需要随模型演化仍具信息量的基准，但静态基准覆盖与难度固定，且漏洞仓库稀缺、专家标注成本高，难以大规模更新。本文提出SecProbe，将项目反应理论与按需合成的仓库级漏洞修复任务相结合，依据智能体表现估计能力并选择或生成最有信息量的任务。研究构建了跨六种语言、353个任务的评测集，实现自适应演化的安全评测。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to AI与Agent安全：研究 AI for Security 和 Security for AI，重点是 LLM/Agent 提示注入、工具与 Skill 权限、恶意插件和代码生成安全；不把机器人运动技能学习当成 Agent Skill 安全。, especially work that connects or combines: prompt injection attacks and defenses in tool using language model agents; security of LLM agents skills tools plugins and model context protocol including permission violations and data exfiltration; security vulnerabilities and reliability of code generated by large language models; Find security evaluation and defenses for tool-using LLM agents, malicious skills and plugins, prompt injection, authorization failures and insecure generated code. Exclude reinforcement learning motor-skill acquisition without a security connection..",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.35909v2",
+      "source": "arxiv",
+      "title": "Cheap to Hypothesize, Costly to Verify: The Defense Surface of Agentic Vulnerability Discovery",
+      "abstract": "Autonomous LLM agents turn vulnerability discovery into a repository-scale search: they generate many vulnerability hypotheses but can verify only a subset under a finite budget. We show that autonomous vulnerability discovery exhibits a hypothesis-verification asymmetry, where verifying a candidate hypothesis through reachability analysis, execution, and proof-of-concept construction is substantially more expensive than forming it. Under a finite resource budget, this makes autonomous discovery a resource-bounded selective-verification process, further exposing verification effort as a unique defense surface. We present RedHerring, which inserts certifiably safe decoys that divert verification effort from real vulnerabilities. Each decoy combines a CVE-derived vulnerability chain that attracts verification with a false bridge that keeps its dangerous sink unreachable. A private certificate lets the defender verify this property efficiently, while establishing the same fact from the released repository requires solving a computationally hard problem. RedHerring further adapts each decoy to the target repository so that it reads as ordinary program logic. Across 33 OSS-Fuzz projects, 70 evaluation instances, and five models under matched budgets, RedHerring reduces real vulnerabilities discovered by 38.7-60.4%. Trajectory analysis shows that agents spend 30.6-51.5% of completion tokens and an estimated 32.5-49.9% of runtime verifying decoys, showing that RedHerring redirects a substantial fraction of the fixed search budget toward decoys. When explicitly informed that decoys may be present, the agent adapts its search strategy, yet RedHerring still reduces vulnerabilities discovered by 37.2% relative to an informed Baseline, showing that its effectiveness does not depend on decoy secrecy.",
+      "authors": [
+        "Kaikai Zhang",
+        "Zihan Zhang",
+        "Yuchong Xie",
+        "Zesen Liu",
+        "Shuangjie Yao",
+        "Zhixiang Zhang",
+        "Dongdong She"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.AI"
+      ],
+      "published": "2026-09-28T07:14:39+00:00",
+      "link": "https://arxiv.org/pdf/2609.35909v2",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "LLM agent vulnerability discovery and proof-of-concept verification",
+      "llm_evidence_cn": "LLM智能体漏洞发现与PoC验证",
+      "llm_evidence": "LLM智能体漏洞发现与PoC验证",
+      "canonical_evidence": "LLM智能体漏洞发现与PoC验证",
+      "llm_tldr_en": "Autonomous LLM agents generate many vulnerability hypotheses but can verify few under budget; this paper formalizes the hypothesis-verification asymmetry and proposes RedHerring decoys as a defense surface.",
+      "llm_tldr_cn": "自主LLM智能体把漏洞发现变成仓库级搜索，能生成大量漏洞假设却受限于预算只能验证其中一部分。本文指出该过程存在假设-验证不对称：用可达性分析、执行和PoC构造验证候选漏洞，远比提出假设昂贵，因此发现过程本质是资源受限的选择性验证。作者据此提出RedHerring，向代码中插入可证明安全的诱饵，把验证投入从真实漏洞上引开。该工作将验证投入识别为智能体漏洞发现的独特防御面，为防御研究提供新视角。",
+      "llm_tldr": "自主LLM智能体把漏洞发现变成仓库级搜索，能生成大量漏洞假设却受限于预算只能验证其中一部分。本文指出该过程存在假设-验证不对称：用可达性分析、执行和PoC构造验证候选漏洞，远比提出假设昂贵，因此发现过程本质是资源受限的选择性验证。作者据此提出RedHerring，向代码中插入可证明安全的诱饵，把验证投入从真实漏洞上引开。该工作将验证投入识别为智能体漏洞发现的独特防御面，为防御研究提供新视角。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "software vulnerability detection localization and repair using static analysis dynamic analysis graph neural networks and large language models",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2609.38012v1",
+      "source": "arxiv",
+      "title": "A Function-level Dataset of Vulnerable and Fixed Source Code in JavaScript and TypeScript",
+      "abstract": "JavaScript and TypeScript are widely used in modern web development, making their security critical; however, automated vulnerability detection is often constrained by the availability of high-quality training data. Here we present JsVul, a dataset curated from seven major sources. Unlike generic multi-language datasets that may retain noise -- such as minified code and cosmetic edits -- JsVul utilizes a language-specific pipeline. We collected pre-fix and post-fix versions of files around security fixes and, by filtering irrelevant artifacts and applying automated syntax normalization, isolated security-related changes. We ensured data integrity through multi-stage deduplication and heuristic-based labeling. Provided in a time-ordered JSONL format, JsVul supports robust model training in the JavaScript and TypeScript ecosystem and demonstrates the importance of language-aware preprocessing in building vulnerability datasets.",
+      "authors": [
+        "Tamás Viszkok",
+        "Péter Hegedűs"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.SE"
+      ],
+      "published": "2026-09-29T16:59:45+00:00",
+      "link": "https://arxiv.org/pdf/2609.38012v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "curated vulnerable/fixed JS/TS dataset with deduplication and heuristic labeling",
+      "llm_evidence_cn": "去重与启发式标注的JS/TS漏洞修复数据集",
+      "llm_evidence": "去重与启发式标注的JS/TS漏洞修复数据集",
+      "canonical_evidence": "去重与启发式标注的JS/TS漏洞修复数据集",
+      "llm_tldr_en": "Automated vulnerability detection in JavaScript and TypeScript is limited by noisy training data. JsVul curates pre-fix and post-fix files from seven sources using a language-specific pipeline with syntax normalization, multi-stage deduplication and heuristic labeling, giving a time-ordered function-level dataset.",
+      "llm_tldr_cn": "JavaScript与TypeScript广泛用于Web开发，但自动漏洞检测受限于高质量训练数据稀缺，通用数据集常保留压缩代码与表面改动等噪声。本文提出JsVul，从七个来源采集安全修复前后的文件，采用语言专用流水线过滤无关产物、进行语法规范化，并经多阶段去重与启发式标注保证数据质量。该函数级、按时间排序的数据集可支撑漏洞检测训练与跨项目泛化评测。",
+      "llm_tldr": "JavaScript与TypeScript广泛用于Web开发，但自动漏洞检测受限于高质量训练数据稀缺，通用数据集常保留压缩代码与表面改动等噪声。本文提出JsVul，从七个来源采集安全修复前后的文件，采用语言专用流水线过滤无关产物、进行语法规范化，并经多阶段去重与启发式标注保证数据质量。该函数级、按时间排序的数据集可支撑漏洞检测训练与跨项目泛化评测。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "cross project vulnerability detection generalization dataset quality label noise and data leakage",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2609.34450v1",
+      "source": "arxiv",
+      "title": "ReproBench: Benchmarking LLM Agents on Reproducing Vulnerability From Scratch",
+      "abstract": "Large language model (LLM) agents are increasingly evaluated on cybersecurity tasks such as vulnerability reproduction, exploitation, and patching. However, existing cybersecurity benchmarks predominantly operate under a post-environment evaluation paradigm, i.e., handing the agent source code, a container, or an executable binary. This setup bypasses the critical environment reconstruction step, leaving a fundamental question for real-world vulnerability analysis: can an agent autonomously reconstruct the required execution environment and reproduce a vulnerability entirely from scratch?   To address this gap, we present ReproBench, an evidence-grounded benchmark designed to evaluate agent capabilities in end-to-end vulnerability reproduction starting from solely a CVE identifier. ReproBench decomposes the full reproduction workflow into six distinct phases, and assesses performance on each phase independently using verifiable experimental artifacts: downloaded firmware images, unpacked binaries, granular analysis logs, and validated crash samples, among others. We instantiate ReproBench with 30 real-world IoT firmware vulnerabilities, which serve as ideal test cases for our from-scratch evaluation setting.   Our evaluation demonstrates that 45.3% of test runs resort to vulnerability simulation - a prevalent remediation workaround adopted across all evaluated LLM agents - while only 5.3% of CVE-model pairs achieve successful reproduction of real-world vulnerabilities. Despite the low overall success rate, these non-trivial successful cases confirm that state-of-the-art LLM agents already possess the capacity for fully autonomous end-to-end vulnerability reproduction. Concurrently, our in-depth analysis of failed cases identifies core bottlenecks impeding LLM agents throughout the reproduction pipeline, offering actionable insights for subsequent research.",
+      "authors": [
+        "Liang He",
+        "Sheng Wu",
+        "Haomiao Hao",
+        "Hongduo Zhao",
+        "Jia Yan",
+        "Purui Su"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR"
+      ],
+      "published": "2026-09-28T07:06:27+00:00",
+      "link": "https://arxiv.org/pdf/2609.34450v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "benchmark for end-to-end vulnerability reproduction with evidence grounding",
+      "llm_evidence_cn": "面向端到端漏洞复现的证据化基准",
+      "llm_evidence": "面向端到端漏洞复现的证据化基准",
+      "canonical_evidence": "面向端到端漏洞复现的证据化基准",
+      "llm_tldr_en": "Existing cybersecurity benchmarks hand agents source code or containers, bypassing environment reconstruction. ReproBench evaluates whether LLM agents can reconstruct execution environments and reproduce vulnerabilities entirely from scratch under an evidence-grounded protocol.",
+      "llm_tldr_cn": "针对现有网络安全基准多在给定源码或容器的后环境范式中评测、跳过环境重建这一关键步骤的问题，本文提出ReproBench。该基准以证据为依据，评估LLM代理能否从零开始自主重建所需执行环境并端到端复现漏洞。它填补了真实漏洞分析中环境重构能力评测的空白，为更贴近实际的漏洞复现与验证研究提供可复现的评测基础。",
+      "llm_tldr": "针对现有网络安全基准多在给定源码或容器的后环境范式中评测、跳过环境重建这一关键步骤的问题，本文提出ReproBench。该基准以证据为依据，评估LLM代理能否从零开始自主重建所需执行环境并端到端复现漏洞。它填补了真实漏洞分析中环境重构能力评测的空白，为更贴近实际的漏洞复现与验证研究提供可复现的评测基础。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "Find software vulnerability detection and repair studies with realistic cross-project evaluation, robust labels, program semantics and interpretable evidence.",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.34963v1",
+      "source": "arxiv",
+      "title": "JevVibe: Efficient Classification-Guided Secure Code Generation",
+      "abstract": "Large language models can generate functionally correct code that still contains security weaknesses, motivating repair pipelines that first diagnose a weakness type before deciding how to fix it. The Common Weakness Enumeration (CWE) provides a standardized vocabulary for such diagnoses, but asking an autoregressive language model to generate a CWE label and extracting it from the response raises questions about output validity, speed, and cost, as well as accuracy. We evaluate Jev, a decision model that instead selects directly from a declared set of candidates and returns a probability for each, against six open-weight autoregressive models and a frontier proprietary model, GPT-5.6-Sol, on a controlled 50-way CWE classification task over 1,916 CyberSecEval benchmark examples. Jev outperforms all six open-weight baselines on every classification and ranking metric, while its comparison with GPT-5.6-Sol depends on the metric: GPT-5.6-Sol achieves higher Top-1 accuracy and Macro-F1, whereas Jev achieves higher Top-3 and Top-5 accuracy and a nearly identical MRR, at $6.27\\times$ lower median API latency and $55.9\\times$ lower estimated API cost. We further build JevVibe, a diagnosis-guided repair agent that uses predicted CWE labels to repair code generated by Qwen2.5-Coder-32B-Instruct. With Jev providing the diagnosis, the agent increases the detector-measured security pass rate from 63.5% before repair to 70.7%, compared with 66.1% for LLM-guided repair. These results show that JevVibe is effective at improving the security of generated code, with Jev providing reliable and efficient CWE classification.",
+      "authors": [
+        "Arshak Rezvani",
+        "Sasha Behrouzi",
+        "Ahmad-Reza Sadeghi"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.AI"
+      ],
+      "published": "2026-09-28T11:47:38+00:00",
+      "link": "https://arxiv.org/pdf/2609.34963v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "CWE classification guided secure code generation and repair",
+      "llm_evidence_cn": "以CWE分类引导安全代码生成与修复",
+      "llm_evidence": "以CWE分类引导安全代码生成与修复",
+      "canonical_evidence": "以CWE分类引导安全代码生成与修复",
+      "llm_tldr_en": "Evaluates Jev, a decision model that selects a CWE label directly from candidates with per-class probabilities, against autoregressive and frontier models on 50-way CWE classification, aiming to speed and stabilize weakness diagnosis in secure code generation.",
+      "llm_tldr_cn": "LLM可生成功能正确却含安全弱点的代码，因此修复流水线通常先诊断弱点类型再决定如何修复，CWE为此提供标准词表。然而让自回归语言模型生成CWE标签并抽取答案在输出有效性、速度、成本与准确率上均存疑。本文评估Jev这一决策模型，它直接在候选集合中选择并给出各候选概率，并在1916条CyberSecEval样本的50类CWE分类任务上与六个开源权重模型及前沿模型GPT-5.6-Sol对比。该工作为安全代码生成中的高效弱点诊断提供了分类引导方案。",
+      "llm_tldr": "LLM可生成功能正确却含安全弱点的代码，因此修复流水线通常先诊断弱点类型再决定如何修复，CWE为此提供标准词表。然而让自回归语言模型生成CWE标签并抽取答案在输出有效性、速度、成本与准确率上均存疑。本文评估Jev这一决策模型，它直接在候选集合中选择并给出各候选概率，并在1916条CyberSecEval样本的50类CWE分类任务上与六个开源权重模型及前沿模型GPT-5.6-Sol对比。该工作为安全代码生成中的高效弱点诊断提供了分类引导方案。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to AI与Agent安全：研究 AI for Security 和 Security for AI，重点是 LLM/Agent 提示注入、工具与 Skill 权限、恶意插件和代码生成安全；不把机器人运动技能学习当成 Agent Skill 安全。, especially work that connects or combines: prompt injection attacks and defenses in tool using language model agents; security of LLM agents skills tools plugins and model context protocol including permission violations and data exfiltration; security vulnerabilities and reliability of code generated by large language models; Find security evaluation and defenses for tool-using LLM agents, malicious skills and plugins, prompt injection, authorization failures and insecure generated code. Exclude reinforcement learning motor-skill acquisition without a security connection..",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.38807v1",
+      "source": "arxiv",
+      "title": "PatchHolmes: Agentic Patch Retrieval via Listwise Selection",
+      "abstract": "Patch retrieval, the task of finding the commit that fixes a known vulnerability, is the foundation of vulnerability management workflows, yet 60% to 63% of CVEs in the major advisory databases lack a patch link. We present PatchHolmes, a two-phase patch retrieval system that pairs a hybrid first-stage retriever with an agentic second-stage inspection loop. Unlike pointwise prior work that scores each candidate independently, the Phase 2 agent reads the top-100 listwise: it sees the full candidate list at once and selectively reads 3 to 10 commits through four budgeted tools before submitting a single best commit. On GitHubAD, PatchHolmes beats the pointwise binary classifier Favia by 25.34% Recall@1 and the retrieve-and-CoT baseline IRCoT by 31.40%, at one agent conversation per CVE versus Favia's ten; with the candidate set held identical, the agent adds 27.32% Recall@1 over taking the retriever's top candidate, and the same agent, transferred unchanged to PatchFinder_top10, lifts Recall@1 from PatchFinder's own top-1 pick (24.28%) to 39.86%. Swapping the LLM backbone within the Qwen family changes Recall@1 by under 1%, and a second model family (gpt-oss) stays far above the no-agent floor, so the gain comes from the listwise agent loop; the entire system runs on a frozen open-weight model over a local Git repository, without fine-tuning or external search APIs.",
+      "authors": [
+        "Guanqun Yang",
+        "Yingming Zhou",
+        "Jiangrui Zheng",
+        "Shudong Hao",
+        "Xueqing Liu"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR",
+        "cs.SE"
+      ],
+      "published": "2026-09-30T02:38:22+00:00",
+      "link": "https://arxiv.org/pdf/2609.38807v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "agentic patch retrieval to find vulnerability-fixing commits",
+      "llm_evidence_cn": "智能体补丁检索定位漏洞修复提交",
+      "llm_evidence": "智能体补丁检索定位漏洞修复提交",
+      "canonical_evidence": "智能体补丁检索定位漏洞修复提交",
+      "llm_tldr_en": "Most CVEs lack patch links, complicating vulnerability management. PatchHolmes is a two-phase patch retrieval system combining a hybrid retriever with an agentic listwise inspection loop that reads top-100 candidates and uses budgeted tools to pick the best commit, beating pointwise baselines by 25.34% Recall@1.",
+      "llm_tldr_cn": "主流漏洞公告库中约60%至63%的CVE缺少补丁链接，严重影响漏洞管理与修复流程。本文提出PatchHolmes，采用两阶段补丁检索：先以混合检索器召回候选，再由智能体列表式检视前100个提交，借助受限工具读取少量提交后选出最佳修复补丁。在GitHubAD上其Recall@1比逐点分类器Favia高25.34%，显著提升漏洞修复补丁的自动定位能力。",
+      "llm_tldr": "主流漏洞公告库中约60%至63%的CVE缺少补丁链接，严重影响漏洞管理与修复流程。本文提出PatchHolmes，采用两阶段补丁检索：先以混合检索器召回候选，再由智能体列表式检视前100个提交，借助受限工具读取少量提交后选出最佳修复补丁。在GitHubAD上其Recall@1比逐点分类器Favia高25.34%，显著提升漏洞修复补丁的自动定位能力。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "automated repair of security vulnerabilities with validated patches",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2609.34862v1",
+      "source": "arxiv",
+      "title": "JEV as a Judge for Agent Trace Security: An Empirical Comparison with Generative LLM Judges",
+      "abstract": "Security evaluation of tool-using agents requires judging actions in context, yet generative judges add latency, explanation overhead, and output-validation failures. We study whether JEV, a typed decision model, offers a useful alternative for retrospective trace classification. We evaluate JEV and four generative judges on four benchmark collections totaling 5,219 trajectories, using a common risk rubric and behavior-level labels. JEV attains a benchmark-averaged positive-class F1 of 77.8, compared with 74.1 for the strongest generative configuration, GLM-5.2, with valid-result coverage of 95.5\\% and 94.4\\%, respectively. Performance varies across datasets, with JEV leading on ATBench500 and MCPHunt and GLM leading on R-Judge and TraceSafe. Across the four benchmarks, JEV's median successful-call latency is 0.99 seconds; estimated token cost averages \\$0.000195 per valid judgment. These results support JEV as an economical screening signal, with trade-offs in precision and recall.",
+      "authors": [
+        "Zhiqiang Wang",
+        "Yichao Gao"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR"
+      ],
+      "published": "2026-09-28T10:51:04+00:00",
+      "link": "https://arxiv.org/pdf/2609.34862v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "security evaluation of tool-using LLM agents via trace judging",
+      "llm_evidence_cn": "通过轨迹评判评估工具型LLM智能体安全",
+      "llm_evidence": "通过轨迹评判评估工具型LLM智能体安全",
+      "canonical_evidence": "通过轨迹评判评估工具型LLM智能体安全",
+      "llm_tldr_en": "This paper compares the typed decision model JEV with four generative LLM judges for classifying tool-using agent traces under a common risk rubric, finding JEV competitive while avoiding latency and validation failures.",
+      "llm_tldr_cn": "工具型智能体的安全评估需要在具体上下文中判断其动作，但生成式LLM评判者存在延迟高、解释开销大和输出校验失败等问题。本文研究类型化决策模型JEV能否作为回顾性轨迹分类的替代方案，并在四个基准共5219条轨迹上，用统一风险准则与行为级标签对比JEV和四个生成式评判者。结果显示JEV平均正类F1达77.8，优于最强生成式配置GLM-5.2的74.1，有效结果覆盖率为95.5%。该工作说明类型化决策模型可高效可靠地支撑智能体轨迹安全评判。",
+      "llm_tldr": "工具型智能体的安全评估需要在具体上下文中判断其动作，但生成式LLM评判者存在延迟高、解释开销大和输出校验失败等问题。本文研究类型化决策模型JEV能否作为回顾性轨迹分类的替代方案，并在四个基准共5219条轨迹上，用统一风险准则与行为级标签对比JEV和四个生成式评判者。结果显示JEV平均正类F1达77.8，优于最强生成式配置GLM-5.2的74.1，有效结果覆盖率为95.5%。该工作说明类型化决策模型可高效可靠地支撑智能体轨迹安全评判。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to AI与Agent安全：研究 AI for Security 和 Security for AI，重点是 LLM/Agent 提示注入、工具与 Skill 权限、恶意插件和代码生成安全；不把机器人运动技能学习当成 Agent Skill 安全。, especially work that connects or combines: prompt injection attacks and defenses in tool using language model agents; security of LLM agents skills tools plugins and model context protocol including permission violations and data exfiltration; security vulnerabilities and reliability of code generated by large language models; Find security evaluation and defenses for tool-using LLM agents, malicious skills and plugins, prompt injection, authorization failures and insecure generated code. Exclude reinforcement learning motor-skill acquisition without a security connection..",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.35199v1",
+      "source": "arxiv",
+      "title": "Trajectory-Level Security Debt in LLM Coding Agents",
+      "abstract": "LLM coding agents can traverse hundreds of intermediate code states before submitting a solution. Evaluating only the final artifact leaves the evolution of security findings unmeasured. We introduce the Security Debt Line Integral (SDLI), which accumulates static-analysis risk when an agent reaches a new best test pass ratio. We instantiate it with four static application security testing (SAST) tools and study artifacts from 830 passing SWE-bench runs, 712 ProgramBench final workspaces, and 13 public MirrorCode trajectories. The two large populations use the final-state special case of SDLI. Two-tool Common Weakness Enumeration (CWE) class agreement occurs in 3.9% of SWE-bench runs and 26.2% of the 80 ProgramBench runs passing at least 90% of official tests. These are scanner findings, not validated vulnerability rates. Excluding three advisory-heavy classes reduces the latter rate to 6.2%. Same-task runs differ in their measured scores, while one reconstructed ProgramBench run exposes persistent findings from its first implementation write. A repair case study reduces the scanner signal while preserving tested behavior, but also reveals sensitivity to equivalent API rewrites. SDLI offers a way to study progress and security findings together. Its value for steering agents and confirming exploitable vulnerabilities remains to be established.",
+      "authors": [
+        "Prateek Kumar Rajput",
+        "Abdoul Kader Kabore",
+        "Yewei Song",
+        "Melissa Tessa",
+        "Tailia Malloy",
+        "Jacques Klein",
+        "Tegawendé F. Bissyandé"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.SE"
+      ],
+      "published": "2026-09-28T13:57:29+00:00",
+      "link": "https://arxiv.org/pdf/2609.35199v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "static-analysis security risk in LLM coding agent trajectories",
+      "llm_evidence_cn": "LLM编码代理轨迹中的静态分析安全风险",
+      "llm_evidence": "LLM编码代理轨迹中的静态分析安全风险",
+      "canonical_evidence": "LLM编码代理轨迹中的静态分析安全风险",
+      "llm_tldr_en": "LLM coding agents pass hundreds of intermediate code states, but only the final artifact is checked. This paper introduces the Security Debt Line Integral to accumulate SAST risk over trajectories and measures CWE agreement across 830 SWE-bench runs and ProgramBench workspaces.",
+      "llm_tldr_cn": "针对现有评测只看LLM编码代理最终产物、忽略中间代码状态安全演化的问题，本文提出安全债务线积分（SDLI），在代理达到新的最佳测试通过率时累积静态分析风险。作者用四种SAST工具对830个SWE-bench运行、712个ProgramBench工作区及13条MirrorCode轨迹进行测量。结果显示两工具CWE类别一致率在SWE-bench仅3.9%，凸显轨迹级安全监督的必要性。",
+      "llm_tldr": "针对现有评测只看LLM编码代理最终产物、忽略中间代码状态安全演化的问题，本文提出安全债务线积分（SDLI），在代理达到新的最佳测试通过率时累积静态分析风险。作者用四种SAST工具对830个SWE-bench运行、712个ProgramBench工作区及13条MirrorCode轨迹进行测量。结果显示两工具CWE类别一致率在SWE-bench仅3.9%，凸显轨迹级安全监督的必要性。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to AI与Agent安全：研究 AI for Security 和 Security for AI，重点是 LLM/Agent 提示注入、工具与 Skill 权限、恶意插件和代码生成安全；不把机器人运动技能学习当成 Agent Skill 安全。, especially work that connects or combines: prompt injection attacks and defenses in tool using language model agents; security of LLM agents skills tools plugins and model context protocol including permission violations and data exfiltration; security vulnerabilities and reliability of code generated by large language models; Find security evaluation and defenses for tool-using LLM agents, malicious skills and plugins, prompt injection, authorization failures and insecure generated code. Exclude reinforcement learning motor-skill acquisition without a security connection..",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2609.39783v1",
+      "source": "arxiv",
+      "title": "COMPASS: Predicting the Relationship of Multiple Patches for Vulnerabilities with LLMs",
+      "abstract": "Modern software heavily relies on code reuse, so upstream vulnerability fixes do not automatically propagate to downstream codebases. Downstream maintainers must manually adopt patches to eliminate known risks. In practice, a single vulnerability often corresponds to multiple patches, which greatly complicates downstream patch adoption because different patch relationships imply different adoption strategies. To address this challenge, we first manually inspect large-scale multi-patch vulnerabilities (about 1K) in the real world and interview experienced developers, summarizing six typical types of patch relationships, i.e., Merge, Mirror, Better Solution, Fixing-of-Fixing, Collaboration, and Separation. Based on these observations, we propose COMPASS, an automated approach that predicts the relationships of multiple vulnerability patches with large language models. Given a CVE as input, COMPASS follows a four-phase pipeline that (i) identifies the patch group and pre-scans explicit relationships, (ii) performs individual patch analysis, (iii) infers relationship instances via a hierarchy-guided prompt, and (iv) validates completeness and consistency of the inferred results. As output, COMPASS reports the predicted relationships within the patch group and visualizes them as a relationship graph. We evaluate COMPASS on a benchmark of 300 multi-patch CVEs and compare it against mainstream learning-based and LLM baselines. Results show that our method achieves strong and consistent prediction effectiveness and outperforms SOTA by 85.04% on average. We publicly release an online querying website to support community reuse of patch relationships knowledge: https://patch-relation.com.",
+      "authors": [
+        "Yi Song",
+        "Dongchen Xie",
+        "Xiaoyuan Xie",
+        "He Zhang",
+        "Lin Xu",
+        "Chunying Zhou",
+        "Zhi Jin"
+      ],
+      "primary_category": "cs.SE",
+      "categories": [
+        "cs.SE"
+      ],
+      "published": "2026-09-30T14:05:20+00:00",
+      "link": "https://arxiv.org/pdf/2609.39783v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "predicting multi-patch relationships to support downstream vulnerability patch adoption",
+      "llm_evidence_cn": "预测多补丁关系以支持下游漏洞补丁采纳",
+      "llm_evidence": "预测多补丁关系以支持下游漏洞补丁采纳",
+      "canonical_evidence": "预测多补丁关系以支持下游漏洞补丁采纳",
+      "llm_tldr_en": "Code reuse means upstream vulnerability fixes do not auto-propagate, and one vulnerability often maps to multiple related patches with different adoption strategies. COMPASS uses LLMs to predict patch relationships after studying about 1K real multi-patch vulnerabilities.",
+      "llm_tldr_cn": "针对代码复用使上游漏洞修复无法自动传播到下游、而单个漏洞常对应多个关系各异的补丁从而增加采纳难度的问题，本文提出COMPASS。作者人工分析约1000个真实多补丁漏洞并访谈开发者，归纳出合并、镜像、更优方案、修复之修复、协作与分离六类补丁关系，再用大模型预测这些关系。该工作帮助下游维护者制定正确的补丁采纳策略，提升漏洞修复传播效率。",
+      "llm_tldr": "针对代码复用使上游漏洞修复无法自动传播到下游、而单个漏洞常对应多个关系各异的补丁从而增加采纳难度的问题，本文提出COMPASS。作者人工分析约1000个真实多补丁漏洞并访谈开发者，归纳出合并、镜像、更优方案、修复之修复、协作与分离六类补丁关系，再用大模型预测这些关系。该工作帮助下游维护者制定正确的补丁采纳策略，提升漏洞修复传播效率。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "automated repair of security vulnerabilities with validated patches",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2609.37006v1",
+      "source": "arxiv",
+      "title": "One Pipeline Does Not Fit All: TAILOR, a Type- and State-Aware Framework for CVE Reproduction",
+      "abstract": "Growing vulnerability disclosure and widespread software reuse increase security teams' need for reproducible evidence to diagnose vulnerabilities, validate patches, and build regression tests. Producing such evidence at scale requires automated end-to-end CVE reproduction. Existing methods typically process different CVEs through a uniform pipeline, but differences in runtime form, trigger interfaces, and prerequisite state impose different execution requirements on individual stages, making fixed workflows difficult to adapt to diverse reproduction needs. To address this problem, we present TAILOR, a type- and state-aware multi-agent framework specialized for complex vulnerability reproduction. TAILOR converts static vulnerability information into auditable reproduction evidence and packages reconstructed environments and trigger evidence into reproduction artifacts. Its first-level type-aware mechanism adaptively matches each vulnerability to an execution path. Within the Web path, its second-level state-aware mechanism constructs the required prerequisite state before exploitation, decouples prerequisite-state construction from core vulnerability triggering, and shares execution constraints across exploitation and verification. We construct a dataset of 200 CVEs with an emphasis on cases with complex execution requirements. TAILOR successfully reproduces 59.24\\% of Web vulnerabilities and 44.19\\% of traditional vulnerabilities. Further ablation experiments show that the two control levels respectively mitigate execution-path mismatch and missing Web prerequisite state. Overall, TAILOR broadens the coverage of automated CVE reproduction and provides auditable evidence for vulnerability diagnosis and defense.",
+      "authors": [
+        "Ji He",
+        "Huang Zhang",
+        "Lijie Zheng",
+        "Lele Zheng",
+        "Yulong Shen"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR"
+      ],
+      "published": "2026-09-29T08:31:13+00:00",
+      "link": "https://arxiv.org/pdf/2609.37006v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "automated CVE reproduction to validate patches and build regression tests",
+      "llm_evidence_cn": "自动化CVE复现以验证补丁并构建回归测试",
+      "llm_evidence": "自动化CVE复现以验证补丁并构建回归测试",
+      "canonical_evidence": "自动化CVE复现以验证补丁并构建回归测试",
+      "llm_tldr_en": "Reproducing CVEs at scale is needed to validate patches and build regression tests, but fixed pipelines fail across differing runtime forms and states. TAILOR is a type- and state-aware multi-agent framework that adapts reproduction stages to each vulnerability.",
+      "llm_tldr_cn": "针对统一流水线难以适应不同CVE在运行形态、触发接口与前置状态上的差异、导致补丁验证与回归测试证据难以规模化生成的问题，本文提出TAILOR。它是以类型和状态感知为核心的多代理框架，将静态漏洞信息转化为分阶段、可自适应调整的复现流程。该工作为自动生成可复现证据、诊断漏洞并验证补丁提供了更灵活的方法。",
+      "llm_tldr": "针对统一流水线难以适应不同CVE在运行形态、触发接口与前置状态上的差异、导致补丁验证与回归测试证据难以规模化生成的问题，本文提出TAILOR。它是以类型和状态感知为核心的多代理框架，将静态漏洞信息转化为分阶段、可自适应调整的复现流程。该工作为自动生成可复现证据、诊断漏洞并验证补丁提供了更灵活的方法。",
+      "llm_tags": [
+        "query:code-vuln"
+      ],
+      "matched_query_tag": "query:code-vuln",
+      "matched_query_text": "automated repair of security vulnerabilities with validated patches",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.35266v1",
+      "source": "arxiv",
+      "title": "Continuous Assurance of Agentic Security Auditors for Software Delivery Decision Gates",
+      "abstract": "Large language model (LLM)-based repository auditors are increasingly deployed as security controls within continuous integration (CI) pipelines, where their findings admit, block, or delay software changes. As Agentic Software Development Life Cycle (SDLC) Security Controls, their non-deterministic behaviour changes the evidence, while organisational risk appetite and jurisdictional or data-sovereignty policy change its interpretation. Point-in-time audits therefore cannot maintain current assurance for merge decisions.   We propose the Policy-Evidence-Execution Separation Pattern, implemented by the Trustworthy AI Posture (TAIP) Assurance Engine and operated as Continuous Control Posture Assurance (CCPA). By separating policy from stable execution and binding admitted evidence to a versioned Posture Tree, the same assurance logic operates across models, environments, and policy profiles.   We evaluate the approach using unmodified RepoAudit on a fixed Python Null Pointer Dereference benchmark. The retained evidence repository contains 80 RepoAudit executions across two OpenAI model configurations, gpt-4o-mini and gpt-4.1. TAIP recomputes assurance posture after policy, evidence, and model-context changes and is evaluated across increasing numbers of independent Decision Gateway contexts. The maximum observed policy-to-posture latency was 1.1 ms across three policy-class cycles in one execution. At 1,000 independent assurance contexts, full policy-triggered recomputation with one worker recorded a maximum aggregate refresh of 1.62 s, below the predeclared 5 s Decision Gateway budget. These single-host measurements concern assurance over retained evidence and exclude RepoAudit execution and provider inference.",
+      "authors": [
+        "Guy Lupo",
+        "Nguyen Hung Nguyen",
+        "Viet Vo",
+        "M. A. P. Chamikara",
+        "Guangdong Bai",
+        "Nazatul Haque Sultan",
+        "Alsharif Abuadbba"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR"
+      ],
+      "published": "2026-09-28T14:23:38+00:00",
+      "link": "https://arxiv.org/pdf/2609.35266v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "continuous assurance for LLM-based repository security auditors in CI",
+      "llm_evidence_cn": "CI中基于LLM的仓库安全审计器的持续保障",
+      "llm_evidence": "CI中基于LLM的仓库安全审计器的持续保障",
+      "canonical_evidence": "CI中基于LLM的仓库安全审计器的持续保障",
+      "llm_tldr_en": "LLM-based repository auditors act as security controls in CI, but their non-deterministic behavior and shifting policy make point-in-time audits stale. This paper proposes a Policy-Evidence-Execution Separation pattern with a Continuous Control Posture Assurance engine.",
+      "llm_tldr_cn": "针对基于LLM的仓库审计器在CI中充当安全控制、却因非确定性行为与政策变化导致一次性审计无法维持合并决策保障的问题，本文提出策略-证据-执行分离模式。作者以可信AI姿态（TAIP）保障引擎实现持续控制姿态保障（CCPA），将策略与静态证据解耦。该工作为代理式安全审计工具的可信部署与持续监督提供了框架。",
+      "llm_tldr": "针对基于LLM的仓库审计器在CI中充当安全控制、却因非确定性行为与政策变化导致一次性审计无法维持合并决策保障的问题，本文提出策略-证据-执行分离模式。作者以可信AI姿态（TAIP）保障引擎实现持续控制姿态保障（CCPA），将策略与静态证据解耦。该工作为代理式安全审计工具的可信部署与持续监督提供了框架。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to AI与Agent安全：研究 AI for Security 和 Security for AI，重点是 LLM/Agent 提示注入、工具与 Skill 权限、恶意插件和代码生成安全；不把机器人运动技能学习当成 Agent Skill 安全。, especially work that connects or combines: prompt injection attacks and defenses in tool using language model agents; security of LLM agents skills tools plugins and model context protocol including permission violations and data exfiltration; security vulnerabilities and reliability of code generated by large language models; Find security evaluation and defenses for tool-using LLM agents, malicious skills and plugins, prompt injection, authorization failures and insecure generated code. Exclude reinforcement learning motor-skill acquisition without a security connection..",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.03153v1",
+      "source": "arxiv",
+      "title": "EvoRiskBench: An Evolving Benchmark for Runtime Security Risks in Workspace Agents",
+      "abstract": "Workspace agents combine large language models with execution harnesses to perform stateful, multi-step tasks that access or modify external resources. Existing benchmarks leave gaps in executable coverage of their runtime security risks, while evolving model capabilities, harnesses, tools, and threats motivate benchmark evolution. We introduce EvoRiskBench, an evolving benchmark organized around the EP-Path-EF framework, which links an initial risk entry point to a one-hop technical effect through an agent-mediated risk path. The framework defines nine entry-point categories and five effect categories; a 20-participant study supports their interpretability and classification consistency on representative cases. Guided by this framework, an automated end-to-end workflow constructs and executes risk cases in isolated environments and independently verifies outcomes using runtime traces and environment states. The benchmark provides a reproducible dataset of 450 adversarial tasks across six scenarios. We evaluate nine model-harness configurations spanning three models (GPT-5.6 Sol, DeepSeek-V4-Pro-0813, and Claude Opus 5) and three harnesses (Claude Code, Codex, and OpenClaw). Our results reveal substantial vulnerabilities across systems. The most vulnerable configuration, Codex with DeepSeek-V4-Pro-0813, reaches a 68.44% attack success rate (ASR), indicating that configuration of workspace agent is insufficient to ensure secure autonomous execution. ASR varies more across models than harnesses, and harness differences depend on the model. The benchmark cases and evaluation platform will be released after completion of artifact safety and reproducibility checks.",
+      "authors": [
+        "Shiyi Kuang",
+        "Xuemei Luo",
+        "Kun Liu",
+        "Junhai Li",
+        "Rui Tian",
+        "Feng Shi",
+        "Bo Shen",
+        "Nianyu Li",
+        "Dehui Li",
+        "Ping Chen"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.AI"
+      ],
+      "published": "2026-10-02T11:22:36+00:00",
+      "link": "https://arxiv.org/pdf/2610.03153v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "evolving benchmark for runtime security risks in LLM workspace agents",
+      "llm_evidence_cn": "面向LLM工作区智能体运行时安全风险的演化基准",
+      "llm_evidence": "面向LLM工作区智能体运行时安全风险的演化基准",
+      "canonical_evidence": "面向LLM工作区智能体运行时安全风险的演化基准",
+      "llm_tldr_en": "Workspace LLM agents run stateful tasks touching external resources, but benchmarks poorly cover their runtime security risks. EvoRiskBench links risk entry points to technical effects via agent-mediated paths, with nine entry-point and five effect categories validated by a 20-participant study.",
+      "llm_tldr_cn": "工作区智能体借助LLM与执行环境完成有状态多步任务，会访问或修改外部资源，但现有基准对其运行时安全风险覆盖不足，且模型与威胁不断演化。本文提出EvoRiskBench，以EP-Path-EF框架将风险入口点、智能体风险路径与技术后果相连接，定义九类入口与五类后果。通过20人研究验证其可解释性与分类一致性，为工具型智能体安全提供可演化评测基准。",
+      "llm_tldr": "工作区智能体借助LLM与执行环境完成有状态多步任务，会访问或修改外部资源，但现有基准对其运行时安全风险覆盖不足，且模型与威胁不断演化。本文提出EvoRiskBench，以EP-Path-EF框架将风险入口点、智能体风险路径与技术后果相连接，定义九类入口与五类后果。通过20人研究验证其可解释性与分类一致性，为工具型智能体安全提供可演化评测基准。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to AI与Agent安全：研究 AI for Security 和 Security for AI，重点是 LLM/Agent 提示注入、工具与 Skill 权限、恶意插件和代码生成安全；不把机器人运动技能学习当成 Agent Skill 安全。, especially work that connects or combines: prompt injection attacks and defenses in tool using language model agents; security of LLM agents skills tools plugins and model context protocol including permission violations and data exfiltration; security vulnerabilities and reliability of code generated by large language models; Find security evaluation and defenses for tool-using LLM agents, malicious skills and plugins, prompt injection, authorization failures and insecure generated code. Exclude reinforcement learning motor-skill acquisition without a security connection..",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2609.37153v1",
+      "source": "arxiv",
+      "title": "When Tools Silently Lie: Evaluating and Mitigating Blind Compliance in Tool-Augmented Data Agents",
+      "abstract": "Tool-augmented data agents rely on tool outputs for analytical decisions. Yet successful execution can return plausible but incorrect evidence, requiring agents to decide whether to trust or verify it. Understanding this failure requires examining both the evidence obtained through checking and the answer ultimately adopted. We introduce ToxicBench to measure checking and adoption under numerical, label, schema, and retrieval errors, pairing clean and poisoned observations over fixed source data. In the 118-task GPT evaluation across three adapters, poisoning lowers task success by 26 to 39 percentage points. Ordinary retries help under one-shot poisoning, whereas repeated poisoning reveals wrong-answer adoption after checking. Controls on three public tables isolate how supplied evidence affects recovery. After freezing the scorer, we compare its judgments with human annotations on 200 trajectories, finding 96% task-success agreement. Human judgments support retry gains over Base and confirm adoption after checking on audited tasks. We release trajectories, versioned scoring, and reference and delivery audits. These findings highlight evidence availability and answer selection as complementary dimensions of agent reliability.",
+      "authors": [
+        "Zifu Tao",
+        "Changqing Yin"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CR"
+      ],
+      "published": "2026-09-29T09:45:17+00:00",
+      "link": "https://arxiv.org/pdf/2609.37153v1",
+      "tags": [
+        "keyword:code-vuln",
+        "query:code-vuln"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "tool-augmented agent trust and blind compliance evaluation",
+      "llm_evidence_cn": "工具增强智能体的信任与盲从评估",
+      "llm_evidence": "工具增强智能体的信任与盲从评估",
+      "canonical_evidence": "工具增强智能体的信任与盲从评估",
+      "llm_tldr_en": "ToxicBench measures how tool-augmented data agents check and adopt poisoned tool outputs, showing poisoning drops task success by 26-39 points and repeated poisoning causes wrong-answer adoption.",
+      "llm_tldr_cn": "工具增强的数据智能体依赖工具输出做分析决策，但工具成功执行也可能返回看似合理却错误的证据，智能体必须判断该信任还是核查。本文提出ToxicBench，在数值、标签、模式与检索四类错误下，用固定源数据配对干净与投毒观测，分别测量核查行为和最终答案采纳。在118个任务的GPT评测中，投毒使任务成功率下降26至39个百分点；一次性投毒时普通重试有帮助，但重复投毒会暴露核查后仍采纳错误答案的问题。该工作揭示了工具智能体的盲从风险并提供评测基准。",
+      "llm_tldr": "工具增强的数据智能体依赖工具输出做分析决策，但工具成功执行也可能返回看似合理却错误的证据，智能体必须判断该信任还是核查。本文提出ToxicBench，在数值、标签、模式与检索四类错误下，用固定源数据配对干净与投毒观测，分别测量核查行为和最终答案采纳。在118个任务的GPT评测中，投毒使任务成功率下降26至39个百分点；一次性投毒时普通重试有帮助，但重复投毒会暴露核查后仍采纳错误答案的问题。该工作揭示了工具智能体的盲从风险并提供评测基准。",
+      "llm_tags": [
+        "query:skill:composite"
+      ],
+      "matched_query_tag": "query:skill:composite",
+      "matched_query_text": "Papers central to AI与Agent安全：研究 AI for Security 和 Security for AI，重点是 LLM/Agent 提示注入、工具与 Skill 权限、恶意插件和代码生成安全；不把机器人运动技能学习当成 Agent Skill 安全。, especially work that connects or combines: prompt injection attacks and defenses in tool using language model agents; security of LLM agents skills tools plugins and model context protocol including permission violations and data exfiltration; security vulnerabilities and reliability of code generated by large language models; Find security evaluation and defenses for tool-using LLM agents, malicious skills and plugins, prompt injection, authorization failures and insecure generated code. Exclude reinforcement learning motor-skill acquisition without a security connection..",
+      "matched_requirement_id": "req-composite-skill",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
 }
