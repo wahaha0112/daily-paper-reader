@@ -1,0 +1,25 @@
+---
+title: "Sheep's Clothing, Wolf's Data: Detecting Server-Induced Client Vulnerabilities in IPC"
+authors: "Fangming Gu, Qingli Guo, Jie Lu, Qinghe Xie, Beibei Zhao, Kangjie Lu, Hong Li, Xiaorui Gong"
+date: "2025"
+source: "NDSS"
+tags: ["query:code-vuln"]
+---
+
+[返回 CCF-A 文献库](https://wahaha0112.github.io/daily-paper-reader/ccf.html)
+
+**来源**：NDSS · CCF-A · 2025（year 精度）
+
+[出版社 / 官方论文页面](<https://doi.org/10.14722/ndss.2025.241303>)
+
+> 本页依据公开书目与可用摘要整理，未读取或验证论文全文。CCF-A 标签标记来源，不代表单篇论文质量。
+
+## Abstract
+
+来源未提供摘要；请打开官方论文页面阅读。
+
+## 阅读状态
+
+尚未调用模型生成解读；标题关键词匹配仅用于初筛。
+
+<!-- ccf-user-notes -->
